@@ -62,7 +62,7 @@ Download Curio Academy today and spark your child's love for Math and English!
 - **Tags:** Education, Kids, Math, English, Learning Games, Preschool, Elementary
 - **Content Rating:** Suitable for all ages / Everyone / PEGI 3
 - **Contact Email:** your-email@domain.com
-- **Website / Privacy Policy URL:** `https://curiosoftstudio.github.io/curio-academy/`
+- **Website / Privacy Policy URL:** `https://curio-app-studio.github.io/Curio-Academy/`
 
 ### Target Audience & Content (Families Policy)
 - **Target Age Groups:** Check boxes for:
