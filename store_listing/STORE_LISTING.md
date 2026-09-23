@@ -8,7 +8,7 @@
 `Curio Academy: Math & English`  *(30 characters)*
 
 ### Short Description (Max 80 characters)
-`Fun, interactive Math and English learning from Pre-K (LKG) to Class 8. 100% ad-free!`  *(80 characters)*
+`Fun, interactive Math and English learning from LKG to Class 8. Free to try!`  *(76 characters)*
 
 ### Full Description (Markdown ready for Play Console)
 ```text
@@ -21,8 +21,9 @@ From early learners in LKG/UKG exploring letters and shapes to Grade 8 students 
 • Interactive Learning for Early Learners: Pre-K, LKG, and UKG modules feature visual questions, tactile touch cards, cheerful audio guidance, and read-aloud prompts so young learners never feel stuck.
 • Dual Subjects: Seamlessly switch between Math and English with tailored syllabus coverage.
 • Dynamic Practice Challenges: Practice sessions with instant feedback, encouraging hints, and gentle guidance.
-• Offline & Safe: Works 100% offline. No internet connection required after installation.
-• 100% Ad-Free & Kid-Safe: No ads, no third-party trackers, and no subscriptions. Designed strictly following COPPA and Google Play Families guidelines.
+• Offline & Safe: Practice anytime, anywhere. Core learning activities work offline without interruption.
+• Free to Try: Start exploring foundational Math & English concepts for free.
+• Ad-Free with Subscription: Upgrade to Curio Academy Premium for a completely ad-free, distraction-free learning experience!
 
 📚 WHAT’S INSIDE:
 🔢 MATHEMATICS:
@@ -52,7 +53,7 @@ Give your child the confidence to excel in school and love learning with Curio A
 - **Tags:** Education, Kids, Math, English, Learning Games, Preschool, Elementary
 - **Content Rating:** Suitable for all ages / Everyone / PEGI 3
 - **Contact Email:** your-email@domain.com
-- **Website / Privacy Policy URL:** Link to your hosted `privacy_policy.html` (e.g. GitHub Pages)
+- **Website / Privacy Policy URL:** `https://vivekeazework.github.io/curio-academy/`
 
 ### Target Audience & Content (Families Policy)
 - **Target Age Groups:** Check boxes for:
@@ -60,14 +61,15 @@ Give your child the confidence to excel in school and love learning with Curio A
   - 6–8
   - 9–12
   - 13 and older
-- **Neutral Age Screen:** Not required if you target children exclusively or declare content is safe for all.
+- **Neutral Age Screen:** Not required if content is safe for all ages.
 - **Is your app designed for children?** YES ("Teacher Approved / Designed for Families").
-- **Does the app display ads?** NO (Select "No, my app does not contain ads").
+- **Does the app display ads?** **YES** (Select *"Yes, my app contains ads"*).
+  > ⚠️ **Google Families Policy Ad Requirement:** When serving ads to children under 13, all ad SDKs must be Google Play Families Self-Certified Ads SDKs (e.g. Google AdMob configured with `tagForChildDirectedTreatment(true)` so no behavioral tracking or personal profiling occurs).
 
 ### Data Safety Form (Google Play)
 Google Play requires answering the Data Safety questionnaire:
-- **Does your app collect or share any of the required user data types?** -> **NO**
-- **Is all of the user data collected by your app encrypted in transit?** -> **N/A** (No data collected or transmitted)
+- **Does your app collect or share any of the required user data types?** -> **NO** (Progress data is stored locally on device only).
+- **Is all of the user data collected by your app encrypted in transit?** -> **N/A** (No user personal data collected or transmitted).
 - **Do you provide a way for users to request that their data be deleted?** -> **Yes** (Uninstalling or clearing app storage deletes all locally stored data immediately).
 
 ---
