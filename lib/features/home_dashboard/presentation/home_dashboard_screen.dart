@@ -18,6 +18,7 @@ import '../../chapter_detail/presentation/chapter_detail_screen.dart';
 import '../../concept_learning/presentation/concept_lesson_sheet.dart';
 import '../../onboarding/presentation/board_class_selector_dialog.dart';
 import '../../settings/presentation/voice_settings_sheet.dart';
+import '../../../presentation/widgets/ad_banner_widget.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -258,7 +259,13 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      bottomNavigationBar: _buildBottomSubjectMenu(theme, activeProfile),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AdBannerWidget(),
+          _buildBottomSubjectMenu(theme, activeProfile),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),

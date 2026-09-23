@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/audio/audio_service.dart';
 import '../../core/theme/grade_tier_extension.dart';
+import '../../services/ad_service.dart';
 import '../components/curio_button.dart';
 
 class RewardDialog extends StatefulWidget {
@@ -213,7 +214,9 @@ class _RewardDialogState extends State<RewardDialog> with SingleTickerProviderSt
                       backgroundColor: const Color(0xFFFF6F00),
                       onPressed: () {
                         Navigator.of(context).pop();
-                        widget.onContinue();
+                        AdService().showInterstitialAdIfReady(
+                          onCompleted: widget.onContinue,
+                        );
                       },
                     ),
                   ),
