@@ -34,7 +34,7 @@
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/CurioAppStudio/curio-academy.git
+git clone https://github.com/CurioSoftStudio/curio-academy.git
 cd curio-academy
 
 # Install dependencies
