@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../config/ad_config.dart';
+import '../core/audio/audio_service.dart';
 
 /// Service responsible for managing Google Mobile Ads (AdMob)
 /// and strictly enforcing Google Play Families Policy & COPPA compliance.
@@ -59,21 +60,6 @@ class AdService {
           _interstitialAd = ad;
           _isInterstitialLoading = false;
           developer.log('AdService: Interstitial ad loaded successfully.', name: 'AdService');
-
-          _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-            onAdDismissedFullScreenContent: (InterstitialAd ad) {
-              ad.dispose();
-              _interstitialAd = null;
-              // Pre-load next interstitial for future sessions
-              loadInterstitialAd();
-            },
-            onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
-              developer.log('AdService: Failed to show interstitial: $error', name: 'AdService');
-              ad.dispose();
-              _interstitialAd = null;
-              loadInterstitialAd();
-            },
-          );
         },
         onAdFailedToLoad: (LoadAdError error) {
           _isInterstitialLoading = false;
@@ -85,26 +71,58 @@ class AdService {
   }
 
   /// Displays the Interstitial ad if available and cooldown period has elapsed.
+  /// Calls [onCompleted] strictly AFTER the user dismisses the ad (or if ad is skipped/fails),
+  /// ensuring the speaker and future timers only start when the ad is closed.
   void showInterstitialAdIfReady({VoidCallback? onCompleted}) {
     if (isPremiumUser) {
       onCompleted?.call();
       return;
     }
 
+    // Stop any ongoing audio/TTS immediately before presenting ad
+    AudioService.instance.stopAudio();
+
     // Check cooldown period
     if (_lastInterstitialShownTime != null) {
       final elapsed = DateTime.now().difference(_lastInterstitialShownTime!);
       if (elapsed < _interstitialCooldown) {
-        developer.log('AdService: Interstitial skipped due to cooldown (${elapsed.inSeconds}s < ${_interstitialCooldown.inSeconds}s).', name: 'AdService');
+        developer.log(
+          'AdService: Interstitial skipped due to cooldown (${elapsed.inSeconds}s < ${_interstitialCooldown.inSeconds}s).',
+          name: 'AdService',
+        );
         onCompleted?.call();
         return;
       }
     }
 
     if (_interstitialAd != null) {
+      final adToShow = _interstitialAd!;
+      _interstitialAd = null; // Detach reference so loadInterstitialAd() can prepare next ad
       _lastInterstitialShownTime = DateTime.now();
-      _interstitialAd!.show();
-      onCompleted?.call();
+
+      adToShow.fullScreenContentCallback = FullScreenContentCallback(
+        onAdShowedFullScreenContent: (InterstitialAd ad) {
+          // Extra safety check: stop audio as soon as full-screen ad opens
+          AudioService.instance.stopAudio();
+          developer.log('AdService: Interstitial ad showed on screen.', name: 'AdService');
+        },
+        onAdDismissedFullScreenContent: (InterstitialAd ad) {
+          developer.log('AdService: Interstitial ad dismissed by user.', name: 'AdService');
+          ad.dispose();
+          loadInterstitialAd();
+          // Advance to next question and start future timer ONLY AFTER ad is closed!
+          onCompleted?.call();
+        },
+        onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
+          developer.log('AdService: Failed to show interstitial: $error', name: 'AdService');
+          ad.dispose();
+          loadInterstitialAd();
+          // Fallback: proceed to next question if ad fails to show
+          onCompleted?.call();
+        },
+      );
+
+      adToShow.show();
     } else {
       developer.log('AdService: Interstitial ad not ready yet, skipping.', name: 'AdService');
       loadInterstitialAd();

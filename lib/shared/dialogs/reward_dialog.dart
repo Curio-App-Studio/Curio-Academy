@@ -213,6 +213,7 @@ class _RewardDialogState extends State<RewardDialog> with SingleTickerProviderSt
                       label: 'Next 🚀',
                       backgroundColor: const Color(0xFFFF6F00),
                       onPressed: () {
+                        AudioService.instance.stopAudio();
                         Navigator.of(context).pop();
                         AdService().showInterstitialAdIfReady(
                           onCompleted: widget.onContinue,
