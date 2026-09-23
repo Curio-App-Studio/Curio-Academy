@@ -1,0 +1,426 @@
+[
+  {
+    "activityId": "act_lkg_01",
+    "chapterId": "lkg_ch02",
+    "chapterName": "Numbers 1 to 5",
+    "topicId": "topic_number_sense",
+    "subjectId": "math",
+    "targetGrade": "LKG",
+    "gradeTier": "earlyExplorer",
+    "activityType": "BUBBLE_POP",
+    "difficultyLevel": 1,
+    "pointsReward": 20,
+    "promptData": {
+      "text": "Pop all bubbles that have 3 items or the number 3! (Ch 2: Numbers 1 to 5)",
+      "ttsFallback": "Pop all bubbles that equal three!"
+    },
+    "interactionPayload": {
+      "targetValue": 3,
+      "topicTitle": "Ch 2: Numbers 1 to 5",
+      "visualIcon": "🔢",
+      "bubbles": [
+        { "id": "b1", "label": "3", "value": 3, "displayType": "number", "color": "#4ADE80" },
+        { "id": "b2", "label": "⭐⭐⭐", "value": 3, "displayType": "objects", "color": "#FBBF24" },
+        { "id": "b3", "label": "1", "value": 1, "displayType": "number", "color": "#60A5FA" },
+        { "id": "b4", "label": "2", "value": 2, "displayType": "number", "color": "#F472B6" },
+        { "id": "b5", "label": "3", "value": 3, "displayType": "number", "color": "#38BDF8" }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["b1", "b2", "b5"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_ukg_01",
+    "chapterId": "ukg_ch01",
+    "chapterName": "Numbers 1 to 10",
+    "topicId": "topic_counting_10",
+    "subjectId": "math",
+    "targetGrade": "UKG",
+    "gradeTier": "earlyExplorer",
+    "activityType": "BUBBLE_POP",
+    "difficultyLevel": 1,
+    "pointsReward": 20,
+    "promptData": {
+      "text": "Pop all bubbles that equal 5! (Ch 1: Numbers 1 to 10)",
+      "ttsFallback": "Pop all bubbles that equal five!"
+    },
+    "interactionPayload": {
+      "targetValue": 5,
+      "topicTitle": "Ch 1: Numbers 1 to 10",
+      "visualIcon": "🔢",
+      "bubbles": [
+        { "id": "b1", "label": "5", "value": 5, "displayType": "number", "color": "#4ADE80" },
+        { "id": "b2", "label": "⭐⭐⭐⭐⭐", "value": 5, "displayType": "objects", "color": "#FBBF24" },
+        { "id": "b3", "label": "4", "value": 4, "displayType": "number", "color": "#60A5FA" },
+        { "id": "b4", "label": "2 + 3", "value": 5, "displayType": "expression", "color": "#F472B6" },
+        { "id": "b5", "label": "5", "value": 5, "displayType": "number", "color": "#38BDF8" }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["b1", "b2", "b4", "b5"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c1_01",
+    "chapterId": "c1_ch03",
+    "chapterName": "Addition Bonds",
+    "topicId": "topic_addition_bonds",
+    "subjectId": "math",
+    "targetGrade": "Class 1",
+    "gradeTier": "earlyExplorer",
+    "activityType": "BUBBLE_POP",
+    "difficultyLevel": 2,
+    "pointsReward": 25,
+    "promptData": {
+      "text": "Find numbers and sums that make 7! (Ch 3: Addition Bonds)",
+      "ttsFallback": "Pop all bubbles that equal seven!"
+    },
+    "interactionPayload": {
+      "targetValue": 7,
+      "topicTitle": "Ch 3: Addition Bonds",
+      "visualIcon": "➕",
+      "bubbles": [
+        { "id": "b1", "label": "7", "value": 7, "displayType": "number", "color": "#EC4899" },
+        { "id": "b2", "label": "4 + 3", "value": 7, "displayType": "expression", "color": "#10B981" },
+        { "id": "b3", "label": "6", "value": 6, "displayType": "number", "color": "#F59E0B" },
+        { "id": "b4", "label": "5 + 2", "value": 7, "displayType": "expression", "color": "#3B82F6" },
+        { "id": "b5", "label": "⭐⭐⭐⭐⭐⭐⭐", "value": 7, "displayType": "objects", "color": "#14B8A6" }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["b1", "b2", "b4", "b5"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c2_01",
+    "chapterId": "c2_ch10",
+    "chapterName": "Add Our Points",
+    "topicId": "topic_addition_subtraction",
+    "subjectId": "math",
+    "targetGrade": "Class 2",
+    "gradeTier": "primaryBuilder",
+    "activityType": "DRAG_DROP",
+    "difficultyLevel": 1,
+    "pointsReward": 30,
+    "promptData": {
+      "text": "Match addition pairs that equal 20! (Ch 10: Add Our Points)",
+      "ttsFallback": "Match numbers that sum up to twenty!"
+    },
+    "interactionPayload": {
+      "targetBase": "1/2",
+      "topicTitle": "Ch 10: Add Our Points",
+      "visualIcon": "⭐",
+      "draggableItems": [
+        { "itemId": "f1", "numerator": 10, "denominator": 20, "displayText": "10/20", "isEquivalent": true },
+        { "itemId": "f2", "numerator": 5, "denominator": 10, "displayText": "5/10", "isEquivalent": true },
+        { "itemId": "f3", "numerator": 4, "denominator": 8, "displayText": "4/8", "isEquivalent": true },
+        { "itemId": "f4", "numerator": 3, "denominator": 9, "displayText": "3/9", "isEquivalent": false }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["f1", "f2", "f3"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c3_01",
+    "chapterId": "c3_ch09",
+    "chapterName": "How Many Times?",
+    "topicId": "topic_multiplication_tables",
+    "subjectId": "math",
+    "targetGrade": "Class 3",
+    "gradeTier": "primaryBuilder",
+    "activityType": "DRAG_DROP",
+    "difficultyLevel": 2,
+    "pointsReward": 30,
+    "promptData": {
+      "text": "Fractions & Tables: Find halves (1/2) in tables (Ch 9: How Many Times?)",
+      "ttsFallback": "Find equivalent fractions for one half!"
+    },
+    "interactionPayload": {
+      "targetBase": "1/2",
+      "topicTitle": "Ch 9: How Many Times?",
+      "visualIcon": "✖️",
+      "draggableItems": [
+        { "itemId": "f1", "numerator": 3, "denominator": 6, "displayText": "3/6", "isEquivalent": true },
+        { "itemId": "f2", "numerator": 6, "denominator": 12, "displayText": "6/12", "isEquivalent": true },
+        { "itemId": "f3", "numerator": 4, "denominator": 9, "displayText": "4/9", "isEquivalent": false },
+        { "itemId": "f4", "numerator": 5, "denominator": 10, "displayText": "5/10", "isEquivalent": true }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["f1", "f2", "f4"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c4_01",
+    "chapterId": "c4_ch09",
+    "chapterName": "Halves and Quarters",
+    "topicId": "topic_halves_and_quarters",
+    "subjectId": "math",
+    "targetGrade": "Class 4",
+    "gradeTier": "primaryBuilder",
+    "activityType": "DRAG_DROP",
+    "difficultyLevel": 2,
+    "pointsReward": 35,
+    "promptData": {
+      "text": "Drag fractions equal to 1/2 into the Cauldron! (Ch 9: Halves & Quarters)",
+      "ttsFallback": "Drag all fractions equivalent to one half into the Golden Cauldron!"
+    },
+    "interactionPayload": {
+      "targetBase": "1/2",
+      "topicTitle": "Ch 9: Halves & Quarters",
+      "visualIcon": "🍯",
+      "draggableItems": [
+        { "itemId": "f1", "numerator": 2, "denominator": 4, "displayText": "2/4", "isEquivalent": true },
+        { "itemId": "f2", "numerator": 3, "denominator": 6, "displayText": "3/6", "isEquivalent": true },
+        { "itemId": "f3", "numerator": 2, "denominator": 5, "displayText": "2/5", "isEquivalent": false },
+        { "itemId": "f4", "numerator": 4, "denominator": 8, "displayText": "4/8", "isEquivalent": true }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["f1", "f2", "f4"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c4_02",
+    "chapterId": "c4_ch09",
+    "chapterName": "Halves and Quarters",
+    "topicId": "topic_fractions_one_third",
+    "subjectId": "math",
+    "targetGrade": "Class 4",
+    "gradeTier": "primaryBuilder",
+    "activityType": "DRAG_DROP",
+    "difficultyLevel": 2,
+    "pointsReward": 35,
+    "promptData": {
+      "text": "Drag fractions equal to 1/3 into the Cauldron! (Ch 9: Halves & Quarters)",
+      "ttsFallback": "Drag all fractions equivalent to one third into the Golden Cauldron!"
+    },
+    "interactionPayload": {
+      "targetBase": "1/3",
+      "topicTitle": "Ch 9: Halves & Quarters",
+      "visualIcon": "🍯",
+      "draggableItems": [
+        { "itemId": "f1", "numerator": 2, "denominator": 6, "displayText": "2/6", "isEquivalent": true },
+        { "itemId": "f2", "numerator": 3, "denominator": 9, "displayText": "3/9", "isEquivalent": true },
+        { "itemId": "f3", "numerator": 4, "denominator": 12, "displayText": "4/12", "isEquivalent": true },
+        { "itemId": "f4", "numerator": 2, "denominator": 4, "displayText": "2/4", "isEquivalent": false }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["f1", "f2", "f3"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c4_03",
+    "chapterId": "c4_ch13",
+    "chapterName": "Fields and Fences",
+    "topicId": "topic_fields_and_fences",
+    "subjectId": "math",
+    "targetGrade": "Class 4",
+    "gradeTier": "primaryBuilder",
+    "activityType": "MCQ",
+    "difficultyLevel": 2,
+    "pointsReward": 30,
+    "promptData": {
+      "text": "A field has length 15 m and width 10 m. What length of fence wire is needed to go around it?",
+      "ttsFallback": "A field has length fifteen meters and width ten meters. What length of fence wire is needed?"
+    },
+    "interactionPayload": {
+      "topicTitle": "Ch 13: Fields & Fences",
+      "visualIcon": "🌾",
+      "options": ["50 m", "25 m", "150 m", "60 m"],
+      "explanation": "Perimeter = 2 × (Length + Width) = 2 × (15 + 10) = 2 × 25 = 50 m."
+    },
+    "validationRule": {
+      "format": "exact",
+      "expectedAnswer": "50 m",
+      "hintTree": [
+        { "stepIndex": 1, "hintText": "Perimeter is the total boundary: 15 + 10 + 15 + 10 = 50 m." }
+      ]
+    }
+  },
+  {
+    "activityId": "act_c4_04",
+    "chapterId": "c4_ch04",
+    "chapterName": "Tick-Tick-Tick",
+    "topicId": "topic_tick_tick_tick",
+    "subjectId": "math",
+    "targetGrade": "Class 4",
+    "gradeTier": "primaryBuilder",
+    "activityType": "MCQ",
+    "difficultyLevel": 2,
+    "pointsReward": 30,
+    "promptData": {
+      "text": "How many minutes are there in 2 hours and 30 minutes? (Ch 4: Tick-Tick-Tick)",
+      "ttsFallback": "How many minutes are there in two hours and thirty minutes?"
+    },
+    "interactionPayload": {
+      "topicTitle": "Ch 4: Tick-Tick-Tick",
+      "visualIcon": "⏰",
+      "options": ["150 minutes", "120 minutes", "230 minutes", "90 minutes"],
+      "explanation": "1 hour = 60 minutes. 2 hours = 120 minutes. Total = 120 + 30 = 150 minutes."
+    },
+    "validationRule": {
+      "format": "exact",
+      "expectedAnswer": "150 minutes",
+      "hintTree": [
+        { "stepIndex": 1, "hintText": "Convert 2 hours to minutes: 2 × 60 = 120, then add 30 minutes." }
+      ]
+    }
+  },
+  {
+    "activityId": "act_c4_05",
+    "chapterId": "c4_ch07",
+    "chapterName": "Jugs and Mugs",
+    "topicId": "topic_jugs_and_mugs",
+    "subjectId": "math",
+    "targetGrade": "Class 4",
+    "gradeTier": "primaryBuilder",
+    "activityType": "MCQ",
+    "difficultyLevel": 2,
+    "pointsReward": 30,
+    "promptData": {
+      "text": "A bottle has 750 mL of juice. How much more juice is needed to make exactly 1 Liter?",
+      "ttsFallback": "A bottle has seven hundred fifty milliliters. How much more is needed to make one liter?"
+    },
+    "interactionPayload": {
+      "topicTitle": "Ch 7: Jugs & Mugs",
+      "visualIcon": "🧃",
+      "options": ["250 mL", "350 mL", "150 mL", "500 mL"],
+      "explanation": "1 Liter = 1,000 mL. Needed = 1,000 mL - 750 mL = 250 mL."
+    },
+    "validationRule": {
+      "format": "exact",
+      "expectedAnswer": "250 mL",
+      "hintTree": [
+        { "stepIndex": 1, "hintText": "Remember that 1 Liter equals 1,000 Milliliters. Subtract 750 from 1,000." }
+      ]
+    }
+  },
+  {
+    "activityId": "act_c4_06",
+    "chapterId": "c4_ch11",
+    "chapterName": "Tables and Shares",
+    "topicId": "topic_tables_and_shares",
+    "subjectId": "math",
+    "targetGrade": "Class 4",
+    "gradeTier": "primaryBuilder",
+    "activityType": "MCQ",
+    "difficultyLevel": 2,
+    "pointsReward": 30,
+    "promptData": {
+      "text": "72 pencils are packed equally into 8 boxes. How many pencils are in each box?",
+      "ttsFallback": "Seventy two pencils are packed equally into eight boxes. How many pencils are in each box?"
+    },
+    "interactionPayload": {
+      "topicTitle": "Ch 11: Tables & Shares",
+      "visualIcon": "✏️",
+      "options": ["9 pencils", "8 pencils", "7 pencils", "12 pencils"],
+      "explanation": "72 ÷ 8 = 9 pencils per box."
+    },
+    "validationRule": {
+      "format": "exact",
+      "expectedAnswer": "9 pencils",
+      "hintTree": [
+        { "stepIndex": 1, "hintText": "Use your 8 times table: 8 × 9 = 72." }
+      ]
+    }
+  },
+  {
+    "activityId": "act_c5_01",
+    "chapterId": "c5_ch02",
+    "chapterName": "Shapes and Angles",
+    "topicId": "topic_shapes_and_angles",
+    "subjectId": "math",
+    "targetGrade": "Class 5",
+    "gradeTier": "primaryBuilder",
+    "activityType": "DRAG_DROP",
+    "difficultyLevel": 3,
+    "pointsReward": 40,
+    "promptData": {
+      "text": "Drag equivalent 1/2 turns into the Cauldron! (Ch 2: Shapes & Angles)",
+      "ttsFallback": "Drag all fractions equivalent to one half into the Cauldron!"
+    },
+    "interactionPayload": {
+      "targetBase": "1/2",
+      "topicTitle": "Ch 2: Shapes & Angles",
+      "visualIcon": "📐",
+      "draggableItems": [
+        { "itemId": "f1", "numerator": 4, "denominator": 8, "displayText": "4/8", "isEquivalent": true },
+        { "itemId": "f2", "numerator": 5, "denominator": 10, "displayText": "5/10", "isEquivalent": true },
+        { "itemId": "f3", "numerator": 3, "denominator": 8, "displayText": "3/8", "isEquivalent": false },
+        { "itemId": "f4", "numerator": 8, "denominator": 16, "displayText": "8/16", "isEquivalent": true }
+      ]
+    },
+    "validationRule": { "format": "set_match", "expectedAnswer": ["f1", "f2", "f4"], "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c6_01",
+    "chapterId": "c6_ch06",
+    "chapterName": "Integers",
+    "topicId": "topic_integers",
+    "subjectId": "math",
+    "targetGrade": "Class 6",
+    "gradeTier": "middleAchiever",
+    "activityType": "GRID_CALC",
+    "difficultyLevel": 2,
+    "pointsReward": 40,
+    "promptData": {
+      "text": "Solve: 2x - 4 = 10 (Ch 6: Integers & Chapter 11: Algebra)",
+      "ttsFallback": "Solve for x in two x minus four equals ten."
+    },
+    "interactionPayload": {
+      "equation": "2x - 4 = 10",
+      "variable": "x",
+      "topicTitle": "Ch 6: Integers",
+      "visualIcon": "⚖️",
+      "stepsRequired": [
+        { "step": 1, "action": "add_both_sides", "operand": 4, "resultPrompt": "2x = 14" },
+        { "step": 2, "action": "divide_both_sides", "operand": 2, "resultPrompt": "x = 7" }
+      ]
+    },
+    "validationRule": { "format": "exact", "expectedAnswer": 7, "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c7_01",
+    "chapterId": "c7_ch04",
+    "chapterName": "Simple Equations",
+    "topicId": "topic_linear_equations",
+    "subjectId": "math",
+    "targetGrade": "Class 7",
+    "gradeTier": "middleAchiever",
+    "activityType": "GRID_CALC",
+    "difficultyLevel": 3,
+    "pointsReward": 50,
+    "promptData": {
+      "text": "Solve for x: 3x - 7 = 14 (Ch 4: Simple Equations)",
+      "ttsFallback": "Solve for x in the equation three x minus seven equals fourteen."
+    },
+    "interactionPayload": {
+      "equation": "3x - 7 = 14",
+      "variable": "x",
+      "topicTitle": "Ch 4: Simple Equations",
+      "visualIcon": "⚖️",
+      "stepsRequired": [
+        { "step": 1, "action": "add_both_sides", "operand": 7, "resultPrompt": "3x = 21" },
+        { "step": 2, "action": "divide_both_sides", "operand": 3, "resultPrompt": "x = 7" }
+      ]
+    },
+    "validationRule": { "format": "exact", "expectedAnswer": 7, "tolerance": 0.0, "hintTree": [] }
+  },
+  {
+    "activityId": "act_c8_01",
+    "chapterId": "c8_ch02",
+    "chapterName": "Linear Equations (1 Variable)",
+    "topicId": "topic_linear_equations_one_var",
+    "subjectId": "math",
+    "targetGrade": "Class 8",
+    "gradeTier": "middleAchiever",
+    "activityType": "GRID_CALC",
+    "difficultyLevel": 4,
+    "pointsReward": 60,
+    "promptData": {
+      "text": "Solve for x: 5x + 3 = 28 (Ch 2: Linear Equations in One Variable)",
+      "ttsFallback": "Solve for x in five x plus three equals twenty-eight."
+    },
+    "interactionPayload": {
+      "equation": "5x + 3 = 28",
+      "variable": "x",
+      "topicTitle": "Ch 2: Linear Equations",
+      "visualIcon": "⚖️",
+      "stepsRequired": [
+        { "step": 1, "action": "subtract_both_sides", "operand": 3, "resultPrompt": "5x = 25" },
+        { "step": 2, "action": "divide_both_sides", "operand": 5, "resultPrompt": "x = 5" }
+      ]
+    },
+    "validationRule": { "format": "exact", "expectedAnswer": 5, "tolerance": 0.0, "hintTree": [] }
+  }
+]
