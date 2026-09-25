@@ -6,7 +6,8 @@ enum ActivityType {
   dragDrop('DRAG_DROP'),
   gridCalc('GRID_CALC'),
   mcq('MCQ'),
-  scratchpadPrompt('SCRATCHPAD_PROMPT');
+  scratchpadPrompt('SCRATCHPAD_PROMPT'),
+  cardMatch('CARD_MATCH');
 
   final String value;
   const ActivityType(this.value);

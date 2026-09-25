@@ -5,7 +5,6 @@ import '../../../../core/theme/grade_tier_extension.dart';
 import '../../../../data/local/local_storage_service.dart';
 import '../../../../data/models/activity_model.dart';
 import '../../../../data/models/student_attempt_model.dart';
-import '../../../../shared/components/curio_progress_bar.dart';
 import '../../../../shared/dialogs/reward_dialog.dart';
 import '../models/bubble_item.dart';
 
@@ -276,7 +275,6 @@ class _BubblePopScreenState extends State<BubblePopScreen>
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
-      final hasNextLevel = _currentLevelIndex < _levels.length - 1;
 
       final int starsAwarded;
       if (_levelMistakes == 0) {
@@ -317,16 +315,14 @@ class _BubblePopScreenState extends State<BubblePopScreen>
         totalPoints: points,
         message: congratMessage,
         onContinue: () {
-          if (hasNextLevel) {
-            setState(() {
-              _currentLevelIndex++;
-              _loadLevel(_currentLevelIndex);
-            });
-            _announceCurrentPrompt();
-          } else {
-            // Completed all levels
-            Navigator.of(context).maybePop();
+          if (_currentLevelIndex + 1 >= _levels.length) {
+            _generateAndAppendNextLevel();
           }
+          setState(() {
+            _currentLevelIndex++;
+            _loadLevel(_currentLevelIndex);
+          });
+          _announceCurrentPrompt();
         },
         onReplay: () {
           setState(() {
@@ -336,6 +332,80 @@ class _BubblePopScreenState extends State<BubblePopScreen>
         },
       );
     });
+  }
+
+  void _generateAndAppendNextLevel() {
+    final nextLevelNumber = _levels.length + 1;
+    final isEnglish = widget.activity?.subjectId == 'english' ||
+        (widget.activities != null &&
+            widget.activities!.isNotEmpty &&
+            widget.activities!.first.subjectId == 'english') ||
+        (widget.activity?.chapterId?.startsWith('eng_') ?? false);
+
+    BubbleLevelData newLevel;
+    if (isEnglish) {
+      final List<Map<String, dynamic>> letterCatalog = [
+        {'letter': 'A', 'word': 'Apple 🍎', 'distractors': <String>['Ball ⚽', 'Cat 🐱', 'Duck 🦆']},
+        {'letter': 'B', 'word': 'Bear 🐻', 'distractors': <String>['Apple 🍎', 'Egg 🥚', 'Fish 🐟']},
+        {'letter': 'C', 'word': 'Cat 🐱', 'distractors': <String>['Goat 🐐', 'Hat 🎩', 'Igloo 🧊']},
+        {'letter': 'D', 'word': 'Dog 🐶', 'distractors': <String>['Car 🚗', 'Sun ☀️', 'Moon 🌙']},
+        {'letter': 'E', 'word': 'Elephant 🐘', 'distractors': <String>['Lion 🦁', 'Tree 🌳', 'Star ⭐']},
+        {'letter': 'M', 'word': 'Monkey 🐵', 'distractors': <String>['Kite 🪁', 'Nest 🪺', 'Orange 🍊']},
+        {'letter': 'S', 'word': 'Sun ☀️', 'distractors': <String>['Fish 🐟', 'Dog 🐶', 'Apple 🍎']},
+      ];
+      final item = letterCatalog[(nextLevelNumber - 1) % letterCatalog.length];
+      final word = item['word'] as String;
+      final letter = item['letter'] as String;
+      final distractors = item['distractors'] as List<String>;
+      final prompt = 'Pop all bubbles with $word!';
+      final target = word;
+      final bubbles = [
+        BubbleItem(id: 'gen_${nextLevelNumber}_1', label: word, value: target, displayType: 'word', color: const Color(0xFF4ADE80), x: 0.18, y: 0.22, vx: 0.0011, vy: -0.0009),
+        BubbleItem(id: 'gen_${nextLevelNumber}_2', label: word, value: target, displayType: 'word', color: const Color(0xFF38BDF8), x: 0.65, y: 0.30, vx: -0.0010, vy: 0.0012),
+        BubbleItem(id: 'gen_${nextLevelNumber}_3', label: distractors[0], value: 'dist_1', displayType: 'word', color: const Color(0xFFFBBF24), x: 0.28, y: 0.58, vx: 0.0009, vy: -0.0011),
+        BubbleItem(id: 'gen_${nextLevelNumber}_4', label: distractors[1], value: 'dist_2', displayType: 'word', color: const Color(0xFFF472B6), x: 0.72, y: 0.65, vx: -0.0012, vy: -0.0008),
+        BubbleItem(id: 'gen_${nextLevelNumber}_5', label: word, value: target, displayType: 'word', color: const Color(0xFFA78BFA), x: 0.45, y: 0.42, vx: 0.0010, vy: 0.0010),
+      ];
+      newLevel = BubbleLevelData(
+        levelNumber: nextLevelNumber,
+        title: 'Level $nextLevelNumber: Letter $letter',
+        targetValue: target,
+        promptText: prompt,
+        bubbles: bubbles,
+      );
+    } else {
+      final targetNum = ((nextLevelNumber + 2) % 8) + 2; // 2 to 9
+      final starString = '⭐' * targetNum;
+      final prompt = 'Pop all bubbles that equal $targetNum!';
+      final bubbles = [
+        BubbleItem(id: 'gen_${nextLevelNumber}_1', label: '$targetNum', value: targetNum, displayType: 'number', color: const Color(0xFF4ADE80), x: 0.15, y: 0.25, vx: 0.0011, vy: -0.0010),
+        BubbleItem(id: 'gen_${nextLevelNumber}_2', label: starString, value: targetNum, displayType: 'objects', color: const Color(0xFFFBBF24), x: 0.65, y: 0.20, vx: -0.0012, vy: 0.0011),
+        BubbleItem(id: 'gen_${nextLevelNumber}_3', label: '${targetNum + 1}', value: targetNum + 1, displayType: 'number', color: const Color(0xFF60A5FA), x: 0.25, y: 0.60, vx: 0.0009, vy: 0.0012),
+        BubbleItem(id: 'gen_${nextLevelNumber}_4', label: '$targetNum', value: targetNum, displayType: 'number', color: const Color(0xFFF472B6), x: 0.70, y: 0.65, vx: -0.0010, vy: -0.0009),
+        BubbleItem(id: 'gen_${nextLevelNumber}_5', label: '${max(1, targetNum - 2)}', value: max(1, targetNum - 2), displayType: 'number', color: const Color(0xFFA78BFA), x: 0.45, y: 0.38, vx: 0.0010, vy: 0.0008),
+      ];
+      newLevel = BubbleLevelData(
+        levelNumber: nextLevelNumber,
+        title: 'Level $nextLevelNumber: Target $targetNum',
+        targetValue: targetNum,
+        promptText: prompt,
+        bubbles: bubbles,
+      );
+    }
+
+    _levels.add(newLevel);
+  }
+
+  void _skipToNextLevel() {
+    AudioService.instance.playSfx(CurioSfx.click);
+    if (_currentLevelIndex + 1 >= _levels.length) {
+      _generateAndAppendNextLevel();
+    }
+    setState(() {
+      _currentLevelIndex++;
+      _loadLevel(_currentLevelIndex);
+    });
+    _announceCurrentPrompt();
   }
 
   @override
@@ -378,8 +448,8 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                 final screenHeight = constraints.maxHeight;
                 final bubbleDiameter = tierTheme.bubbleSize;
 
-                final topMargin = 78.0;
-                final bottomMargin = 100.0;
+                const topMargin = 120.0;
+                const bottomMargin = 100.0;
                 final playWidth = max(screenWidth - bubbleDiameter, 1.0);
                 final playHeight = max(screenHeight - topMargin - bottomMargin - bubbleDiameter, 1.0);
 
@@ -413,7 +483,7 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                       },
                     ),
 
-                    // 2. Top Header: Back Button, Level Badge, Progress & Audio Trigger
+                    // 2a. Top Header Row: Back Button, Level Badge, Total Stars, Next Button, Mute, Speaker
                     Positioned(
                       top: 8,
                       left: 12,
@@ -421,16 +491,15 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                       child: Row(
                         children: [
                           IconButton(
-                            iconSize: 30,
+                            iconSize: 28,
                             style: IconButton.styleFrom(
                               backgroundColor: Colors.white,
-                              minimumSize: tierTheme.minTouchTarget,
-                              elevation: 4,
+                              elevation: 3,
                             ),
                             icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0369A1)),
                             onPressed: () => Navigator.of(context).maybePop(),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           // Level Badge
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -439,7 +508,7 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
-                              'L${currentLevel.levelNumber}/${_levels.length}',
+                              'L${currentLevel.levelNumber}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -447,14 +516,68 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          // Progress Bar
-                          Expanded(
-                            child: CurioProgressBar(
-                              progress: progressFraction,
-                              currentStars: _poppedCorrectCount,
-                              totalStars: _targetTotalCount,
-                              barColor: const Color(0xFF0284C7),
+                          const SizedBox(width: 8),
+                          // Total Stars Pill
+                          ValueListenableBuilder<int>(
+                            valueListenable: LocalStorageService.instance.totalStarsNotifier,
+                            builder: (context, totalStars, _) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFFDE68A)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '$totalStars',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 13,
+                                        color: Color(0xFF92400E),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const Spacer(),
+                          // Skip / Next Level Button
+                          InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: _skipToNextLevel,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFF7DD3FC)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                children: [
+                                  Text(
+                                    'Next',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF0369A1),
+                                    ),
+                                  ),
+                                  SizedBox(width: 2),
+                                  Icon(Icons.skip_next_rounded, size: 18, color: Color(0xFF0369A1)),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -462,11 +585,10 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                             valueListenable: AudioService.instance.muteNotifier,
                             builder: (context, isMuted, _) {
                               return IconButton(
-                                iconSize: 26,
+                                iconSize: 24,
                                 style: IconButton.styleFrom(
                                   backgroundColor: isMuted ? const Color(0xFFFEE2E2) : Colors.white,
-                                  minimumSize: tierTheme.minTouchTarget,
-                                  elevation: 4,
+                                  elevation: 3,
                                 ),
                                 icon: Icon(
                                   isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
@@ -481,16 +603,86 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                           ),
                           const SizedBox(width: 6),
                           IconButton(
-                            iconSize: 30,
+                            iconSize: 26,
                             style: IconButton.styleFrom(
                               backgroundColor: const Color(0xFFFFD54F),
-                              minimumSize: tierTheme.minTouchTarget,
-                              elevation: 4,
+                              elevation: 3,
                             ),
                             icon: const Icon(Icons.volume_up_rounded, color: Color(0xFF78350F)),
                             onPressed: _announceCurrentPrompt,
                           ),
                         ],
+                      ),
+                    ),
+
+                    // 2b. Sub-Bar: Unobstructed Bubble Goal & Progress Bar (Never under speaker icon!)
+                    Positioned(
+                      top: 60,
+                      left: 14,
+                      right: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFBAE6FD), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('🫧', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  height: 12,
+                                  color: const Color(0xFFE0F2FE),
+                                  child: FractionallySizedBox(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: progressFraction.clamp(0.0, 1.0),
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE0F2FE),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Color(0xFF0284C7), size: 15),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$_poppedCorrectCount / $_targetTotalCount',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13,
+                                      color: Color(0xFF0369A1),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 

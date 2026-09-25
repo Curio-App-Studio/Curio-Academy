@@ -9,10 +9,12 @@ import '../../../data/models/chapter_model.dart';
 import '../../../data/repositories/curriculum_repository.dart';
 import '../../../shared/components/gamified_card.dart';
 import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
+import '../../activities/card_match/presentation/card_match_screen.dart';
 import '../../activities/concept_quiz/presentation/concept_challenge_screen.dart';
 import '../../activities/drag_drop/presentation/fraction_cauldron_screen.dart';
 import '../../activities/grid_calc/presentation/equation_solver_screen.dart';
 import '../../concept_learning/presentation/concept_lesson_sheet.dart';
+import '../../../shared/components/language_switch_button.dart';
 
 /// Dedicated Chapter View: Shows only this chapter's concept lesson and practice activities
 class ChapterDetailScreen extends ConsumerStatefulWidget {
@@ -99,6 +101,13 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
       case ActivityType.gridCalc:
         targetScreen = EquationSolverScreen(activity: activity);
         break;
+      case ActivityType.cardMatch:
+        targetScreen = CardMatchScreen(
+          activity: activity,
+          activities: _currentChapter.activities,
+          initialLevelIndex: index,
+        );
+        break;
       case ActivityType.mcq:
       default:
         targetScreen = ConceptChallengeScreen(
@@ -141,29 +150,36 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFDE68A)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  '${LocalStorageService.instance.totalStars}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    color: Color(0xFF92400E),
-                  ),
+          const LanguageSwitchButton(),
+          const SizedBox(width: 4),
+          ValueListenableBuilder<int>(
+            valueListenable: LocalStorageService.instance.totalStarsNotifier,
+            builder: (context, totalStars, _) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$totalStars',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.volume_up_rounded),
@@ -431,11 +447,13 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
     final visualIcon = activity.interactionPayload['visualIcon'] as String? ??
         (activity.activityType == ActivityType.bubblePop
             ? '🫧'
-            : (activity.activityType == ActivityType.dragDrop
-                ? '🍯'
-                : (activity.activityType == ActivityType.gridCalc
-                    ? '⚖️'
-                    : '📝')));
+            : (activity.activityType == ActivityType.cardMatch
+                ? '🃏'
+                : (activity.activityType == ActivityType.dragDrop
+                    ? '🍯'
+                    : (activity.activityType == ActivityType.gridCalc
+                        ? '⚖️'
+                        : '📝'))));
 
     final topicTitle = (activity.interactionPayload['topicTitle'] as String? ??
             activity.chapterName ??

@@ -11,6 +11,7 @@ import '../../../data/models/activity_model.dart';
 import '../../../data/repositories/curriculum_repository.dart';
 import '../../../shared/components/scratchpad_drawer.dart';
 import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
+import '../../activities/card_match/presentation/card_match_screen.dart';
 import '../../activities/drag_drop/presentation/fraction_cauldron_screen.dart';
 import '../../activities/grid_calc/presentation/equation_solver_screen.dart';
 import '../../activities/concept_quiz/presentation/concept_challenge_screen.dart';
@@ -19,6 +20,8 @@ import '../../concept_learning/presentation/concept_lesson_sheet.dart';
 import '../../onboarding/presentation/board_class_selector_dialog.dart';
 import '../../settings/presentation/voice_settings_sheet.dart';
 import '../../../presentation/widgets/ad_banner_widget.dart';
+import '../../../core/localization/app_localizations.dart';
+import '../../../shared/components/language_switch_button.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -133,7 +136,13 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final targetActivity = activities.isNotEmpty ? activities[safeIndex] : null;
     Widget targetScreen;
 
-    if (targetActivity != null &&
+    if (targetActivity != null && targetActivity.activityType == ActivityType.cardMatch) {
+      targetScreen = CardMatchScreen(
+        activity: targetActivity,
+        activities: activities,
+        initialLevelIndex: safeIndex,
+      );
+    } else if (targetActivity != null &&
         (targetActivity.activityType == ActivityType.bubblePop ||
             activeProfile.studentClass.isKindergarten)) {
       targetScreen = BubblePopScreen(
@@ -218,29 +227,36 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           ],
         ),
         actions: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFDE68A)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  '${LocalStorageService.instance.totalStars}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    color: Color(0xFF92400E),
-                  ),
+          const LanguageSwitchButton(),
+          const SizedBox(width: 4),
+          ValueListenableBuilder<int>(
+            valueListenable: LocalStorageService.instance.totalStarsNotifier,
+            builder: (context, totalStars, _) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$totalStars',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           ValueListenableBuilder<bool>(
             valueListenable: AudioService.instance.muteNotifier,
@@ -299,6 +315,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               // 1. Class Banner
               _buildClassBanner(activeProfile, tierTheme),
 
+              const SizedBox(height: 14),
+
+              // 1b. Total Stars Achievement Card on Home Screen
+              _buildTotalStarsHeroCard(ref),
+
               const SizedBox(height: 20),
 
               // 2. Section Header
@@ -306,7 +327,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _activeSubjectId == 'english' ? '📚 English Chapters' : '📐 Math Chapters',
+                    _activeSubjectId == 'english' ? ref.strings.englishChapters : ref.strings.mathChapters,
                     style: const TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w900,
@@ -373,7 +394,132 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
+  Widget _buildTotalStarsHeroCard(WidgetRef ref) {
+    final strings = ref.strings;
+    return ValueListenableBuilder<int>(
+      valueListenable: LocalStorageService.instance.totalStarsNotifier,
+      builder: (context, totalStars, _) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFD97706).withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.star_rounded, color: Colors.white, size: 30),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          strings.starsEarned,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFDE68A),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            strings.superExplorer,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF78350F),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          '$totalStars',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF78350F),
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          strings.totalStars,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFB45309),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      strings.keepPracticingMotivation,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFA16207),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildBottomSubjectMenu(ThemeData theme, StudentProfile profile) {
+    final strings = ref.strings;
     return SafeArea(
       top: false,
       child: Container(
@@ -398,7 +544,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             Expanded(
               child: _buildBottomSubjectItem(
                 subjectId: 'math',
-                label: 'Math',
+                label: strings.math,
                 emoji: '📐',
                 accentColor: const Color(0xFFFF7B25),
                 bgColor: const Color(0xFFFFF4EC),
@@ -412,7 +558,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             Expanded(
               child: _buildBottomSubjectItem(
                 subjectId: 'english',
-                label: 'English',
+                label: strings.english,
                 emoji: '📚',
                 accentColor: const Color(0xFF6366F1),
                 bgColor: const Color(0xFFEEF2FF),
@@ -426,12 +572,12 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             Expanded(
               child: _buildBottomSubjectItem(
                 subjectId: 'science',
-                label: 'Science',
+                label: strings.science,
                 emoji: '🔬',
                 accentColor: const Color(0xFF10B981),
                 bgColor: const Color(0xFFECFDF5),
                 isActive: false,
-                badgeText: 'Soon',
+                badgeText: strings.comingSoon,
                 onTap: () {
                   AudioService.instance.playSfx(CurioSfx.click);
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();

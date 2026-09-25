@@ -11,6 +11,7 @@ import '../../../../shared/components/gamified_card.dart';
 import '../../../../shared/components/scratchpad_drawer.dart';
 import '../../../../shared/dialogs/reward_dialog.dart';
 import '../../bubble_pop/presentation/bubble_pop_screen.dart';
+import '../../../../shared/components/language_switch_button.dart';
 import 'question_solution_sheet.dart';
 
 class ConceptChallengeScreen extends StatefulWidget {
@@ -40,7 +41,6 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
   late int _currentIndex;
   late Activity _currentActivity;
   int _answersGiven = 0;
-  int _score = 0;
   int? _selectedIndex;
   bool _isAnswered = false;
   bool _isCorrect = false;
@@ -52,7 +52,6 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
   @override
   void initState() {
     super.initState();
-    _score = LocalStorageService.instance.totalStars;
     if (widget.activities != null && widget.activities!.isNotEmpty) {
       _activitiesList = List<Activity>.from(widget.activities!);
     } else if (widget.activity != null) {
@@ -74,7 +73,6 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
     final prevAttempt = LocalStorageService.instance.getQuestionAttempt(act.activityId);
     setState(() {
       _currentActivity = act;
-      _score = LocalStorageService.instance.totalStars;
       if (prevAttempt != null) {
         _selectedIndex = prevAttempt.selectedOptionIndex;
         _isAnswered = true;
@@ -152,7 +150,6 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       _isCorrect = isCorrect;
       _wasPreviouslyAnswered = false;
       _answersGiven++;
-      _score = LocalStorageService.instance.totalStars;
     });
 
     if (isCorrect) {
@@ -307,29 +304,36 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFDE68A)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  '$_score',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    color: Color(0xFF92400E),
-                  ),
+          const LanguageSwitchButton(),
+          const SizedBox(width: 4),
+          ValueListenableBuilder<int>(
+            valueListenable: LocalStorageService.instance.totalStarsNotifier,
+            builder: (context, totalStars, _) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$totalStars',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           ValueListenableBuilder<bool>(
             valueListenable: AudioService.instance.muteNotifier,

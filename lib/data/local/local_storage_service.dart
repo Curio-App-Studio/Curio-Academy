@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/activity_model.dart';
 import '../models/student_attempt_model.dart';
@@ -34,6 +35,10 @@ abstract class ILocalStorageService {
   bool isAudioMuted();
   Future<void> saveAudioMuted(bool muted);
 
+  // Language preferences persistence
+  String getAppLanguage();
+  Future<void> saveAppLanguage(String langCode);
+
   int getNextQuestionIndexForChapter(String chapterId, List<Activity> activities);
 }
 
@@ -52,14 +57,19 @@ class LocalStorageService implements ILocalStorageService {
   static const String _keyOnboarded = 'curio_user_onboarded';
   static const String _keyVoiceSettings = 'curio_voice_settings';
   static const String _keyAudioMuted = 'curio_audio_muted';
+  static const String _keyLanguage = 'curio_app_language';
   static const String _prefixChapterActivities = 'curio_chapter_act_';
 
   SharedPreferences? _prefs;
   StudentProfile? _cachedProfile;
   VoiceSettings? _cachedVoiceSettings;
   bool _cachedAudioMuted = false;
+  String _cachedLanguage = 'en';
   final Set<String> _completedActivities = {};
   int _totalStars = 0;
+
+  final ValueNotifier<int> totalStarsNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<String> languageNotifier = ValueNotifier<String>('en');
 
   final Map<String, StudentQuestionAttempt> _cachedAttempts = {};
   final Map<String, List<Activity>> _cachedChapterActivities = {};
@@ -99,6 +109,12 @@ class LocalStorageService implements ILocalStorageService {
       final computedStars = _calculateTotalStars();
       final storedStars = _prefs?.getInt(_keyStars) ?? 0;
       _totalStars = computedStars >= storedStars ? computedStars : storedStars;
+      totalStarsNotifier.value = _totalStars;
+
+      // Load stored language preference
+      _cachedLanguage = _prefs?.getString(_keyLanguage) ?? 'en';
+      languageNotifier.value = _cachedLanguage;
+
       // Load stored voice preferences
       final voiceJsonStr = _prefs?.getString(_keyVoiceSettings);
       if (voiceJsonStr != null && voiceJsonStr.isNotEmpty) {
@@ -119,6 +135,7 @@ class LocalStorageService implements ILocalStorageService {
   Future<void> recordActivityCompleted(String activityId, int starsEarned) async {
     _completedActivities.add(activityId);
     _totalStars += starsEarned;
+    totalStarsNotifier.value = _totalStars;
     try {
       _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setStringList(_keyCompleted, _completedActivities.toList());
@@ -298,6 +315,7 @@ class LocalStorageService implements ILocalStorageService {
       _completedActivities.add(attempt.activityId);
     }
     _totalStars = _calculateTotalStars();
+    totalStarsNotifier.value = _totalStars;
 
     try {
       _prefs ??= await SharedPreferences.getInstance();
@@ -305,6 +323,19 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.setString(_keyQuestionAttempts, jsonEncode(map));
       await _prefs?.setStringList(_keyCompleted, _completedActivities.toList());
       await _prefs?.setInt(_keyStars, _totalStars);
+    } catch (_) {}
+  }
+
+  @override
+  String getAppLanguage() => _cachedLanguage;
+
+  @override
+  Future<void> saveAppLanguage(String langCode) async {
+    _cachedLanguage = langCode;
+    languageNotifier.value = langCode;
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.setString(_keyLanguage, langCode);
     } catch (_) {}
   }
 
