@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../config/ad_config.dart';
@@ -29,7 +30,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   }
 
   void _loadBanner() {
-    if (AdService().isPremiumUser) return;
+    if (kIsWeb || AdService().isPremiumUser) return;
 
     _bannerAd = BannerAd(
       adUnitId: AdConfig.bannerAdUnitId,

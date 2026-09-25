@@ -24,6 +24,11 @@ class AdService {
   /// Initializes Google Mobile Ads SDK with strict Child-Directed settings.
   Future<void> initialize() async {
     if (_isInitialized) return;
+    if (kIsWeb) {
+      _isInitialized = true;
+      developer.log('AdService: Web platform detected, ads disabled gracefully.', name: 'AdService');
+      return;
+    }
 
     try {
       // 1. Enforce Google Play Families Policy & COPPA child-directed parameters
@@ -47,7 +52,7 @@ class AdService {
 
   /// Pre-loads an Interstitial Ad.
   void loadInterstitialAd() {
-    if (isPremiumUser || _isInterstitialLoading || _interstitialAd != null) {
+    if (kIsWeb || isPremiumUser || _isInterstitialLoading || _interstitialAd != null) {
       return;
     }
 
@@ -74,7 +79,7 @@ class AdService {
   /// Calls [onCompleted] strictly AFTER the user dismisses the ad (or if ad is skipped/fails),
   /// ensuring the speaker and future timers only start when the ad is closed.
   void showInterstitialAdIfReady({VoidCallback? onCompleted}) {
-    if (isPremiumUser) {
+    if (kIsWeb || isPremiumUser) {
       onCompleted?.call();
       return;
     }
