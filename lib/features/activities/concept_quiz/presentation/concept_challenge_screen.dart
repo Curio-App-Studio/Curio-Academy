@@ -286,47 +286,49 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Question ${_currentIndex + 1} of ${_activitiesList.length}',
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
             ),
             Text(
               widget.chapter?.title ?? _currentActivity.chapterName ?? _currentActivity.targetGrade,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
             ),
           ],
         ),
         leading: IconButton(
+          visualDensity: VisualDensity.compact,
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: [
           const LanguageSwitchButton(),
-          const SizedBox(width: 4),
+          const SizedBox(width: 2),
           ValueListenableBuilder<int>(
             valueListenable: LocalStorageService.instance.totalStarsNotifier,
             builder: (context, totalStars, _) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                margin: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFFDE68A)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                    const SizedBox(width: 4),
+                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 16),
+                    const SizedBox(width: 3),
                     Text(
                       '$totalStars',
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 13,
+                        fontSize: 12,
                         color: Color(0xFF92400E),
                       ),
                     ),
@@ -339,9 +341,13 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
             valueListenable: AudioService.instance.muteNotifier,
             builder: (context, isMuted, child) {
               return IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 icon: Icon(
                   isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                   color: isMuted ? const Color(0xFFEF4444) : const Color(0xFF4F46E5),
+                  size: 21,
                 ),
                 tooltip: isMuted ? 'Unmute Speaker' : 'Mute Speaker',
                 onPressed: () {
@@ -350,26 +356,47 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.lightbulb_rounded, color: Color(0xFFD97706)),
-            tooltip: 'View Solution & Concept Details',
-            onPressed: () {
-              setState(() {
-                _usedHintOnCurrentQuestion = true;
-              });
-              QuestionSolutionSheet.show(
-                context,
-                activity: _currentActivity,
-                chapter: widget.chapter,
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF475569), size: 21),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onSelected: (value) {
+              if (value == 'hint') {
+                setState(() {
+                  _usedHintOnCurrentQuestion = true;
+                });
+                QuestionSolutionSheet.show(
+                  context,
+                  activity: _currentActivity,
+                  chapter: widget.chapter,
+                );
+              } else if (value == 'scratchpad') {
+                _openScratchpad();
+              }
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'hint',
+                child: Row(
+                  children: [
+                    Icon(Icons.lightbulb_rounded, color: Color(0xFFD97706), size: 20),
+                    SizedBox(width: 10),
+                    Text('Hint & Solution', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'scratchpad',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_note_rounded, color: Color(0xFF2563EB), size: 20),
+                    SizedBox(width: 10),
+                    Text('Scratchpad', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_note_rounded, color: Color(0xFF2563EB)),
-            tooltip: 'Scratchpad',
-            onPressed: _openScratchpad,
-          ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),

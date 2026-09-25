@@ -146,33 +146,33 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
       appBar: AppBar(
         title: Text(
           'Ch ${_currentChapter.chapterNumber}: ${_currentChapter.title}',
-          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
           const LanguageSwitchButton(),
-          const SizedBox(width: 4),
+          const SizedBox(width: 2),
           ValueListenableBuilder<int>(
             valueListenable: LocalStorageService.instance.totalStarsNotifier,
             builder: (context, totalStars, _) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                margin: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFFDE68A)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                    const SizedBox(width: 4),
+                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 16),
+                    const SizedBox(width: 3),
                     Text(
                       '$totalStars',
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 13,
+                        fontSize: 12,
                         color: Color(0xFF92400E),
                       ),
                     ),
@@ -182,7 +182,10 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.volume_up_rounded),
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            icon: const Icon(Icons.volume_up_rounded, size: 21),
             tooltip: 'Read Aloud',
             onPressed: () {
               AudioService.instance.speakPrompt(
@@ -190,6 +193,7 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
               );
             },
           ),
+          const SizedBox(width: 6),
         ],
       ),
       body: SafeArea(

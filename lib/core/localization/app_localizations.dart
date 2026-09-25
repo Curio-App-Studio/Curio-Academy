@@ -25,6 +25,19 @@ enum AppLanguage {
 class AppLanguageNotifier extends Notifier<AppLanguage> {
   @override
   AppLanguage build() {
+    void onLangChanged() {
+      final code = LocalStorageService.instance.languageNotifier.value;
+      final newLang = AppLanguage.fromCode(code);
+      if (state != newLang) {
+        state = newLang;
+      }
+    }
+
+    LocalStorageService.instance.languageNotifier.addListener(onLangChanged);
+    ref.onDispose(() {
+      LocalStorageService.instance.languageNotifier.removeListener(onLangChanged);
+    });
+
     return AppLanguage.fromCode(LocalStorageService.instance.getAppLanguage());
   }
 
@@ -75,6 +88,19 @@ class AppLocalizations {
   String get keepPracticingMotivation => isHindi
       ? 'शानदार प्रगति! नए सितारे कमाने के लिए अभ्यास जारी रखें! 🌟'
       : 'Keep practicing to earn more shining stars! 🌟';
+
+  // Kids Friendly Home Dashboard
+  String get studentGreeting => isHindi ? 'नमस्ते नन्हे दोस्त! 👋' : 'Hello Little Champ! 👋';
+  String get studentGreetingSubtitle => isHindi
+      ? 'आज कुछ नया सीखते और खेलते हैं! 🚀'
+      : 'Ready to learn and play today? 🚀';
+  String get selectClassTitle => isHindi ? 'अपनी कक्षा चुनें 🎒' : 'Choose Your Class 🎒';
+  String get selectSubjectTitle => isHindi ? 'विषय चुनें 🎨' : 'Pick a Subject 🎨';
+  String get mathSubtitle => isHindi ? 'गिनती, आकृतियां और पहेलियां' : 'Numbers, Shapes & Logic';
+  String get englishSubtitle => isHindi ? 'अक्षर, शब्द और ध्वनियां' : 'Letters, Words & Phonics';
+  String get scienceSubtitle => isHindi ? 'प्रकृति, जीव और विज्ञान' : 'Nature, Animals & Space';
+  String get changeBoard => isHindi ? 'बोर्ड बदलें' : 'Change Board';
+  String get active => isHindi ? 'सक्रिय' : 'Active';
 
   // Challenge Navigation & Action Bar
   String get nextQuestion => isHindi ? 'अगला प्रश्न ➡️' : 'Next Question ➡️';

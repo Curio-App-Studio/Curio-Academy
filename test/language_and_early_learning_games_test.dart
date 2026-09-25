@@ -187,6 +187,82 @@ void main() {
       expect(find.text('Total Stars Earned'), findsOneWidget);
       expect(find.text('Super Explorer 🏆'), findsOneWidget);
       expect(find.text('3'), findsWidgets);
+
+      // Verify Student Greeting is rendered
+      expect(find.text('Hello Little Champ! 👋'), findsOneWidget);
+      expect(find.text('🦊'), findsOneWidget);
+
+      // Verify Class Selection is rendered
+      expect(find.text('Choose Your Class 🎒'), findsOneWidget);
+      expect(find.text('LKG'), findsOneWidget);
+      expect(find.text('UKG'), findsOneWidget);
+
+      // Verify Subject Selection is rendered
+      expect(find.text('Pick a Subject 🎨'), findsOneWidget);
+      expect(find.text('Math'), findsWidgets);
+      expect(find.text('English'), findsWidgets);
+      expect(find.text('Science'), findsWidgets);
+    });
+
+    testWidgets('Tapping LanguageSwitchButton dynamically updates HomeDashboardScreen language to Hindi', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Initially English
+      expect(find.text('Hello Little Champ! 👋'), findsOneWidget);
+
+      // Tap language toggle
+      await tester.tap(find.byType(LanguageSwitchButton));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Greeting and UI should now immediately update to Hindi
+      expect(find.text('नमस्ते नन्हे दोस्त! 👋'), findsOneWidget);
+      expect(find.text('अपनी कक्षा चुनें 🎒'), findsOneWidget);
+      expect(find.text('विषय चुनें 🎨'), findsOneWidget);
+    });
+
+    testWidgets('HomeDashboardScreen AppBar does not overflow on small 320px mobile screens', (WidgetTester tester) async {
+      FlutterErrorDetails? caughtDetails;
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        caughtDetails = details;
+      };
+      addTearDown(() => FlutterError.onError = originalOnError);
+
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      if (caughtDetails != null) {
+        FlutterError.onError = originalOnError;
+        if (caughtDetails!.informationCollector != null) {
+          for (final d in caughtDetails!.informationCollector!()) {
+            debugPrint(d.toString());
+          }
+        }
+      } else {
+        FlutterError.onError = originalOnError;
+      }
+      expect(caughtDetails, isNull);
     });
   });
 }

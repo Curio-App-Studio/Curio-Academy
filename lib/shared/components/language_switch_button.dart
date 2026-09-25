@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/audio/audio_service.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../data/local/local_storage_service.dart';
 
 /// Compact kid-friendly Language Switcher Button for AppBars
-/// Offline-first and reactive using LocalStorageService.instance.languageNotifier
-class LanguageSwitchButton extends StatelessWidget {
+/// Reactive with Riverpod appLanguageProvider and LocalStorageService.instance.languageNotifier
+class LanguageSwitchButton extends ConsumerWidget {
   final bool isDark;
   const LanguageSwitchButton({super.key, this.isDark = false});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ValueListenableBuilder<String>(
       valueListenable: LocalStorageService.instance.languageNotifier,
       builder: (context, langCode, _) {
@@ -20,24 +22,35 @@ class LanguageSwitchButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             onTap: () async {
               AudioService.instance.playSfx(CurioSfx.click);
-              final next = isHindi ? 'en' : 'hi';
-              await LocalStorageService.instance.saveAppLanguage(next);
-              final newLocale = next == 'hi' ? 'hi-IN' : 'en-IN';
-              final curSettings = AudioService.instance.currentVoiceSettings;
-              await AudioService.instance.setVoiceSettings(
-                curSettings.copyWith(locale: newLocale),
-              );
+              final nextCode = isHindi ? 'en' : 'hi';
+              final nextLang = AppLanguage.fromCode(nextCode);
+
+              // 1. Update Riverpod provider to trigger immediate app-wide rebuild
+              try {
+                await ref.read(appLanguageProvider.notifier).setLanguage(nextLang);
+              } catch (_) {
+                // Fallback if mounted outside ProviderScope
+                await LocalStorageService.instance.saveAppLanguage(nextCode);
+                final newLocale = nextCode == 'hi' ? 'hi-IN' : 'en-IN';
+                final curSettings = AudioService.instance.currentVoiceSettings;
+                await AudioService.instance.setVoiceSettings(
+                  curSettings.copyWith(locale: newLocale),
+                );
+              }
+
+              // 2. Also ensure local storage is explicitly aligned
+              await LocalStorageService.instance.saveAppLanguage(nextCode);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Row(
                       children: [
-                        Text(next == 'hi' ? '🇮🇳' : '🇬🇧', style: const TextStyle(fontSize: 20)),
+                        Text(nextCode == 'hi' ? '🇮🇳' : '🇬🇧', style: const TextStyle(fontSize: 20)),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            next == 'hi'
+                            nextCode == 'hi'
                                 ? 'भाषा बदलकर हिन्दी कर दी गई है! 🇮🇳'
                                 : 'Language changed to English! 🇬🇧',
                             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -53,14 +66,14 @@ class LanguageSwitchButton extends StatelessWidget {
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 3),
+              margin: const EdgeInsets.symmetric(vertical: 11),
               decoration: BoxDecoration(
                 color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isDark ? Colors.white.withValues(alpha: 0.3) : const Color(0xFFBFDBFE),
-                  width: 1.2,
+                  width: 1.1,
                 ),
               ),
               child: Row(
@@ -68,14 +81,14 @@ class LanguageSwitchButton extends StatelessWidget {
                 children: [
                   Text(
                     isHindi ? '🇮🇳' : '🌐',
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: 12),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 3.5),
                   Text(
                     isHindi ? 'हिन्दी' : 'EN',
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
-                      fontSize: 11.5,
+                      fontSize: 11,
                       color: isDark ? Colors.white : const Color(0xFF1D4ED8),
                     ),
                   ),
