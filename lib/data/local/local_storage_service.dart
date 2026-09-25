@@ -22,6 +22,7 @@ abstract class ILocalStorageService {
   // Student response persistence & retries
   Future<void> saveQuestionAttempt(StudentQuestionAttempt attempt);
   StudentQuestionAttempt? getQuestionAttempt(String activityId);
+  int getStarsForActivity(String activityId);
   Map<String, StudentQuestionAttempt> getAllQuestionAttempts();
   Future<void> clearQuestionAttempt(String activityId);
 
@@ -78,7 +79,6 @@ class LocalStorageService implements ILocalStorageService {
           studentName: nameStr ?? 'Explorer',
         );
       }
-      _totalStars = _prefs?.getInt(_keyStars) ?? 0;
       final completed = _prefs?.getStringList(_keyCompleted) ?? [];
       _completedActivities.addAll(completed);
 
@@ -94,6 +94,11 @@ class LocalStorageService implements ILocalStorageService {
           });
         }
       }
+
+      // Compute total stars directly from all attempted questions so it NEVER resets or drifts
+      final computedStars = _calculateTotalStars();
+      final storedStars = _prefs?.getInt(_keyStars) ?? 0;
+      _totalStars = computedStars >= storedStars ? computedStars : storedStars;
       // Load stored voice preferences
       final voiceJsonStr = _prefs?.getString(_keyVoiceSettings);
       if (voiceJsonStr != null && voiceJsonStr.isNotEmpty) {
@@ -254,13 +259,46 @@ class LocalStorageService implements ILocalStorageService {
 
   // --- Student Attempts & Retries ---
 
+  int _calculateTotalStars() {
+    return _cachedAttempts.values.fold<int>(
+      0,
+      (sum, a) => sum + (a.isCorrect ? a.starsEarned : 0),
+    );
+  }
+
+  @override
+  int getStarsForActivity(String activityId) {
+    final attempt = _cachedAttempts[activityId];
+    if (attempt != null && attempt.isCorrect) {
+      return attempt.starsEarned;
+    }
+    return 0;
+  }
+
   @override
   Future<void> saveQuestionAttempt(StudentQuestionAttempt attempt) async {
-    _cachedAttempts[attempt.activityId] = attempt;
-    if (attempt.isCorrect) {
+    final existing = _cachedAttempts[attempt.activityId];
+    // Keep best stars earned for this question
+    final bestStars = (existing != null && existing.isCorrect)
+        ? (existing.starsEarned > attempt.starsEarned ? existing.starsEarned : attempt.starsEarned)
+        : attempt.starsEarned;
+
+    final resolvedAttempt = StudentQuestionAttempt(
+      activityId: attempt.activityId,
+      chapterId: attempt.chapterId,
+      selectedOptionIndex: attempt.selectedOptionIndex,
+      selectedOptionText: attempt.selectedOptionText,
+      isCorrect: attempt.isCorrect || (existing?.isCorrect ?? false),
+      starsEarned: bestStars,
+      timestamp: attempt.timestamp,
+    );
+
+    _cachedAttempts[attempt.activityId] = resolvedAttempt;
+    if (resolvedAttempt.isCorrect) {
       _completedActivities.add(attempt.activityId);
-      _totalStars += attempt.starsEarned;
     }
+    _totalStars = _calculateTotalStars();
+
     try {
       _prefs ??= await SharedPreferences.getInstance();
       final map = _cachedAttempts.map((k, v) => MapEntry(k, v.toJson()));

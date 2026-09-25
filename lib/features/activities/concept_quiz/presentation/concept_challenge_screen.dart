@@ -74,6 +74,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
     final prevAttempt = LocalStorageService.instance.getQuestionAttempt(act.activityId);
     setState(() {
       _currentActivity = act;
+      _score = LocalStorageService.instance.totalStars;
       if (prevAttempt != null) {
         _selectedIndex = prevAttempt.selectedOptionIndex;
         _isAnswered = true;
@@ -132,18 +133,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
         ? ((_currentActivity.pointsReward * starsAwarded) ~/ 3).clamp(5, _currentActivity.pointsReward)
         : 0;
 
-    setState(() {
-      _selectedIndex = index;
-      _isAnswered = true;
-      _isCorrect = isCorrect;
-      _wasPreviouslyAnswered = false;
-      _answersGiven++;
-      if (isCorrect) {
-        _score += pointsEarned;
-      }
-    });
-
-    // Persist response attempt to local storage
+    // Persist response attempt with stars to local storage
     final chapterId = widget.chapter?.chapterId ?? _currentActivity.chapterId ?? 'ch_1';
     final attempt = StudentQuestionAttempt(
       activityId: _currentActivity.activityId,
@@ -155,6 +145,15 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       timestamp: DateTime.now(),
     );
     LocalStorageService.instance.saveQuestionAttempt(attempt);
+
+    setState(() {
+      _selectedIndex = index;
+      _isAnswered = true;
+      _isCorrect = isCorrect;
+      _wasPreviouslyAnswered = false;
+      _answersGiven++;
+      _score = LocalStorageService.instance.totalStars;
+    });
 
     if (isCorrect) {
       AudioService.instance.playSfx(CurioSfx.correctCheer);
@@ -182,6 +181,21 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
     } else {
       AudioService.instance.playSfx(CurioSfx.gentleWobble);
     }
+  }
+
+  void _goToPreviousQuestion() {
+    if (_currentIndex > 0) {
+      AudioService.instance.playSfx(CurioSfx.click);
+      setState(() {
+        _currentIndex--;
+        _loadActivity(_activitiesList[_currentIndex]);
+      });
+    }
+  }
+
+  void _skipQuestion() {
+    AudioService.instance.playSfx(CurioSfx.click);
+    _goToNextQuestion();
   }
 
   void _goToNextQuestion() {
@@ -271,6 +285,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      bottomNavigationBar: _buildBottomActionBar(isLastOrAutoAdding),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,6 +313,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFFFEF3C7),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFDE68A)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -377,20 +393,50 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            topicTitle,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF2563EB),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                topicTitle,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
                             ),
-                          ),
+                            if (_isAnswered && _isCorrect) ...[
+                              const SizedBox(width: 8),
+                              Builder(
+                                builder: (_) {
+                                  final earned = LocalStorageService.instance.getStarsForActivity(_currentActivity.activityId);
+                                  final starsToShow = earned > 0 ? earned : 3;
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEF3C7),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: const Color(0xFFFDE68A)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: List.generate(3, (i) => Icon(
+                                        Icons.star_rounded,
+                                        size: 14,
+                                        color: i < starsToShow ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
+                                      )),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ],
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -626,58 +672,25 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 4. Action Row: Retry Question & Next Question
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: OutlinedButton.icon(
-                        onPressed: _retryQuestion,
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text(
-                          'Retry',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF2563EB),
-                          side: const BorderSide(color: Color(0xFF2563EB), width: 1.6),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
+                // 4. Action: Retry Question
+                OutlinedButton.icon(
+                  onPressed: _retryQuestion,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text(
+                    'Retry This Question',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton.icon(
-                        onPressed: _goToNextQuestion,
-                        icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                        label: Text(
-                          isLastOrAutoAdding
-                              ? 'Next Question (New ✨)'
-                              : 'Next Question ➡️',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6F00),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 2,
-                        ),
-                      ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF2563EB),
+                    side: const BorderSide(color: Color(0xFF2563EB), width: 1.6),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 14),
               ],
@@ -845,6 +858,127 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar(bool isLast) {
+    final canGoPrev = _currentIndex > 0;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+          border: const Border(
+            top: BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            // 1. Previous Question Button
+            OutlinedButton.icon(
+              onPressed: canGoPrev ? _goToPreviousQuestion : null,
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                size: 18,
+                color: canGoPrev ? const Color(0xFF334155) : const Color(0xFF94A3B8),
+              ),
+              label: Text(
+                'Prev',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: canGoPrev ? const Color(0xFF334155) : const Color(0xFF94A3B8),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                backgroundColor: canGoPrev ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+                side: BorderSide(
+                  color: canGoPrev ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0),
+                  width: 1.3,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // 2. Skip Question Button (Visible when question is not yet answered)
+            if (!_isAnswered) ...[
+              OutlinedButton.icon(
+                onPressed: _skipQuestion,
+                icon: const Icon(
+                  Icons.skip_next_rounded,
+                  size: 19,
+                  color: Color(0xFFB45309),
+                ),
+                label: const Text(
+                  'Skip',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  backgroundColor: const Color(0xFFFFFBEB),
+                  side: const BorderSide(color: Color(0xFFFDE68A), width: 1.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+
+            // 3. Next Question Button
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _goToNextQuestion,
+                icon: Icon(
+                  _isAnswered ? Icons.arrow_forward_rounded : Icons.arrow_forward_ios_rounded,
+                  size: _isAnswered ? 20 : 16,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _isAnswered
+                      ? (isLast ? 'Next Question (New ✨)' : 'Next Question ➡️')
+                      : 'Next ➔',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  elevation: _isAnswered ? 3 : 0.5,
+                  shadowColor: const Color(0xFFFF7B25).withValues(alpha: 0.4),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: _isAnswered
+                      ? const Color(0xFFFF7B25)
+                      : const Color(0xFF6366F1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

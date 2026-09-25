@@ -141,6 +141,30 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  '${LocalStorageService.instance.totalStars}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ],
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.volume_up_rounded),
             tooltip: 'Read Aloud',

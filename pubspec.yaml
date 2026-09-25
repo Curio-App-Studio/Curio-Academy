@@ -2,7 +2,7 @@ name: curio_math
 description: "Curio Academy - Interactive Math & English learning companion for LKG to Class 8."
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.13.3
