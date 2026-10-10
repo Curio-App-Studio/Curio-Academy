@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/audio/audio_service.dart';
 import '../../../data/local/local_storage_service.dart';
+import '../../../services/cloud_progress_service.dart';
 import '../../../services/in_app_purchase_service.dart';
 import 'subscription_history_sheet.dart';
 
@@ -363,6 +364,13 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
 
           // Benefits List
           _buildBenefitRow(Icons.block_rounded, Colors.redAccent, isHindi ? 'शून्य विज्ञापन (No Banners & No Interstitials)' : 'Zero Ads (No Banners, No Pop-ups)'),
+          _buildBenefitRow(
+            Icons.cloud_sync_rounded,
+            const Color(0xFF0D9488),
+            isHindi
+                ? 'Google अकाउंट पर प्रोग्रेस बैकअप (रीसेट के बाद भी सुरक्षित)'
+                : 'Cloud Progress Backup via Google Account (Never lose progress after reset)',
+          ),
           _buildBenefitRow(Icons.lightbulb_rounded, Colors.amber, isHindi ? 'तुरंत संकेत और समाधान (बिना वीडियो देखे)' : 'Instant Hints & Step-by-Step Solutions (No Video Ads)'),
           _buildBenefitRow(Icons.star_rounded, Colors.orange, isHindi ? '2x सितारे और रिवार्ड्स' : 'Double Stars & Exploration Rewards'),
           _buildBenefitRow(Icons.security_rounded, Colors.blue, isHindi ? 'बच्चों के लिए 100% सुरक्षित और COPPA अनुपालन' : 'Child-Safe & Family Play Certified'),
@@ -498,18 +506,25 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                     ),
                   );
                   await iapService.restorePurchases();
+                  final progressResult = await CloudProgressService().restoreVipProgress();
                   if (mounted) {
                     setState(() {});
                     final isRestored = LocalStorageService.instance.isPremiumUser;
+                    String message = isRestored
+                        ? (isHindi ? 'VIP खरीद सफलतापूर्वक पुनर्स्थापित!' : 'VIP Purchases successfully restored!')
+                        : (isHindi ? 'कोई पूर्व खरीद नहीं मिली।' : 'No previous purchases found.');
+
+                    if (progressResult.status == CloudRestoreStatus.success) {
+                      message += isHindi
+                          ? ' (${progressResult.restoredStars ?? 0} सितारे और प्रोग्रेस वापस आ गए!)'
+                          : ' (${progressResult.restoredStars ?? 0} stars & progress restored!)';
+                    }
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          isRestored
-                              ? (isHindi ? 'खरीद सफलतापूर्वक पुनर्स्थापित!' : 'Purchases successfully restored!')
-                              : (isHindi ? 'कोई पूर्व खरीद नहीं मिली।' : 'No previous purchases found.'),
-                        ),
+                        content: Text(message),
                         backgroundColor: isRestored ? const Color(0xFF059669) : null,
-                        duration: const Duration(seconds: 2),
+                        duration: const Duration(seconds: 3),
                       ),
                     );
                   }

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/audio/audio_service.dart';
@@ -5,6 +6,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/profile/profile_provider.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../../../data/models/student_profile.dart';
+import '../../../services/cloud_progress_service.dart';
 import '../../../shared/components/student_profile_form.dart';
 import '../../home_dashboard/presentation/home_dashboard_screen.dart';
 
@@ -85,6 +87,184 @@ class _FirstTimeOnboardingScreenState
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
+  }
+
+  Future<void> _restoreVipProgressWithParentGate() async {
+    final strings = ref.strings;
+    final num1 = 3 + Random().nextInt(6);
+    final num2 = 2 + Random().nextInt(6);
+    final expected = num1 * num2;
+    final gateController = TextEditingController();
+    String? errorText;
+
+    final passedGate = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              const Text('👨‍👩‍👦', style: TextStyle(fontSize: 26)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  strings.isHindi ? 'अभिभावक सुरक्षा जाँच' : 'Parent Verification',
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                strings.isHindi
+                    ? 'Google अकाउंट से VIP प्रोग्रेस पुनर्स्थापित करने के लिए हल करें:'
+                    : 'Please solve this math question to restore progress from your Google account:',
+                style: const TextStyle(fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Text(
+                  '$num1 × $num2 = ?',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: gateController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Answer',
+                  errorText: errorText,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(strings.isHindi ? 'रद्द करें' : 'Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final ans = int.tryParse(gateController.text.trim());
+                if (ans == expected) {
+                  Navigator.of(ctx).pop(true);
+                } else {
+                  setDialogState(() {
+                    errorText = strings.isHindi ? 'गलत उत्तर' : 'Incorrect answer';
+                  });
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7B25),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(strings.isHindi ? 'सत्यापित करें' : 'Verify'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (passedGate != true || !mounted) return;
+
+    AudioService.instance.playSfx(CurioSfx.click);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          strings.isHindi
+              ? 'Google अकाउंट से VIP सदस्यता व प्रोग्रेस खोजी जा रही है...'
+              : 'Checking Google account for active VIP membership and cloud progress...',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    final result = await CloudProgressService().restoreVipProgress();
+    if (!mounted) return;
+
+    if (result.status == CloudRestoreStatus.success) {
+      AudioService.instance.playSfx(CurioSfx.starAward);
+      await ref.read(studentProfileProvider.notifier).loadProfile();
+      await LocalStorageService.instance.setOnboarded(true);
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              const Text('🎉', style: TextStyle(fontSize: 26)),
+              const SizedBox(width: 8),
+              Text(
+                strings.isHindi ? 'प्रोग्रेस पुनर्स्थापित!' : 'Progress Restored!',
+                style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF047857)),
+              ),
+            ],
+          ),
+          content: Text(
+            strings.isHindi
+                ? 'स्वागत है ${result.studentName ?? ""}! आपके ${result.restoredStars ?? 0} सितारे और सभी पूर्ण अध्याय Google अकाउंट से सुरक्षित वापस आ गए हैं।'
+                : 'Welcome back ${result.studentName ?? ""}! Your ${result.restoredStars ?? 0} stars and completed chapters have been restored from your Google account.',
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(strings.isHindi ? 'सीखना जारी रखें 🚀' : 'Continue Learning 🚀'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      AudioService.instance.playSfx(CurioSfx.gentleWobble);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            strings.isHindi ? 'क्लाउड बैकअप नहीं मिला' : 'No VIP Backup Found',
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          content: Text(
+            result.message,
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(strings.isHindi ? 'ठीक है' : 'OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -202,33 +382,56 @@ class _FirstTimeOnboardingScreenState
               ),
             ],
           ),
-          child: ElevatedButton(
-            onPressed: _submitProfile,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7B25),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              elevation: 2,
-              shadowColor: const Color(0xFFFF7B25).withValues(alpha: 0.4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  strings.isHindi ? 'सीखना शुरू करें' : 'Start Learning',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.3,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF7B25),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    elevation: 2,
+                    shadowColor: const Color(0xFFFF7B25).withValues(alpha: 0.4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        strings.isHindi ? 'सीखना शुरू करें' : 'Start Learning',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('🚀', style: TextStyle(fontSize: 20)),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Text('🚀', style: TextStyle(fontSize: 20)),
-              ],
-            ),
+              ),
+              const SizedBox(height: 4),
+              TextButton.icon(
+                onPressed: _restoreVipProgressWithParentGate,
+                icon: const Icon(Icons.cloud_download_rounded, size: 16, color: Color(0xFF64748B)),
+                label: Text(
+                  strings.isHindi
+                      ? 'VIP सदस्यता व प्रोग्रेस पुनर्स्थापित करें ☁️'
+                      : 'Restore VIP Membership & Progress ☁️',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

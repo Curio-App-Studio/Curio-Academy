@@ -82,6 +82,9 @@ class LocalStorageService implements ILocalStorageService {
   static final LocalStorageService instance = LocalStorageService._internal();
   LocalStorageService._internal();
 
+  /// Optional listener invoked when student progress changes for VIP Cloud Sync
+  static VoidCallback? onVipProgressChanged;
+
   static const String _keyBoard = 'curio_student_board';
   static const String _keyClass = 'curio_student_class';
   static const String _keyName = 'curio_student_name';
@@ -433,6 +436,22 @@ class LocalStorageService implements ILocalStorageService {
   @override
   Future<void> init() async {
     try {
+      _cachedProfile = null;
+      _completedActivities.clear();
+      _cachedAttempts.clear();
+      _cachedChapterActivities.clear();
+      _cachedSubscriptionHistory.clear();
+      _claimedChests.clear();
+      _completedChapters.clear();
+      _spellBeeMistakes.clear();
+      _bonusStars = 0;
+      _speedMathHighScore = 0;
+      _spellBeeHighScore = 0;
+      _spellBeeMockBestScore = 0;
+      _spellBeeExamsCount = 0;
+      _totalStars = 0;
+      _totalPoints = 0;
+
       _prefs = await SharedPreferences.getInstance();
       final boardStr = _prefs?.getString(_keyBoard);
       final classStr = _prefs?.getString(_keyClass);
@@ -609,6 +628,51 @@ class LocalStorageService implements ILocalStorageService {
       // Graceful fallback in unit test or restricted environments
     }
   }
+
+  /// Clears student progress (stars, points, completed chapters, attempts) while retaining VIP or system settings.
+  Future<void> resetStudentProgress() async {
+    _cachedProfile = null;
+    _completedActivities.clear();
+    _cachedAttempts.clear();
+    _cachedChapterActivities.clear();
+    _claimedChests.clear();
+    _completedChapters.clear();
+    _spellBeeMistakes.clear();
+    _bonusStars = 0;
+    _speedMathHighScore = 0;
+    _spellBeeHighScore = 0;
+    _spellBeeMockBestScore = 0;
+    _spellBeeExamsCount = 0;
+    _totalStars = 0;
+    _totalPoints = 0;
+    totalStarsNotifier.value = 0;
+    totalPointsNotifier.value = 0;
+    speedMathHighScoreNotifier.value = 0;
+    spellBeeHighScoreNotifier.value = 0;
+    spellBeeMistakesNotifier.value = [];
+    spellBeeMockBestScoreNotifier.value = 0;
+
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.remove(_keyBoard);
+      await _prefs?.remove(_keyClass);
+      await _prefs?.remove(_keyName);
+      await _prefs?.remove(_keyAvatar);
+      await _prefs?.remove(_keyStars);
+      await _prefs?.remove(_keyPoints);
+      await _prefs?.remove(_keyCompleted);
+      await _prefs?.remove(_keyQuestionAttempts);
+      await _prefs?.remove(_keyBonusStars);
+      await _prefs?.remove(_keySpeedMathHighScore);
+      await _prefs?.remove(_keySpellBeeHighScore);
+      await _prefs?.remove(_keySpellBeeMistakes);
+      await _prefs?.remove(_keySpellBeeMockBestScore);
+      await _prefs?.remove(_keySpellBeeExamsCount);
+      await _prefs?.remove(_keyClaimedChests);
+      await _prefs?.remove(_keyCompletedChapters);
+    } catch (_) {}
+  }
+
 
   static String _formatDate(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
@@ -1013,5 +1077,152 @@ class LocalStorageService implements ILocalStorageService {
 
   Future<void> savePreferredPublisher(String subjectId, String publisher) async {
     await _prefs?.setString('curio_publisher_${subjectId.toLowerCase()}', publisher);
+  }
+
+  /// Exports a complete snapshot of user progress for Cloud Sync (VIP Members)
+  Map<String, dynamic> exportProgressSnapshot() {
+    return {
+      'version': 1,
+      'timestamp': DateTime.now().toIso8601String(),
+      'board': _cachedProfile?.board.code ?? _prefs?.getString(_keyBoard) ?? 'CBSE',
+      'studentClass': _cachedProfile?.studentClass.label ?? _prefs?.getString(_keyClass) ?? 'LKG',
+      'name': _cachedProfile?.studentName ?? _prefs?.getString(_keyName) ?? '',
+      'avatar': _cachedProfile?.avatarIcon ?? _prefs?.getString(_keyAvatar) ?? '🦁',
+      'stars': _totalStars,
+      'points': _totalPoints,
+      'bonusStars': _bonusStars,
+      'completedActivities': _completedActivities.toList(),
+      'completedChapters': _completedChapters.toList(),
+      'speedMathHighScore': _speedMathHighScore,
+      'spellBeeHighScore': _spellBeeHighScore,
+      'spellBeeMistakes': _spellBeeMistakes.toList(),
+      'spellBeeMockBest': _spellBeeMockBestScore,
+      'spellBeeExamsCount': _spellBeeExamsCount,
+      'claimedChests': _claimedChests.toList(),
+      'streakCount': _streakCount,
+      'lastActiveDate': _prefs?.getString(_keyLastActiveDate),
+      'isPremiumUser': _isPremiumUser,
+      'premiumSubType': _premiumSubType,
+      'isClosedTester': _isClosedTester,
+      'subscriptionHistory': _cachedSubscriptionHistory.map((s) => s.toJson()).toList(),
+      'questionAttempts': _cachedAttempts.map((k, v) => MapEntry(k, v.toJson())),
+    };
+  }
+
+  /// Restores complete user progress from a Cloud Sync snapshot (VIP Members)
+  Future<void> restoreProgressSnapshot(Map<String, dynamic> data) async {
+    _prefs ??= await SharedPreferences.getInstance();
+
+    final boardCode = data['board'] as String? ?? 'CBSE';
+    final classLabel = data['studentClass'] as String? ?? 'LKG';
+    final name = data['name'] as String? ?? 'Young Explorer';
+    final avatar = data['avatar'] as String? ?? '🦁';
+
+    _cachedProfile = StudentProfile(
+      studentName: name,
+      avatarIcon: avatar,
+      board: BoardType.fromJson(boardCode),
+      studentClass: StudentClass.fromJson(classLabel),
+    );
+
+    await _prefs?.setString(_keyBoard, boardCode);
+    await _prefs?.setString(_keyClass, classLabel);
+    await _prefs?.setString(_keyName, name);
+    await _prefs?.setString(_keyAvatar, avatar);
+    await _prefs?.setBool(_keyOnboarded, true);
+
+    if (data.containsKey('bonusStars')) {
+      _bonusStars = (data['bonusStars'] as num?)?.toInt() ?? 0;
+      await _prefs?.setInt(_keyBonusStars, _bonusStars);
+    }
+
+    if (data.containsKey('points')) {
+      _totalPoints = (data['points'] as num?)?.toInt() ?? 0;
+      totalPointsNotifier.value = _totalPoints;
+      await _prefs?.setInt(_keyPoints, _totalPoints);
+    }
+
+    if (data.containsKey('completedActivities')) {
+      _completedActivities.clear();
+      _completedActivities.addAll(List<String>.from(data['completedActivities'] as List? ?? []));
+      await _prefs?.setStringList(_keyCompleted, _completedActivities.toList());
+    }
+
+    if (data.containsKey('completedChapters')) {
+      _completedChapters.clear();
+      _completedChapters.addAll(List<String>.from(data['completedChapters'] as List? ?? []));
+      await _prefs?.setStringList(_keyCompletedChapters, _completedChapters.toList());
+    }
+
+    if (data.containsKey('speedMathHighScore')) {
+      _speedMathHighScore = (data['speedMathHighScore'] as num?)?.toInt() ?? 0;
+      speedMathHighScoreNotifier.value = _speedMathHighScore;
+      await _prefs?.setInt(_keySpeedMathHighScore, _speedMathHighScore);
+    }
+
+    if (data.containsKey('spellBeeHighScore')) {
+      _spellBeeHighScore = (data['spellBeeHighScore'] as num?)?.toInt() ?? 0;
+      spellBeeHighScoreNotifier.value = _spellBeeHighScore;
+      await _prefs?.setInt(_keySpellBeeHighScore, _spellBeeHighScore);
+    }
+
+    if (data.containsKey('spellBeeMistakes')) {
+      _spellBeeMistakes.clear();
+      _spellBeeMistakes.addAll(List<String>.from(data['spellBeeMistakes'] as List? ?? []));
+      spellBeeMistakesNotifier.value = List.unmodifiable(_spellBeeMistakes);
+      await _prefs?.setStringList(_keySpellBeeMistakes, _spellBeeMistakes);
+    }
+
+    if (data.containsKey('spellBeeMockBest')) {
+      _spellBeeMockBestScore = (data['spellBeeMockBest'] as num?)?.toInt() ?? 0;
+      spellBeeMockBestScoreNotifier.value = _spellBeeMockBestScore;
+      await _prefs?.setInt(_keySpellBeeMockBestScore, _spellBeeMockBestScore);
+    }
+
+    if (data.containsKey('spellBeeExamsCount')) {
+      _spellBeeExamsCount = (data['spellBeeExamsCount'] as num?)?.toInt() ?? 0;
+      await _prefs?.setInt(_keySpellBeeExamsCount, _spellBeeExamsCount);
+    }
+
+    if (data.containsKey('claimedChests')) {
+      _claimedChests.clear();
+      _claimedChests.addAll(List<String>.from(data['claimedChests'] as List? ?? []));
+      await _prefs?.setStringList(_keyClaimedChests, _claimedChests.toList());
+    }
+
+    if (data.containsKey('streakCount')) {
+      _streakCount = (data['streakCount'] as num?)?.toInt() ?? 0;
+      streakNotifier.value = _streakCount;
+      await _prefs?.setInt(_keyStreakCount, _streakCount);
+    }
+
+    if (data.containsKey('questionAttempts') && data['questionAttempts'] is Map) {
+      _cachedAttempts.clear();
+      final attemptsMap = data['questionAttempts'] as Map;
+      for (final entry in attemptsMap.entries) {
+        if (entry.value is Map) {
+          _cachedAttempts[entry.key.toString()] =
+              StudentQuestionAttempt.fromJson(Map<String, dynamic>.from(entry.value as Map));
+        }
+      }
+      final map = _cachedAttempts.map((k, v) => MapEntry(k, v.toJson()));
+      await _prefs?.setString(_keyQuestionAttempts, jsonEncode(map));
+    }
+
+    // Restore subscription history if present
+    if (data.containsKey('subscriptionHistory') && data['subscriptionHistory'] is List) {
+      final list = (data['subscriptionHistory'] as List)
+          .whereType<Map>()
+          .map((m) => SubscriptionRecord.fromJson(Map<String, dynamic>.from(m)))
+          .toList();
+      await saveSubscriptionHistory(list);
+    }
+
+    // Recompute total stars directly from restored attempts + bonus
+    final computedStars = _calculateTotalStars();
+    final rawStars = (data['stars'] as num?)?.toInt() ?? 0;
+    _totalStars = computedStars >= rawStars ? computedStars : rawStars;
+    totalStarsNotifier.value = _totalStars;
+    await _prefs?.setInt(_keyStars, _totalStars);
   }
 }

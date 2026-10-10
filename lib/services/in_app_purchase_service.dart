@@ -32,7 +32,8 @@ class InAppPurchaseService {
   factory InAppPurchaseService() => instance;
   InAppPurchaseService._internal();
 
-  final InAppPurchase _iap = InAppPurchase.instance;
+  InAppPurchase? _iap;
+  InAppPurchase get _iapInstance => _iap ??= InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
   bool _isAvailable = false;
@@ -58,7 +59,7 @@ class InAppPurchaseService {
     }
 
     try {
-      _isAvailable = await _iap.isAvailable();
+      _isAvailable = await _iapInstance.isAvailable();
       debugPrint('[InAppPurchaseService] Billing isAvailable = $_isAvailable');
       if (!_isAvailable) {
         _lastError = 'In-App Billing is not available on this device.';
@@ -67,7 +68,7 @@ class InAppPurchaseService {
       }
 
       // Listen to the purchase update stream
-      _subscription = _iap.purchaseStream.listen(
+      _subscription = _iapInstance.purchaseStream.listen(
         _onPurchaseUpdated,
         onDone: () => _subscription?.cancel(),
         onError: (error) {
@@ -94,7 +95,7 @@ class InAppPurchaseService {
 
     try {
       debugPrint('[InAppPurchaseService] Querying product IDs: ${InAppProductIds.allIds}');
-      final ProductDetailsResponse response = await _iap.queryProductDetails(InAppProductIds.allIds);
+      final ProductDetailsResponse response = await _iapInstance.queryProductDetails(InAppProductIds.allIds);
 
       _notFoundIds = response.notFoundIDs;
       _products = response.productDetails;
@@ -129,9 +130,9 @@ class InAppPurchaseService {
 
     try {
       if (product.id == InAppProductIds.lifetimeNoAds) {
-        return await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+        return await _iapInstance.buyNonConsumable(purchaseParam: purchaseParam);
       } else {
-        return await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+        return await _iapInstance.buyNonConsumable(purchaseParam: purchaseParam);
       }
     } catch (e) {
       purchasePendingNotifier.value = false;
@@ -143,13 +144,14 @@ class InAppPurchaseService {
 
   /// Restores previous purchases across devices (Required by Google Play).
   Future<void> restorePurchases() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
     if (!_isAvailable) return;
     debugPrint('[InAppPurchaseService] restorePurchases called');
     purchasePendingNotifier.value = true;
     purchaseErrorNotifier.value = null;
 
     try {
-      await _iap.restorePurchases();
+      await _iapInstance.restorePurchases();
       // Allow Google Play purchase stream to process and persist verified items
       await Future.delayed(const Duration(milliseconds: 1500));
     } catch (e) {
@@ -185,7 +187,7 @@ class InAppPurchaseService {
       }
 
       if (purchase.pendingCompletePurchase) {
-        await _iap.completePurchase(purchase);
+        await _iapInstance.completePurchase(purchase);
       }
     }
 

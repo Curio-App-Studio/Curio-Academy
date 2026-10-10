@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Back up app shared preferences and VIP cloud backup to Google Drive -->
+        <include domain="sharedpref" path="."/>
+        <include domain="file" path="curio_vip_cloud_backup.json"/>
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="."/>
+        <include domain="file" path="curio_vip_cloud_backup.json"/>
+    </device-transfer>
+</data-extraction-rules>

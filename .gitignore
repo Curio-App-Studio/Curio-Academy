@@ -56,3 +56,4 @@ key.properties
 # Release artifacts & scratch
 *.aab
 scratch/
+curio_vip_cloud_backup.json

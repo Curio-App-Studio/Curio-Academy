@@ -67,6 +67,11 @@ void main() {
     });
 
     testWidgets('Tapping Math subject card navigates to SubjectChaptersScreen and back', (WidgetTester tester) async {
+      await LocalStorageService.instance.saveStudentProfile(const StudentProfile(
+        board: BoardType.cbse,
+        studentClass: StudentClass.class3,
+      ));
+
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -79,7 +84,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Tap on Math card
-      await tester.tap(find.text('Math'));
+      await tester.ensureVisible(find.byKey(const Key('subject_card_math')));
+      await tester.tap(find.byKey(const Key('subject_card_math')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -98,6 +104,11 @@ void main() {
     });
 
     testWidgets('Tapping English subject card navigates to SubjectChaptersScreen with English', (WidgetTester tester) async {
+      await LocalStorageService.instance.saveStudentProfile(const StudentProfile(
+        board: BoardType.cbse,
+        studentClass: StudentClass.class3,
+      ));
+
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -110,7 +121,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Tap on English card
-      await tester.tap(find.text('English'));
+      await tester.ensureVisible(find.byKey(const Key('subject_card_english')));
+      await tester.tap(find.byKey(const Key('subject_card_english')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

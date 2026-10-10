@@ -2770,6 +2770,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           children: [
             Expanded(
               child: _buildSubjectCard(
+                key: const Key('subject_card_math'),
                 title: strings.math,
                 subtitle: strings.mathSubtitle,
                 emoji: '📐',
@@ -2788,6 +2789,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: _buildSubjectCard(
+                key: const Key('subject_card_english'),
                 title: strings.english,
                 subtitle: strings.englishSubtitle,
                 emoji: '📚',
@@ -2943,6 +2945,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
   }
 
   Widget _buildSubjectCard({
+    Key? key,
     required String title,
     required String subtitle,
     required String emoji,
@@ -2952,6 +2955,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     required VoidCallback onTap,
   }) {
     return InkWell(
+      key: key,
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(

@@ -8,10 +8,10 @@ class StudentProfileNotifier extends StateNotifier<StudentProfile> {
   final Ref ref;
 
   StudentProfileNotifier(this.ref) : super(const StudentProfile()) {
-    _loadInitial();
+    loadProfile();
   }
 
-  Future<void> _loadInitial() async {
+  Future<void> loadProfile() async {
     final saved = await LocalStorageService.instance.getStudentProfile();
     if (saved != null) {
       state = saved;

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'data/local/local_storage_service.dart';
 import 'services/ad_service.dart';
+import 'services/cloud_progress_service.dart';
 import 'services/in_app_purchase_service.dart';
 
 void main() async {
@@ -17,6 +18,9 @@ void main() async {
 
   // Initialize Google Play In-App Purchase & Subscriptions
   await InAppPurchaseService.instance.initialize();
+
+  // Initialize VIP Cloud Progress Backup & Sync (Google Account)
+  await CloudProgressService().initialize();
 
   // Lock orientation to preferred kid-safe modes (portrait / responsive tablet)
   await SystemChrome.setPreferredOrientations([
