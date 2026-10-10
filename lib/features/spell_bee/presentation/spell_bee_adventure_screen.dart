@@ -38,6 +38,7 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
   bool _isSuccessAnim = false;
   bool _isErrorAnim = false;
   Timer? _speechTimer;
+  final Set<String> _stageMistakeWordNames = {};
 
   @override
   void dispose() {
@@ -242,6 +243,7 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
       _stageWords = words;
       _currentWordIndex = 0;
       _stageMistakes = 0;
+      _stageMistakeWordNames.clear();
     });
 
     _loadWord(_currentWordIndex);
@@ -378,6 +380,7 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
     } else {
       // INCORRECT!
       _stageMistakes++;
+      _stageMistakeWordNames.add(_currentWord.word);
       AudioService.instance.playSfx(CurioSfx.gentleWobble);
       setState(() {
         _isErrorAnim = true;
@@ -445,11 +448,88 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
                 );
               }),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               isHindi ? 'शानदार स्पेलिंग! आपने +50 अंक और बोनस स्टार्स जीते।' : 'Splendid spelling! You earned +50 Discovery Points and bonus stars.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 14),
+
+            // Stage Words Review
+            Row(
+              children: [
+                const Icon(Icons.fact_check_rounded, color: Color(0xFFB45309), size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  isHindi ? 'स्टेज शब्द समीक्षा' : 'Stage Words Review',
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFF78350F)),
+                ),
+                const Spacer(),
+                Text(
+                  '${_stageWords.length - _stageMistakeWordNames.length}/${_stageWords.length}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFB45309)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 180),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.all(8),
+                itemCount: _stageWords.length,
+                separatorBuilder: (_, _) => const Divider(height: 8, color: Color(0xFFFDE68A)),
+                itemBuilder: (context, idx) {
+                  final wordObj = _stageWords[idx];
+                  final isFlawless = !_stageMistakeWordNames.contains(wordObj.word);
+
+                  return Row(
+                    children: [
+                      Icon(
+                        isFlawless ? Icons.check_circle_rounded : Icons.info_rounded,
+                        color: isFlawless ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              wordObj.word,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            Text(
+                              isFlawless
+                                  ? (isHindi ? '✓ पहली बार में सही' : '✓ Mastered first try')
+                                  : (isHindi ? '✗ अभ्यास की आवश्यकता' : '✗ Needed practice'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isFlawless ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.volume_up_rounded, size: 18, color: Color(0xFF78350F)),
+                        onPressed: () => AudioService.instance.speakPrompt(wordObj.word),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),

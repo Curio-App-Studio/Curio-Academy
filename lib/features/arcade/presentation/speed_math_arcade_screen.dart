@@ -24,6 +24,21 @@ class SpeedMathArcadeScreen extends ConsumerStatefulWidget {
   ConsumerState<SpeedMathArcadeScreen> createState() => _SpeedMathArcadeScreenState();
 }
 
+/// Record of an answered or timed-out question in the Speed Math sprint
+class SpeedMathAttempt {
+  final String prompt;
+  final int? userAnswer;
+  final int correctAnswer;
+  final bool isCorrect;
+
+  const SpeedMathAttempt({
+    required this.prompt,
+    required this.userAnswer,
+    required this.correctAnswer,
+    required this.isCorrect,
+  });
+}
+
 class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> with SingleTickerProviderStateMixin {
   late final ArcadeQuestionEngine _engine;
   Timer? _gameTimer;
@@ -41,6 +56,7 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
   ArcadeQuestion? _currentQuestion;
   int? _selectedOption;
   bool? _isSelectionCorrect;
+  final List<SpeedMathAttempt> _attempts = [];
 
   @override
   void initState() {
@@ -68,6 +84,7 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
       _isNewHighScore = false;
       _selectedOption = null;
       _isSelectionCorrect = null;
+      _attempts.clear();
     });
 
     _nextQuestion();
@@ -99,6 +116,13 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
 
     final isCorrect = option == _currentQuestion!.correctAnswer;
     _totalAnswered++;
+
+    _attempts.add(SpeedMathAttempt(
+      prompt: _currentQuestion!.displayPrompt,
+      userAnswer: option,
+      correctAnswer: _currentQuestion!.correctAnswer,
+      isCorrect: isCorrect,
+    ));
 
     setState(() {
       _selectedOption = option;
@@ -133,6 +157,16 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
     _gameTimer?.cancel();
     _isPlaying = false;
     _isGameOver = true;
+
+    // Record un-answered question at timeout if active
+    if (_currentQuestion != null && _selectedOption == null) {
+      _attempts.add(SpeedMathAttempt(
+        prompt: _currentQuestion!.displayPrompt,
+        userAnswer: null,
+        correctAnswer: _currentQuestion!.correctAnswer,
+        isCorrect: false,
+      ));
+    }
 
     AudioService.instance.playSfx(CurioSfx.starAward);
 
@@ -535,6 +569,126 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
                 ],
               ),
             ),
+
+            if (_attempts.isNotEmpty) ...[
+              const SizedBox(height: 22),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.fact_check_rounded, color: Color(0xFFFBBF24), size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isHindi ? 'प्रश्नोत्तरी समीक्षा (क्वेश्चन रिव्यू)' : 'Question Review Breakdown',
+                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 15),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$_correctAnswered/${_attempts.length}',
+                            style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _attempts.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, idx) {
+                        final att = _attempts[idx];
+                        final correct = att.isCorrect;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: correct
+                                ? const Color(0xFF065F46).withValues(alpha: 0.25)
+                                : const Color(0xFF991B1B).withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: correct ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: correct ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    correct ? Icons.check_rounded : Icons.close_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Q${idx + 1}: ${att.prompt}',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    if (correct)
+                                      Text(
+                                        '✓ ${isHindi ? "आपका उत्तर:" : "Your Answer:"} ${att.userAnswer}',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF34D399),
+                                        ),
+                                      )
+                                    else
+                                      Text(
+                                        '✗ ${isHindi ? "आपका उत्तर:" : "Your Answer:"} ${att.userAnswer ?? (isHindi ? "समय समाप्त (छूटा हुआ)" : "Time Up (Skipped)")}  ➔  ✓ ${isHindi ? "सही उत्तर:" : "Actual Answer:"} ${att.correctAnswer}',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFFFCA5A5),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 28),
 

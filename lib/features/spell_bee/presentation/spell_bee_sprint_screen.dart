@@ -24,6 +24,19 @@ class SpellBeeSprintScreen extends ConsumerStatefulWidget {
   ConsumerState<SpellBeeSprintScreen> createState() => _SpellBeeSprintScreenState();
 }
 
+/// Attempt record for word review in the Spell Bee 60s sprint
+class SpellBeeSprintAttempt {
+  final String word;
+  final String userAnswer;
+  final bool isCorrect;
+
+  const SpellBeeSprintAttempt({
+    required this.word,
+    required this.userAnswer,
+    required this.isCorrect,
+  });
+}
+
 class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
   Timer? _timer;
   Timer? _speechTimer;
@@ -43,6 +56,7 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
   List<String?> _userSlots = [];
   List<bool> _tileUsed = [];
   bool _isChecking = false;
+  final List<SpellBeeSprintAttempt> _attempts = [];
 
   @override
   void initState() {
@@ -68,6 +82,7 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
       _isPlaying = true;
       _isGameOver = false;
       _isNewHighScore = false;
+      _attempts.clear();
     });
 
     _nextWord();
@@ -170,6 +185,12 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
       _combo++;
       if (_combo > _maxCombo) _maxCombo = _combo;
 
+      _attempts.add(SpellBeeSprintAttempt(
+        word: _currentWord!.word,
+        userAnswer: constructed,
+        isCorrect: true,
+      ));
+
       // Scoring: 10 base + combo bonus
       final points = 10 + (_combo * 5);
       _score += points;
@@ -201,14 +222,38 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
   }
 
   void _skipWord() {
-    if (!_isPlaying) return;
+    if (!_isPlaying || _currentWord == null) return;
     AudioService.instance.playSfx(CurioSfx.click);
     _combo = 0;
+    final constructed = _userSlots.where((c) => c != null).join('').toUpperCase();
+    final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
+    _attempts.add(SpellBeeSprintAttempt(
+      word: _currentWord!.word,
+      userAnswer: constructed.isNotEmpty ? constructed : (isHindi ? "छोड़ा गया" : "Skipped"),
+      isCorrect: false,
+    ));
     _nextWord();
   }
 
   void _endSprint() async {
     _timer?.cancel();
+    _speechTimer?.cancel();
+
+    // If time ended on an active word, record it
+    if (_currentWord != null) {
+      final constructed = _userSlots.where((c) => c != null).join('').toUpperCase();
+      final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
+      final target = _currentWord!.word.toUpperCase();
+      final isMatch = constructed == target;
+      if (_attempts.isEmpty || _attempts.last.word != _currentWord!.word) {
+        _attempts.add(SpellBeeSprintAttempt(
+          word: _currentWord!.word,
+          userAnswer: constructed.isNotEmpty ? constructed : (isHindi ? "समय समाप्त" : "Time Up"),
+          isCorrect: isMatch,
+        ));
+      }
+    }
+
     setState(() {
       _isPlaying = false;
       _isGameOver = true;
@@ -566,6 +611,99 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
                   _buildStatItem('✅', isHindi ? 'सही शब्द' : 'Correct', '$_correctAnswered'),
                 ],
               ),
+
+              if (_attempts.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Icon(Icons.fact_check_rounded, color: Color(0xFFB45309), size: 18),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        isHindi ? 'शब्द समीक्षा (Word Breakdown)' : 'Word Review Breakdown',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF78350F)),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$_correctAnswered/${_attempts.length}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFB45309)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _attempts.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, idx) {
+                    final att = _attempts[idx];
+                    final correct = att.isCorrect;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: correct ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: correct ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                            color: correct ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  att.word,
+                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1E293B)),
+                                ),
+                                const SizedBox(height: 2),
+                                if (correct)
+                                  Text(
+                                    '✓ ${isHindi ? "आपका उत्तर:" : "Your answer:"} ${att.userAnswer}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF15803D),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  )
+                                else
+                                  Text(
+                                    '✗ ${isHindi ? "आपका उत्तर:" : "Your answer:"} ${att.userAnswer}  ➔  ✓ ${isHindi ? "सही:" : "Actual:"} ${att.word}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFB91C1C),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.volume_up_rounded, size: 20, color: Color(0xFF78350F)),
+                            onPressed: () => AudioService.instance.speakPrompt(att.word),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+
               const SizedBox(height: 24),
 
               ElevatedButton.icon(

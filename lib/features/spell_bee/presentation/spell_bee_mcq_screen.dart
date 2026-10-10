@@ -34,6 +34,7 @@ class _SpellBeeMcqScreenState extends ConsumerState<SpellBeeMcqScreen> {
   int _score = 0;
   int _streak = 0;
   Timer? _speechTimer;
+  final Map<int, String> _userAnswers = {};
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _SpellBeeMcqScreenState extends ConsumerState<SpellBeeMcqScreen> {
       _streak = 0;
       _answered = false;
       _selectedChoice = null;
+      _userAnswers.clear();
       if (words.isNotEmpty) {
         _currentChoices = words[0].getMcqChoices();
       }
@@ -85,6 +87,7 @@ class _SpellBeeMcqScreenState extends ConsumerState<SpellBeeMcqScreen> {
     setState(() {
       _answered = true;
       _selectedChoice = choice;
+      _userAnswers[_currentIndex] = choice;
       if (isCorrect) {
         _score += 10;
         _streak++;
@@ -122,95 +125,202 @@ class _SpellBeeMcqScreenState extends ConsumerState<SpellBeeMcqScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Column(
-            children: [
-              Text(
-                pct >= 80 ? '🏆' : (pct >= 50 ? '🌟' : '💪'),
-                style: const TextStyle(fontSize: 48),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                pct >= 80
-                    ? (isHindi ? 'शानदार स्कोर!' : 'Master Speller!')
-                    : (isHindi ? 'अच्छा प्रयास!' : 'Good Effort!'),
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isHindi
-                    ? 'आपने 10 में से ${_score ~/ 10} सही स्पेलिंग पहचानी।'
-                    : 'You identified ${_score ~/ 10} out of $total correct spellings ($pct%).',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(16),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  pct >= 80 ? '🏆' : (pct >= 50 ? '🌟' : '💪'),
+                  style: const TextStyle(fontSize: 42),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                const SizedBox(height: 6),
+                Text(
+                  pct >= 80
+                      ? (isHindi ? 'शानदार स्कोर!' : 'Master Speller!')
+                      : (isHindi ? 'अच्छा प्रयास!' : 'Good Effort!'),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Color(0xFF78350F)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isHindi
+                      ? 'आपने $total में से ${_score ~/ 10} सही स्पेलिंग पहचानी ($pct%)।'
+                      : 'You identified ${_score ~/ 10} out of $total correct spellings ($pct%).',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Column(
+                        children: [
+                          Text(
+                            '$_score',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFFB45309)),
+                          ),
+                          Text(
+                            isHindi ? 'अंक (Points)' : 'Points',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          Text(
+                            '$pct%',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFFB45309)),
+                          ),
+                          Text(
+                            isHindi ? 'सटीकता' : 'Accuracy',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Question Review Header
+                Row(
                   children: [
-                    Column(
-                      children: [
-                        Text(
-                          '$_score',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Color(0xFFB45309)),
-                        ),
-                        Text(
-                          isHindi ? 'अंक (Points)' : 'Points',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
-                        ),
-                      ],
+                    const Icon(Icons.fact_check_rounded, color: Color(0xFFB45309), size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      isHindi ? 'प्रश्नोत्तरी समीक्षा' : 'Question Review',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFF78350F)),
                     ),
-                    Column(
-                      children: [
-                        Text(
-                          '$pct%',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Color(0xFFB45309)),
-                        ),
-                        Text(
-                          isHindi ? 'सटीकता' : 'Accuracy',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
-                        ),
-                      ],
+                    const Spacer(),
+                    Text(
+                      '${_score ~/ 10}/$total',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFB45309)),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+
+                // Scrollable Question Review List
+                Flexible(
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(10),
+                      itemCount: _questions.length,
+                      separatorBuilder: (_, _) => const Divider(height: 10, color: Color(0xFFFDE68A)),
+                      itemBuilder: (context, idx) {
+                        final word = _questions[idx];
+                        final userAns = _userAnswers[idx];
+                        final isCorrect = userAns != null && userAns.toUpperCase() == word.word.toUpperCase();
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              color: isCorrect ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Q${idx + 1}: ${word.word}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  if (isCorrect)
+                                    Text(
+                                      '✓ ${isHindi ? "आपका उत्तर:" : "Your answer:"} $userAns',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF15803D),
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      '✗ ${isHindi ? "आपका उत्तर:" : "Your answer:"} ${userAns ?? (isHindi ? "छूटा हुआ" : "Skipped")}  ➔  ✓ ${isHindi ? "सही:" : "Actual:"} ${word.word}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFB91C1C),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.volume_up_rounded, size: 18, color: Color(0xFF78350F)),
+                              onPressed: () => AudioService.instance.speakPrompt(word.word),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          SpellBeeMistakesScreen.push(context);
+                        },
+                        child: Text(
+                          isHindi ? 'गलतियां देखें' : 'Review Mistakes',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF59E0B),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _initQuiz();
+                        },
+                        child: Text(
+                          isHindi ? 'फिर से खेलें' : 'Play Again',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // dialog
-                SpellBeeMistakesScreen.push(context);
-              },
-              child: Text(isHindi ? 'गलतियों की समीक्षा' : 'Review Mistakes'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF59E0B),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _initQuiz();
-              },
-              child: Text(
-                isHindi ? 'फिर से खेलें' : 'Play Again',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
         );
       },
     );

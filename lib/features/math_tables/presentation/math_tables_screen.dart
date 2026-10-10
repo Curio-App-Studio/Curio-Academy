@@ -45,6 +45,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
 
   // Fill in blanks / Practice State
   List<TableQuestion> _practiceQuestions = [];
+  List<int?> _practiceUserAnswers = [];
   int _practiceIndex = 0;
   int? _practiceSelectedAnswer;
   bool _practiceAnswered = false;
@@ -54,6 +55,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   // Speed Quiz State
   Set<int> _quizSelectedTables = {2};
   List<TableQuestion> _quizQuestions = [];
+  List<int?> _quizUserAnswers = [];
   int _quizIndex = 0;
   int? _quizSelectedAnswer;
   bool _quizAnswered = false;
@@ -116,6 +118,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
 
   void _initPractice() {
     _practiceQuestions = TableQuestion.generateQuiz(_selectedTable, count: 10, maxMultiplier: _maxMultiplier);
+    _practiceUserAnswers = [];
     _practiceIndex = 0;
     _practiceSelectedAnswer = null;
     _practiceAnswered = false;
@@ -135,6 +138,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
       count: count,
       maxMultiplier: _maxMultiplier,
     );
+    _quizUserAnswers = [];
     _quizIndex = 0;
     _quizSelectedAnswer = null;
     _quizAnswered = false;
@@ -1036,6 +1040,11 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
                         setState(() {
                           _practiceSelectedAnswer = opt;
                           _practiceAnswered = true;
+                          if (_practiceUserAnswers.length <= _practiceIndex) {
+                            _practiceUserAnswers.add(opt);
+                          } else {
+                            _practiceUserAnswers[_practiceIndex] = opt;
+                          }
                           if (isCorrect) {
                             _practiceScore++;
                             _practiceStreak++;
@@ -1093,14 +1102,13 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
                     _practiceSelectedAnswer = null;
                   });
                 } else {
-                  AdService().showInterstitialAdIfReady();
-                  _initPractice();
+                  _showPracticeResultDialog(isHindi);
                 }
               },
               child: Text(
                 _practiceIndex + 1 < _practiceQuestions.length
                     ? (isHindi ? 'अगला प्रश्न ➔' : 'Next Question ➔')
-                    : (isHindi ? 'नया अभ्यास शुरू करें 🔄' : 'Practice More 🔄'),
+                    : (isHindi ? 'समीक्षा व परिणाम देखें 🏆' : 'Review & Results 🏆'),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
               ),
             ),
@@ -1379,6 +1387,11 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
                         setState(() {
                           _quizSelectedAnswer = opt;
                           _quizAnswered = true;
+                          if (_quizUserAnswers.length <= _quizIndex) {
+                            _quizUserAnswers.add(opt);
+                          } else {
+                            _quizUserAnswers[_quizIndex] = opt;
+                          }
                           if (isCorrect) {
                             _quizScore++;
                             AudioService.instance.playSfx(CurioSfx.correctCheer);
@@ -1428,12 +1441,198 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
               child: Text(
                 _quizIndex + 1 < _quizQuestions.length
                     ? (isHindi ? 'अगला प्रश्न ➔' : 'Next Question ➔')
-                    : (isHindi ? 'रिजल्ट देखें 🏆' : 'View Results 🏆'),
+                    : (isHindi ? 'समीक्षा व रिजल्ट देखें 🏆' : 'Review & Results 🏆'),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  void _showPracticeResultDialog(bool isHindi) {
+    AdService().showInterstitialAdIfReady();
+    final total = _practiceQuestions.length;
+    final pct = total > 0 ? ((_practiceScore / total) * 100).round() : 0;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  pct >= 80 ? '🏆' : (pct >= 50 ? '🌟' : '💪'),
+                  style: const TextStyle(fontSize: 42),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  pct >= 80
+                      ? (isHindi ? 'शानदार अभ्यास!' : 'Practice Mastered!')
+                      : (isHindi ? 'अच्छा प्रयास!' : 'Good Effort!'),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Color(0xFF065F46)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isHindi
+                      ? 'आपने $total में से $_practiceScore सही उत्तर दिए ($pct%)।'
+                      : 'You answered $_practiceScore out of $total correctly ($pct%).',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
+                ),
+                const SizedBox(height: 14),
+
+                // Question Review Header
+                Row(
+                  children: [
+                    const Icon(Icons.fact_check_rounded, color: Color(0xFF059669), size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      isHindi ? 'प्रश्नोत्तरी समीक्षा' : 'Question Review',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFF065F46)),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '$_practiceScore/$total',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF059669)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Scrollable Review List
+                Flexible(
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(10),
+                      itemCount: _practiceQuestions.length,
+                      separatorBuilder: (_, _) => const Divider(height: 12, color: Color(0xFFE5E7EB)),
+                      itemBuilder: (context, idx) {
+                        final q = _practiceQuestions[idx];
+                        final userAns = idx < _practiceUserAnswers.length ? _practiceUserAnswers[idx] : null;
+                        final isCorrect = userAns == q.correctAnswer;
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: isCorrect ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  isCorrect ? Icons.check_rounded : Icons.close_rounded,
+                                  size: 15,
+                                  color: isCorrect ? const Color(0xFF065F46) : const Color(0xFFB91C1C),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Q${idx + 1}: ${q.promptEquation}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1F2937),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  if (isCorrect)
+                                    Text(
+                                      '✓ ${isHindi ? "उत्तर:" : "Answer:"} ${q.correctAnswer}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF059669),
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      '✗ ${isHindi ? "आपका:" : "Your:"} ${userAns != null ? "$userAns" : (isHindi ? "छूटा हुआ" : "Skipped")}  ➔  ✓ ${isHindi ? "सही:" : "Actual:"} ${q.correctAnswer}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFDC2626),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _tabController.animateTo(3); // Go to test tab
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          side: const BorderSide(color: Color(0xFF059669)),
+                        ),
+                        child: Text(
+                          isHindi ? 'टेस्ट दें ⚡' : 'Take Test ⚡',
+                          style: const TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _initPractice();
+                        },
+                        child: Text(
+                          isHindi ? 'फिर अभ्यास करें' : 'Practice Again',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1447,58 +1646,178 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Column(
-            children: [
-              Text(
-                pct >= 80 ? '🏆' : (pct >= 50 ? '🌟' : '💪'),
-                style: const TextStyle(fontSize: 48),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                pct >= 80
-                    ? (isHindi ? 'शाबाश! टेबल मास्टर!' : 'Table Master!')
-                    : (isHindi ? 'अच्छा प्रयास!' : 'Good Effort!'),
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Color(0xFF065F46)),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isHindi
-                    ? 'आपने $total में से $_quizScore सही उत्तर दिए ($pct%)।'
-                    : 'You answered $_quizScore out of $total correctly ($pct%) in ${_quizTimerSeconds}s.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _tabController.animateTo(0); // Go back to chart
-              },
-              child: Text(isHindi ? 'चार्ट देखें' : 'Study Chart'),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  pct >= 80 ? '🏆' : (pct >= 50 ? '🌟' : '💪'),
+                  style: const TextStyle(fontSize: 42),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  pct >= 80
+                      ? (isHindi ? 'शाबाश! टेबल मास्टर!' : 'Table Master!')
+                      : (isHindi ? 'अच्छा प्रयास!' : 'Good Effort!'),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Color(0xFF065F46)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isHindi
+                      ? 'आपने $total में से $_quizScore सही उत्तर दिए ($pct%)।'
+                      : 'You answered $_quizScore out of $total correctly ($pct%) in ${_quizTimerSeconds}s.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
+                ),
+                const SizedBox(height: 14),
+
+                // Question Review Header
+                Row(
+                  children: [
+                    const Icon(Icons.fact_check_rounded, color: Color(0xFF059669), size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      isHindi ? 'प्रश्नोत्तरी समीक्षा' : 'Question Review',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFF065F46)),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '$_quizScore/$total',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF059669)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Scrollable Review List
+                Flexible(
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(10),
+                      itemCount: _quizQuestions.length,
+                      separatorBuilder: (_, _) => const Divider(height: 12, color: Color(0xFFE5E7EB)),
+                      itemBuilder: (context, idx) {
+                        final q = _quizQuestions[idx];
+                        final userAns = idx < _quizUserAnswers.length ? _quizUserAnswers[idx] : null;
+                        final isCorrect = userAns == q.correctAnswer;
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: isCorrect ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  isCorrect ? Icons.check_rounded : Icons.close_rounded,
+                                  size: 15,
+                                  color: isCorrect ? const Color(0xFF065F46) : const Color(0xFFB91C1C),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Q${idx + 1}: ${q.promptEquation}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1F2937),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  if (isCorrect)
+                                    Text(
+                                      '✓ ${isHindi ? "उत्तर:" : "Answer:"} ${q.correctAnswer}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF059669),
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      '✗ ${isHindi ? "आपका:" : "Your:"} ${userAns != null ? "$userAns" : (isHindi ? "छूटा हुआ" : "Skipped")}  ➔  ✓ ${isHindi ? "सही:" : "Actual:"} ${q.correctAnswer}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFDC2626),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _tabController.animateTo(0); // Go back to chart
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          side: const BorderSide(color: Color(0xFF059669)),
+                        ),
+                        child: Text(
+                          isHindi ? 'चार्ट देखें' : 'Study Chart',
+                          style: const TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _initQuiz();
+                        },
+                        child: Text(
+                          isHindi ? 'फिर से टेस्ट दें' : 'Retake Test',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _initQuiz();
-              },
-              child: Text(
-                isHindi ? 'फिर से टेस्ट दें' : 'Retake Test',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
