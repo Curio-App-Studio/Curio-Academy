@@ -71,6 +71,8 @@ abstract class ILocalStorageService {
   Future<void> cancelPremiumStatus();
   List<SubscriptionRecord> getSubscriptionHistory();
   Future<void> saveSubscriptionHistory(List<SubscriptionRecord> history);
+  String? get boundMembershipEmail;
+  Future<void> setBoundMembershipEmail(String? email);
 
   // Bonus stars (rewarded activities)
   Future<void> addBonusStars(int count);
@@ -106,6 +108,7 @@ class LocalStorageService implements ILocalStorageService {
   static const String _keySubscriptionEndDate = 'curio_subscription_end_date';
   static const String _keySubscriptionCanceled = 'curio_subscription_canceled';
   static const String _keySubscriptionHistory = 'curio_subscription_history';
+  static const String _keyBoundMembershipEmail = 'curio_membership_bound_google_email';
   static const String _keyBonusStars = 'curio_bonus_stars';
   static const String _keySpeedMathHighScore = 'curio_speed_math_high_score';
   static const String _keySpellBeeHighScore = 'curio_spell_bee_high_score';
@@ -131,6 +134,7 @@ class LocalStorageService implements ILocalStorageService {
   DateTime? _subscriptionEndDate;
   bool _isSubscriptionCanceled = false;
   final List<SubscriptionRecord> _cachedSubscriptionHistory = [];
+  String? _boundMembershipEmail;
   int _bonusStars = 0;
   int _speedMathHighScore = 0;
   int _spellBeeHighScore = 0;
@@ -298,6 +302,22 @@ class LocalStorageService implements ILocalStorageService {
       _prefs ??= await SharedPreferences.getInstance();
       final jsonList = history.map((r) => r.toJson()).toList();
       await _prefs?.setString(_keySubscriptionHistory, jsonEncode(jsonList));
+    } catch (_) {}
+  }
+
+  @override
+  String? get boundMembershipEmail => _boundMembershipEmail;
+
+  @override
+  Future<void> setBoundMembershipEmail(String? email) async {
+    _boundMembershipEmail = email?.trim().toLowerCase();
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      if (_boundMembershipEmail != null && _boundMembershipEmail!.isNotEmpty) {
+        await _prefs?.setString(_keyBoundMembershipEmail, _boundMembershipEmail!);
+      } else {
+        await _prefs?.remove(_keyBoundMembershipEmail);
+      }
     } catch (_) {}
   }
 
@@ -550,6 +570,9 @@ class LocalStorageService implements ILocalStorageService {
           }
         } catch (_) {}
       }
+
+      // Load bound Google Account for VIP membership
+      _boundMembershipEmail = _prefs?.getString(_keyBoundMembershipEmail);
 
       // Compute total stars directly from all attempted questions so it NEVER resets or drifts
       final computedStars = _calculateTotalStars();

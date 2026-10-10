@@ -18,6 +18,7 @@ class MembershipPaywallSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (_) => const MembershipPaywallSheet(),
     );
@@ -289,6 +290,40 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
     );
   }
 
+  Future<void> _handleRestorePurchases(bool isHindi, {bool showInitialSnackbar = true}) async {
+    if (showInitialSnackbar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isHindi ? 'Google Play से खरीद पुनर्स्थापित की जा रही है...' : 'Restoring previous purchases from Google Play...'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+    await InAppPurchaseService.instance.restorePurchases();
+    final progressResult = await CloudProgressService().restoreVipProgress();
+    if (mounted) {
+      setState(() {});
+      final isRestored = LocalStorageService.instance.isPremiumUser;
+      String message = isRestored
+          ? (isHindi ? 'VIP खरीद सफलतापूर्वक पुनर्स्थापित!' : 'VIP Purchases successfully restored!')
+          : (isHindi ? 'कोई पूर्व खरीद नहीं मिली।' : 'No previous purchases found.');
+
+      if (progressResult.status == CloudRestoreStatus.success) {
+        message += isHindi
+            ? ' (${progressResult.restoredStars ?? 0} सितारे और प्रोग्रेस वापस आ गए!)'
+            : ' (${progressResult.restoredStars ?? 0} stars & progress restored!)';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isRestored ? const Color(0xFF059669) : null,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   /// Full Membership & In-App Purchase Options
   Widget _buildMembershipContent(bool isHindi, bool isPremium) {
     final iapService = InAppPurchaseService.instance;
@@ -298,57 +333,98 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
     final isCanceled = LocalStorageService.instance.isSubscriptionCanceled;
     final isLifetime = subType == InAppProductIds.lifetimeNoAds;
 
-    return SingleChildScrollView(
-      key: const ValueKey('membership_content'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 44,
-            height: 5,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Header Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFF9800), Color(0xFFFF5722)]),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+    return RefreshIndicator(
+      color: const Color(0xFFFF9800),
+      backgroundColor: Colors.white,
+      displacement: 24,
+      onRefresh: () => _handleRestorePurchases(isHindi, showInitialSnackbar: false),
+      child: SingleChildScrollView(
+        key: const ValueKey('membership_content'),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
               children: [
-                Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 6),
-                Text(
-                  'CURIO VIP MEMBERSHIP',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1),
+                const SizedBox(width: 40),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded, size: 18, color: Colors.grey.shade600),
+                  ),
+                  tooltip: isHindi ? 'बंद करें' : 'Close',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 6),
 
-          Text(
-            isHindi ? '100% विज्ञापन-मुक्त पढ़ाई' : '100% Ad-Free Learning Pass',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isHindi
-                ? 'शांत, सुरक्षित और निर्बाध अध्ययन अनुभव के लिए विज्ञापन हटाएँ'
-                : 'Enjoy distraction-free focus, instant solutions, and bonus stars!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 20),
+            // Header Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFFFF9800), Color(0xFFFF5722)]),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 6),
+                  Text(
+                    'CURIO VIP MEMBERSHIP',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            Text(
+              isHindi ? '100% विज्ञापन-मुक्त पढ़ाई' : '100% Ad-Free Learning Pass',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isHindi
+                  ? 'शांत, सुरक्षित और निर्बाध अध्ययन अनुभव के लिए विज्ञापन हटाएँ'
+                  : 'Enjoy distraction-free focus, instant solutions, and bonus stars!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.swipe_down_rounded, size: 14, color: Colors.grey.shade500),
+                const SizedBox(width: 4),
+                Text(
+                  isHindi ? 'खरीद पुनर्स्थापित करने हेतु नीचे खींचें' : 'Pull down to refresh & restore purchases',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
 
           // ACTIVE SUBSCRIPTION & CURRENT PLAN DETAILS
           if (isPremium) ...[
@@ -487,70 +563,112 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Restore Purchases & Close Buttons
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
+          // Polished Action Buttons: Restore Purchases & Order History
+          Row(
             children: [
-              TextButton.icon(
-                onPressed: () async {
-                  AudioService.instance.playSfx(CurioSfx.click);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isHindi ? 'Google Play से खरीद पुनर्स्थापित की जा रही है...' : 'Restoring previous purchases from Google Play...'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                  await iapService.restorePurchases();
-                  final progressResult = await CloudProgressService().restoreVipProgress();
-                  if (mounted) {
-                    setState(() {});
-                    final isRestored = LocalStorageService.instance.isPremiumUser;
-                    String message = isRestored
-                        ? (isHindi ? 'VIP खरीद सफलतापूर्वक पुनर्स्थापित!' : 'VIP Purchases successfully restored!')
-                        : (isHindi ? 'कोई पूर्व खरीद नहीं मिली।' : 'No previous purchases found.');
-
-                    if (progressResult.status == CloudRestoreStatus.success) {
-                      message += isHindi
-                          ? ' (${progressResult.restoredStars ?? 0} सितारे और प्रोग्रेस वापस आ गए!)'
-                          : ' (${progressResult.restoredStars ?? 0} stars & progress restored!)';
-                    }
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(message),
-                        backgroundColor: isRestored ? const Color(0xFF059669) : null,
-                        duration: const Duration(seconds: 3),
+              Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      AudioService.instance.playSfx(CurioSfx.click);
+                      _handleRestorePurchases(isHindi, showInitialSnackbar: true);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
                       ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.restore_rounded, size: 17),
-                label: Text(isHindi ? 'खरीद पुनर्स्थापित करें' : 'Restore Purchases'),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.restore_rounded, size: 16, color: Color(0xFF475569)),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              isHindi ? 'खरीद पुनर्स्थापित' : 'Restore Purchases',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF334155),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              Text('•', style: TextStyle(color: Colors.grey.shade400)),
-              TextButton.icon(
-                onPressed: () {
-                  AudioService.instance.playSfx(CurioSfx.click);
-                  SubscriptionHistorySheet.show(context);
-                },
-                icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                label: Text(isHindi ? 'खरीद विवरण' : 'Order History'),
-              ),
-              Text('•', style: TextStyle(color: Colors.grey.shade400)),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(isHindi ? 'बंद करें' : 'Close'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      AudioService.instance.playSfx(CurioSfx.click);
+                      SubscriptionHistorySheet.show(context);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.receipt_long_rounded, size: 16, color: Color(0xFF475569)),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              isHindi ? 'ऑर्डर विवरण' : 'Order History',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF334155),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+
+          // Clean Close Action
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF64748B),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                isHindi ? 'शीट बंद करें' : 'Close',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   /// Detailed Active Subscription Overview Card showing Plan Name, End/Renewal Date, & Cancel Option
@@ -757,31 +875,115 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
           ValueListenableBuilder<String?>(
             valueListenable: CloudProgressService().userEmailNotifier,
             builder: (context, email, _) {
-              if (email == null || email.isEmpty) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDFA),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFCCFBF1)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_done_rounded, size: 16, color: Color(0xFF0D9488)),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          'Cloud Sync: $email',
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0D9488)),
-                          overflow: TextOverflow.ellipsis,
+              final isConnected = email != null && email.isNotEmpty;
+              final boundEmail = CloudProgressService().boundMembershipEmail;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: InkWell(
+                      onTap: () async {
+                        AudioService.instance.playSfx(CurioSfx.click);
+                        if (!isConnected) {
+                          try {
+                            final cred = await CloudProgressService().signInWithGoogle();
+                            if (cred != null) {
+                              await CloudProgressService().syncProgressToCloud();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(isHindi
+                                        ? 'Google खाता जुड़ा! प्रोग्रेस क्लाउड पर सुरक्षित है।'
+                                        : 'Google Account connected! Progress saved to Cloud.'),
+                                    backgroundColor: const Color(0xFF059669),
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              final msg = e is DifferentGoogleAccountException
+                                  ? (isHindi
+                                      ? 'क्लाउड सिंक केवल उसी Google खाते से काम करेगा जिस पर सदस्यता सक्रिय है (${e.boundEmail})।'
+                                      : e.message)
+                                  : 'Sync note: $e';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(msg),
+                                  backgroundColor: Colors.redAccent,
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
+                            }
+                          }
+                        } else {
+                          await CloudProgressService().syncProgressToCloud(force: true);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(isHindi ? 'प्रोग्रेस क्लाउड पर सिंक हो गई है।' : 'Progress synced to Cloud Firestore!'),
+                                backgroundColor: const Color(0xFF059669),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isConnected ? const Color(0xFFF0FDFA) : const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isConnected ? const Color(0xFFCCFBF1) : const Color(0xFFBFDBFE)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isConnected ? Icons.cloud_done_rounded : Icons.cloud_upload_outlined,
+                              size: 16,
+                              color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                isConnected
+                                    ? 'Cloud Sync: $email'
+                                    : (boundEmail != null && boundEmail.isNotEmpty
+                                        ? (isHindi ? 'Google खाता ($boundEmail) जोड़ें' : 'Connect $boundEmail for Cloud Sync')
+                                        : (isHindi ? 'Google खाता जोड़ें (क्लाउड बैकअप)' : 'Connect Google Account for Cloud Sync')),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              isConnected ? Icons.refresh_rounded : Icons.arrow_forward_ios_rounded,
+                              size: 13,
+                              color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  if (boundEmail != null && boundEmail.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 4),
+                      child: Text(
+                        isHindi
+                            ? '🔒 क्लाउड सिंक केवल सदस्यता वाले Google खाते ($boundEmail) पर ही काम करेगा।'
+                            : '🔒 Cloud Sync works only with your membership Google Account ($boundEmail).',
+                        style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                ],
               );
             },
           ),

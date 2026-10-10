@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "138142325786",
+    "project_id": "curio-academy",
+    "storage_bucket": "curio-academy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:138142325786:android:b5e259cfe083bffc44c5a3",
+        "android_client_info": {
+          "package_name": "com.curio.academy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "138142325786-7pt8e9f4dc4crpuilqv17pqqpe59n7cb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.curio.academy",
+            "certificate_hash": "66731420ab860d95a462067529678bcf526b3699"
+          }
+        },
+        {
+          "client_id": "138142325786-fh4reoko5i7u8vehfces8m61vm4dh8s4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZqj44_KsNwiRb-OpqJ-pAzwAZaR5ASB4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "138142325786-fh4reoko5i7u8vehfces8m61vm4dh8s4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

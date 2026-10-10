@@ -17,6 +17,23 @@ enum CloudRestoreStatus {
   error,
 }
 
+/// Thrown when parent attempts to sign in with a Google account different
+/// from the account on which VIP membership was activated.
+class DifferentGoogleAccountException implements Exception {
+  final String message;
+  final String boundEmail;
+  final String attemptedEmail;
+
+  const DifferentGoogleAccountException(
+    this.message, {
+    required this.boundEmail,
+    required this.attemptedEmail,
+  });
+
+  @override
+  String toString() => message;
+}
+
 class CloudRestoreResult {
   final CloudRestoreStatus status;
   final String message;
@@ -50,6 +67,9 @@ class CloudProgressService {
 
   String? _cachedEmail;
   String? get googleAccountEmail => currentUser?.email ?? _cachedEmail;
+
+  /// The official Google account bound to this membership
+  String? get boundMembershipEmail => LocalStorageService.instance.boundMembershipEmail;
 
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<String?> userEmailNotifier = ValueNotifier<String?>(null);
@@ -90,6 +110,10 @@ class CloudProgressService {
         _lastSyncTime = DateTime.tryParse(storedSync);
       }
       _cachedEmail = prefs.getString(_keyCachedGoogleEmail);
+      final bound = LocalStorageService.instance.boundMembershipEmail;
+      if (bound != null && bound.isNotEmpty) {
+        _cachedEmail = bound;
+      }
       userEmailNotifier.value = googleAccountEmail;
     } catch (_) {}
 
@@ -99,6 +123,7 @@ class CloudProgressService {
   }
 
   /// Authenticates parent with Google Sign-In and Firebase Auth.
+  /// Strictly enforces that only the Google account tied to this membership is allowed.
   Future<UserCredential?> signInWithGoogle() async {
     if (!isFirebaseAvailable) {
       developer.log('Firebase not initialized. Google Sign-In requires google-services.json.', name: 'CloudSync');
@@ -113,6 +138,23 @@ class CloudProgressService {
         return null;
       }
 
+      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+      final selectedEmail = googleUser.email.trim().toLowerCase();
+
+      // Cloud Sync will work ONLY with the same Google Account on which membership is activated
+      if (boundEmail != null && boundEmail.isNotEmpty && selectedEmail != boundEmail) {
+        developer.log(
+          'CloudProgressService: Rejected Google Sign-In. Selected account ($selectedEmail) does not match membership account ($boundEmail).',
+          name: 'CloudSync',
+        );
+        await googleSignIn.signOut();
+        throw DifferentGoogleAccountException(
+          'Cloud Sync works only with the Google Account on which membership is activated ($boundEmail). Different accounts cannot be used.',
+          boundEmail: boundEmail,
+          attemptedEmail: selectedEmail,
+        );
+      }
+
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -120,17 +162,24 @@ class CloudProgressService {
       );
 
       final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      final email = userCredential.user?.email ?? googleUser.email;
+      final email = (userCredential.user?.email ?? googleUser.email).trim().toLowerCase();
       _cachedEmail = email;
       userEmailNotifier.value = email;
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyCachedGoogleEmail, email);
 
+      // Permanently bind this Google Account to the membership if not already bound
+      if (boundEmail == null || boundEmail.isEmpty) {
+        await LocalStorageService.instance.setBoundMembershipEmail(email);
+      }
+
       developer.log('Signed in successfully with Google: $email (UID: ${userCredential.user?.uid})', name: 'CloudSync');
       return userCredential;
     } catch (e, stack) {
-      developer.log('Google Sign-In failed: $e', error: e, stackTrace: stack, name: 'CloudSync');
+      if (e is! DifferentGoogleAccountException) {
+        developer.log('Google Sign-In failed: $e', error: e, stackTrace: stack, name: 'CloudSync');
+      }
       rethrow;
     }
   }
@@ -179,9 +228,22 @@ class CloudProgressService {
       // If Firebase is available and user is authenticated, upload to Cloud Firestore
       final user = currentUser;
       if (isFirebaseAvailable && user != null) {
+        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+        final userEmail = user.email?.trim().toLowerCase();
+
+        // Enforce: only the bound membership Google Account can sync to Firestore
+        if (boundEmail != null && boundEmail.isNotEmpty && userEmail != null && userEmail != boundEmail) {
+          developer.log(
+            'CloudProgressService: Blocked Firestore sync. User ($userEmail) does not match membership account ($boundEmail).',
+            name: 'CloudSync',
+          );
+          return false;
+        }
+
         final firestoreData = Map<String, dynamic>.from(snapshot);
         firestoreData['updatedAt'] = FieldValue.serverTimestamp();
         firestoreData['parentEmail'] = user.email;
+        firestoreData['membershipBoundEmail'] = boundEmail ?? user.email;
         firestoreData['studentName'] = snapshot['name'];
 
         await FirebaseFirestore.instance
@@ -301,6 +363,16 @@ class CloudProgressService {
         restoredStars: stars,
         studentName: studentName,
         accountEmail: googleAccountEmail,
+      );
+    } on DifferentGoogleAccountException catch (e) {
+      developer.log(
+        'CloudProgressService: Different Google account rejected during restore: ${e.message}',
+        name: 'CloudSync',
+      );
+      return CloudRestoreResult(
+        status: CloudRestoreStatus.error,
+        message: e.message,
+        accountEmail: e.boundEmail,
       );
     } catch (e, stack) {
       developer.log(
