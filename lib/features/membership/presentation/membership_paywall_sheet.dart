@@ -754,6 +754,38 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
             ),
           ],
 
+          ValueListenableBuilder<String?>(
+            valueListenable: CloudProgressService().userEmailNotifier,
+            builder: (context, email, _) {
+              if (email == null || email.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDFA),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFCCFBF1)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_done_rounded, size: 16, color: Color(0xFF0D9488)),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Cloud Sync: $email',
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0D9488)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
           const SizedBox(height: 16),
 
           // Action Buttons: Cancel/Manage and View History

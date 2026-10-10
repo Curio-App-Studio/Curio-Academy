@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'app.dart';
 import 'data/local/local_storage_service.dart';
 import 'services/ad_service.dart';
@@ -18,6 +19,13 @@ void main() async {
 
   // Initialize Google Play In-App Purchase & Subscriptions
   await InAppPurchaseService.instance.initialize();
+
+  // Initialize Firebase (Option 1: Cloud Firestore + Google Sign-In)
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('[Firebase] Initialization: $e');
+  }
 
   // Initialize VIP Cloud Progress Backup & Sync (Google Account)
   await CloudProgressService().initialize();

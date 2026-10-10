@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/local/local_storage_service.dart';
 import 'in_app_purchase_service.dart';
@@ -9,6 +12,7 @@ import 'in_app_purchase_service.dart';
 enum CloudRestoreStatus {
   success,
   notVip,
+  cancelled,
   noBackupFound,
   error,
 }
@@ -18,36 +22,64 @@ class CloudRestoreResult {
   final String message;
   final int? restoredStars;
   final String? studentName;
+  final String? accountEmail;
 
   const CloudRestoreResult({
     required this.status,
     required this.message,
     this.restoredStars,
     this.studentName,
+    this.accountEmail,
   });
 }
 
-/// Service managing Cloud Progress Backup & Sync exclusively for VIP / Paid Members.
-///
-/// Ensures child's stars, points, badges, completed chapters, and report cards
-/// survive app resets, device upgrades, or reinstalls.
+/// Service managing Cloud Progress Backup & Sync via Firebase Firestore and Google Sign-In.
+/// Exclusively active for VIP / Paid Members to ensure ₹0 server overhead for free users.
 class CloudProgressService {
   static final CloudProgressService _instance = CloudProgressService._internal();
   factory CloudProgressService() => _instance;
   CloudProgressService._internal();
 
   static const String _keyLastCloudSync = 'curio_vip_last_cloud_sync';
-  static const String _backupFileName = 'curio_vip_cloud_backup.json';
+  static const String _keyCachedGoogleEmail = 'curio_vip_google_email';
+  static const String _keyCachedSnapshot = 'curio_vip_cached_cloud_snapshot';
+  static const String _collectionName = 'vip_students';
 
   DateTime? _lastSyncTime;
   DateTime? get lastSyncTime => _lastSyncTime;
 
+  String? _cachedEmail;
+  String? get googleAccountEmail => currentUser?.email ?? _cachedEmail;
+
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<String?> userEmailNotifier = ValueNotifier<String?>(null);
 
   /// Checks if current user is entitled to VIP Cloud Progress Backup
   bool get isVipEligible =>
       LocalStorageService.instance.isPremiumUser ||
       LocalStorageService.instance.isClosedTester;
+
+  /// Checks if Firebase is initialized and available
+  bool get isFirebaseAvailable {
+    try {
+      return Firebase.apps.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Current signed-in Firebase user
+  User? get currentUser {
+    if (!isFirebaseAvailable) return null;
+    try {
+      return FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Whether parent is currently signed in with Google
+  bool get isGoogleSignedIn => currentUser != null || _cachedEmail != null;
 
   /// Initializes cloud sync settings on startup
   Future<void> initialize() async {
@@ -57,6 +89,8 @@ class CloudProgressService {
       if (storedSync != null) {
         _lastSyncTime = DateTime.tryParse(storedSync);
       }
+      _cachedEmail = prefs.getString(_keyCachedGoogleEmail);
+      userEmailNotifier.value = googleAccountEmail;
     } catch (_) {}
 
     LocalStorageService.onVipProgressChanged = () {
@@ -64,8 +98,61 @@ class CloudProgressService {
     };
   }
 
-  /// Syncs current progress to cloud backup storage if user is a verified VIP / Paid member.
-  /// Free users are bypassed gracefully to maintain ₹0 server & storage overhead.
+  /// Authenticates parent with Google Sign-In and Firebase Auth.
+  Future<UserCredential?> signInWithGoogle() async {
+    if (!isFirebaseAvailable) {
+      developer.log('Firebase not initialized. Google Sign-In requires google-services.json.', name: 'CloudSync');
+      return null;
+    }
+
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        developer.log('Parent cancelled Google Sign-In dialog.', name: 'CloudSync');
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final email = userCredential.user?.email ?? googleUser.email;
+      _cachedEmail = email;
+      userEmailNotifier.value = email;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyCachedGoogleEmail, email);
+
+      developer.log('Signed in successfully with Google: $email (UID: ${userCredential.user?.uid})', name: 'CloudSync');
+      return userCredential;
+    } catch (e, stack) {
+      developer.log('Google Sign-In failed: $e', error: e, stackTrace: stack, name: 'CloudSync');
+      rethrow;
+    }
+  }
+
+  /// Signs out of Google & Firebase Auth
+  Future<void> signOutGoogle() async {
+    try {
+      if (isFirebaseAvailable) {
+        await FirebaseAuth.instance.signOut();
+        await GoogleSignIn().signOut();
+      }
+      _cachedEmail = null;
+      userEmailNotifier.value = null;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyCachedGoogleEmail);
+    } catch (e) {
+      developer.log('Sign-out note: $e', name: 'CloudSync');
+    }
+  }
+
+  /// Syncs current student progress to Cloud Firestore for VIP / Paid members.
+  /// Free users are bypassed automatically to maintain ₹0 server & storage overhead.
   Future<bool> syncProgressToCloud({bool force = false}) async {
     if (!isVipEligible && !force) {
       developer.log(
@@ -82,27 +169,37 @@ class CloudProgressService {
       final snapshot = LocalStorageService.instance.exportProgressSnapshot();
       final jsonString = jsonEncode(snapshot);
 
-      // Persist to local backup file that Android OS Cloud Backup mirrors to Google Drive
-      if (!kIsWeb) {
-        try {
-          final file = File(_backupFileName);
-          await file.writeAsString(jsonString);
-        } catch (e) {
-          developer.log('CloudProgressService: File write note: $e', name: 'CloudSync');
-        }
-      }
-
-      // Also persist snapshot string in SharedPreferences as secondary mirror
+      // Persist local cache mirror
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('curio_vip_cached_cloud_snapshot', jsonString);
+      await prefs.setString(_keyCachedSnapshot, jsonString);
 
       _lastSyncTime = DateTime.now();
       await prefs.setString(_keyLastCloudSync, _lastSyncTime!.toIso8601String());
 
-      developer.log(
-        'CloudProgressService: VIP progress synced successfully (${snapshot["stars"]} stars, ${snapshot["name"]}).',
-        name: 'CloudSync',
-      );
+      // If Firebase is available and user is authenticated, upload to Cloud Firestore
+      final user = currentUser;
+      if (isFirebaseAvailable && user != null) {
+        final firestoreData = Map<String, dynamic>.from(snapshot);
+        firestoreData['updatedAt'] = FieldValue.serverTimestamp();
+        firestoreData['parentEmail'] = user.email;
+        firestoreData['studentName'] = snapshot['name'];
+
+        await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(user.uid)
+            .set(firestoreData, SetOptions(merge: true));
+
+        developer.log(
+          'CloudProgressService: VIP progress synced to Cloud Firestore for ${user.email} (${snapshot["stars"]} stars).',
+          name: 'CloudSync',
+        );
+      } else {
+        developer.log(
+          'CloudProgressService: VIP progress cached locally. Will sync to Firestore once Google Sign-In is completed.',
+          name: 'CloudSync',
+        );
+      }
+
       return true;
     } catch (e, stack) {
       developer.log(
@@ -117,17 +214,21 @@ class CloudProgressService {
     }
   }
 
-  /// Restores previous VIP progress from cloud storage after an app reset or reinstall.
+  /// Restores VIP progress from Cloud Firestore via Google Sign-In after an app reset or reinstall.
   ///
   /// Flow:
   /// 1. Re-verifies active Google Play Purchase / Subscription via [InAppPurchaseService.restorePurchases].
-  /// 2. If verified as VIP, retrieves cloud snapshot and restores full student progress.
-  Future<CloudRestoreResult> restoreVipProgress() async {
+  /// 2. If verified as VIP, signs in the parent with Google (if not already signed in).
+  /// 3. Retrieves cloud document from Cloud Firestore under `vip_students/{uid}`.
+  /// 4. Reconstructs full student profile, stars, completed chapters, and test scores.
+  Future<CloudRestoreResult> restoreVipProgress({bool promptGoogleSignIn = true}) async {
     isSyncingNotifier.value = true;
 
     try {
       // 1. Verify Google Play purchases first
-      await InAppPurchaseService.instance.restorePurchases();
+      if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
+        await InAppPurchaseService.instance.restorePurchases();
+      }
 
       // Check if user is VIP (Subscribed, Lifetime pass, or Closed Tester)
       if (!isVipEligible) {
@@ -137,37 +238,53 @@ class CloudProgressService {
         );
       }
 
-      // 2. Retrieve Cloud Snapshot
       Map<String, dynamic>? snapshotData;
 
-      // Check SharedPreferences mirror first (Auto Backup restores SharedPreferences)
-      final prefs = await SharedPreferences.getInstance();
-      final storedSnapshot = prefs.getString('curio_vip_cached_cloud_snapshot');
-      if (storedSnapshot != null && storedSnapshot.isNotEmpty) {
-        try {
-          snapshotData = jsonDecode(storedSnapshot) as Map<String, dynamic>;
-        } catch (_) {}
+      // 2. Query Cloud Firestore if Firebase is active
+      if (isFirebaseAvailable) {
+        User? user = currentUser;
+        if (user == null && promptGoogleSignIn) {
+          final cred = await signInWithGoogle();
+          user = cred?.user;
+          if (user == null) {
+            return const CloudRestoreResult(
+              status: CloudRestoreStatus.cancelled,
+              message: 'Google Sign-In was cancelled.',
+            );
+          }
+        }
+
+        if (user != null) {
+          final doc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(user.uid)
+              .get();
+
+          if (doc.exists && doc.data() != null) {
+            snapshotData = doc.data();
+          }
+        }
       }
 
-      // Check backup file as secondary source
-      if (snapshotData == null && !kIsWeb) {
-        try {
-          final file = File(_backupFileName);
-          if (await file.exists()) {
-            final content = await file.readAsString();
-            snapshotData = jsonDecode(content) as Map<String, dynamic>;
-          }
-        } catch (_) {}
+      // 3. Fallback to local snapshot mirror (for offline recovery or test environments)
+      if (snapshotData == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final storedSnapshot = prefs.getString(_keyCachedSnapshot);
+        if (storedSnapshot != null && storedSnapshot.isNotEmpty) {
+          try {
+            snapshotData = jsonDecode(storedSnapshot) as Map<String, dynamic>;
+          } catch (_) {}
+        }
       }
 
       if (snapshotData == null) {
         return const CloudRestoreResult(
           status: CloudRestoreStatus.noBackupFound,
-          message: 'VIP membership restored, but no previous cloud progress backup was found.',
+          message: 'VIP membership is verified, but no previous cloud progress backup was found for this Google account.',
         );
       }
 
-      // 3. Apply snapshot to LocalStorageService
+      // 4. Restore progress into local storage
       await LocalStorageService.instance.restoreProgressSnapshot(snapshotData);
 
       final stars = (snapshotData['stars'] as num?)?.toInt() ?? 0;
@@ -180,9 +297,10 @@ class CloudProgressService {
 
       return CloudRestoreResult(
         status: CloudRestoreStatus.success,
-        message: 'Welcome back! All your stars, chapters, and progress have been restored.',
+        message: 'Welcome back! All your stars, chapters, and progress have been restored from your Google account.',
         restoredStars: stars,
         studentName: studentName,
+        accountEmail: googleAccountEmail,
       );
     } catch (e, stack) {
       developer.log(
