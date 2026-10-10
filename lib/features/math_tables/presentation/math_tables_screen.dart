@@ -1451,7 +1451,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   }
 
   void _showPracticeResultDialog(bool isHindi) {
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
     final total = _practiceQuestions.length;
     final pct = total > 0 ? ((_practiceScore / total) * 100).round() : 0;
 
@@ -1638,7 +1638,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
 
   void _showQuizResultDialog(bool isHindi) {
     _quizTimer?.cancel();
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
     final total = _quizQuestions.length;
     final pct = total > 0 ? ((_quizScore / total) * 100).round() : 0;
 

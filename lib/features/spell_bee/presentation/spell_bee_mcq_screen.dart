@@ -116,7 +116,7 @@ class _SpellBeeMcqScreenState extends ConsumerState<SpellBeeMcqScreen> {
   }
 
   void _showResultDialog() {
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
     final total = _questions.length;
     final pct = total > 0 ? ((_score / (total * 10)) * 100).round() : 0;
     final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';

@@ -112,7 +112,7 @@ class _SplitScreenDuelScreenState extends ConsumerState<SplitScreenDuelScreen> {
 
   void _onVictory(int winner) {
     AudioService.instance.playSfx(CurioSfx.applause);
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
     setState(() {
       _winner = winner;
     });

@@ -417,7 +417,7 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
     if (!mounted) return;
 
     AudioService.instance.playSfx(CurioSfx.starAward);
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
     final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
 
     showDialog(

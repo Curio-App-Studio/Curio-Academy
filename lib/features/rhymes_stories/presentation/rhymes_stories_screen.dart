@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/audio/audio_service.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../../../presentation/widgets/ad_banner_widget.dart';
+import '../../../services/ad_service.dart';
 import '../domain/rhyme_story_model.dart';
 import 'widgets/animated_story_scene.dart';
 import 'widgets/animated_rhyme_stage.dart';
@@ -166,6 +167,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
             _speakingRhymeLineIndex = null;
           });
         }
+        AdService().recordRhymeCompleted();
       },
     );
   }
@@ -192,6 +194,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
           _speakingRhymeLineIndex = null;
         });
       }
+      AdService().recordRhymeCompleted();
       return;
     }
 
@@ -326,6 +329,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
             _isAutoReadingStory = false;
           });
         }
+        AdService().recordStoryCompleted();
       },
     );
   }

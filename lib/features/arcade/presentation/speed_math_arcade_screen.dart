@@ -179,7 +179,7 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
       await LocalStorageService.instance.addBonusStars(starsEarned);
     }
 
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
 
     if (mounted) setState(() {});
   }

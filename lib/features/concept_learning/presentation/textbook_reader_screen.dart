@@ -6,6 +6,7 @@ import '../../../data/models/chapter_model.dart';
 import '../../../data/models/student_profile.dart';
 import '../../../data/services/concept_reading_service.dart';
 import '../../../data/services/literature_reading_service.dart';
+import '../../../services/ad_service.dart';
 import '../../../shared/components/language_switch_button.dart';
 
 /// Full-Screen Interactive Digital Textbook Reader
@@ -904,6 +905,9 @@ class _TextbookReaderScreenState extends ConsumerState<TextbookReaderScreen> {
                 height: 50,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    if (isLiterature) {
+                      AdService().recordStoryCompleted();
+                    }
                     Navigator.of(context).pop();
                     widget.onStartPractice();
                   },

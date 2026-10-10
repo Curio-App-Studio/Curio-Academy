@@ -272,7 +272,7 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
     }
 
     AudioService.instance.playSfx(CurioSfx.applause);
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
   }
 
   @override

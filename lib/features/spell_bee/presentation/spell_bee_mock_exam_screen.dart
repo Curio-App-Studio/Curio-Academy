@@ -178,7 +178,7 @@ class _SpellBeeMockExamScreenState extends ConsumerState<SpellBeeMockExamScreen>
     });
 
     AudioService.instance.playSfx(CurioSfx.applause);
-    AdService().showInterstitialAdIfReady();
+    AdService().recordTestCompleted();
   }
 
   @override

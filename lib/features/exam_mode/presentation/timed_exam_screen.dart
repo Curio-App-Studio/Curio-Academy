@@ -9,6 +9,7 @@ import '../../../data/models/activity_model.dart';
 import '../../../data/models/chapter_model.dart';
 import '../../../data/models/student_attempt_model.dart';
 import '../../../data/repositories/curriculum_repository.dart';
+import '../../../services/ad_service.dart';
 import '../models/exam_model.dart';
 import 'exam_report_card_dialog.dart';
 
@@ -388,6 +389,7 @@ class _TimedExamScreenState extends ConsumerState<TimedExamScreen> {
     );
 
     AudioService.instance.playSfx(CurioSfx.applause);
+    AdService().recordTestCompleted();
 
     if (mounted) {
       ExamReportCardDialog.show(
