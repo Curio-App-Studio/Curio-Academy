@@ -35,8 +35,8 @@ void main() {
       expect(activities.any((a) => a.targetGrade == 'Class 8'), isTrue);
     });
 
-    test('Correctly parses chapters_data.json across all 10 grades with pedagogical concept notes', () {
-      final file = File('assets/curriculum/chapters_data.json');
+    test('Correctly parses math_chapters.json across all 10 grades with pedagogical concept notes', () {
+      final file = File('assets/curriculum/math_chapters.json');
       expect(file.existsSync(), isTrue);
 
       final jsonContent = file.readAsStringSync();
@@ -312,7 +312,7 @@ void main() {
     });
 
     test('Differentiates CBSE and ICSE chapters across classes and validates Class 8 questions', () {
-      final file = File('assets/curriculum/chapters_data.json');
+      final file = File('assets/curriculum/math_chapters.json');
       final dynamic list = json.decode(file.readAsStringSync());
       final allChapters = (list as List)
           .map((item) => Chapter.fromJson(item as Map<String, dynamic>))

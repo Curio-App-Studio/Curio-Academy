@@ -7,6 +7,7 @@ import '../../../data/local/local_storage_service.dart';
 import '../../../data/models/activity_model.dart';
 import '../../../data/models/chapter_model.dart';
 import '../../../data/repositories/curriculum_repository.dart';
+import '../../../presentation/widgets/ad_banner_widget.dart';
 import '../../../shared/components/gamified_card.dart';
 import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
 import '../../activities/card_match/presentation/card_match_screen.dart';
@@ -14,6 +15,12 @@ import '../../activities/concept_quiz/presentation/concept_challenge_screen.dart
 import '../../activities/drag_drop/presentation/fraction_cauldron_screen.dart';
 import '../../activities/grid_calc/presentation/equation_solver_screen.dart';
 import '../../concept_learning/presentation/concept_lesson_sheet.dart';
+import '../../concept_learning/presentation/textbook_reader_screen.dart';
+import '../../diagram_explorer/presentation/diagram_explorer_sheet.dart';
+import '../../../data/services/literature_reading_service.dart';
+import '../../exam_mode/presentation/timed_exam_screen.dart';
+import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/hindi_curriculum_translator.dart';
 import '../../../shared/components/language_switch_button.dart';
 
 /// Dedicated Chapter View: Shows only this chapter's concept lesson and practice activities
@@ -52,9 +59,6 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
           final opts = (a.interactionPayload['options'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
           return opts.any((o) => o.contains('clause') || o.contains('predicate') || o.contains('prepositional'));
         });
-    // For kindergarten (LKG/UKG), children require interactive activities (Bubble Pop) rather than reading text MCQs
-    final hasTextMcqInKindergarten = isKindergarten &&
-        candidateActivities.any((a) => a.activityType == ActivityType.mcq);
     final hasBubbleWithOptions = isKindergarten &&
         candidateActivities.any((a) =>
             a.activityType == ActivityType.bubblePop &&
@@ -67,12 +71,20 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
           text.contains('what is the governing formula') ||
           text.contains('primary study focus of');
     });
+    final hasOnlyBubblePop = isKindergarten &&
+        candidateActivities.isNotEmpty &&
+        candidateActivities.every((a) => a.activityType == ActivityType.bubblePop);
+    final hasMcqInKindergarten = isKindergarten &&
+        candidateActivities.any((a) => a.activityType == ActivityType.mcq);
+    final isShortHindi = (ch.subjectId == 'hindi' || ch.chapterId.startsWith('hin_')) &&
+        !isKindergarten &&
+        candidateActivities.length < 5;
 
-    if (candidateActivities.isEmpty || hasDuplicates || hasInappropriateDistractors || hasTextMcqInKindergarten || hasBubbleWithOptions || hasObsoleteBoilerplate) {
+    if (candidateActivities.isEmpty || hasDuplicates || hasInappropriateDistractors || hasBubbleWithOptions || hasObsoleteBoilerplate || hasOnlyBubblePop || hasMcqInKindergarten || isShortHindi) {
       final generated = _repository.generateActivitiesForChapter(
         ch.chapterId,
         activeProfile.studentClass,
-        count: 3,
+        count: 5,
         chapter: ch,
       );
       LocalStorageService.instance.saveChapterActivities(ch.chapterId, generated);
@@ -129,6 +141,10 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => targetScreen),
     ).then((_) {
+      final refreshed = LocalStorageService.instance.getChapterActivities(_currentChapter.chapterId);
+      if (refreshed != null && refreshed.isNotEmpty) {
+        _currentChapter = _currentChapter.copyWith(activities: refreshed);
+      }
       setState(() {});
     });
   }
@@ -136,16 +152,26 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final activeProfile = ref.watch(studentProfileProvider);
+    final strings = ref.strings;
+    final isHindi = strings.isHindi;
+    final isLiterature = LiteratureReadingService.instance.isLiteratureChapter(_currentChapter);
     final tierTheme = Theme.of(context).extension<CurioTierTheme>() ?? CurioTierTheme.primaryBuilder();
     final nextIndex = LocalStorageService.instance.getNextQuestionIndexForChapter(
       _currentChapter.chapterId,
       _currentChapter.activities,
     );
 
+    final displayTitle = isHindi
+        ? HindiCurriculumTranslator.translateChapterTitle(_currentChapter.title)
+        : _currentChapter.title;
+    final displayDesc = isHindi
+        ? HindiCurriculumTranslator.translateChapterDescription(_currentChapter.description, _currentChapter.title)
+        : _currentChapter.description;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Ch ${_currentChapter.chapterNumber}: ${_currentChapter.title}',
+          isHindi ? 'अध्याय ${_currentChapter.chapterNumber}: $displayTitle' : 'Ch ${_currentChapter.chapterNumber}: ${_currentChapter.title}',
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
           overflow: TextOverflow.ellipsis,
         ),
@@ -189,7 +215,9 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
             tooltip: 'Read Aloud',
             onPressed: () {
               AudioService.instance.speakPrompt(
-                'Chapter ${_currentChapter.chapterNumber}: ${_currentChapter.title}. ${_currentChapter.description}',
+                isHindi
+                    ? 'अध्याय ${_currentChapter.chapterNumber}: $displayTitle। $displayDesc'
+                    : 'Chapter ${_currentChapter.chapterNumber}: ${_currentChapter.title}. ${_currentChapter.description}',
               );
             },
           ),
@@ -243,32 +271,77 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEA580C).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${activeProfile.board.shortCode} • ${_currentChapter.grade} • CHAPTER ${_currentChapter.chapterNumber}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFFC2410C),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEA580C).withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${activeProfile.board.shortCode} • ${_currentChapter.grade}${_currentChapter.bookTitle != null ? ' • ${_currentChapter.bookTitle}' : ''} • CH ${_currentChapter.chapterNumber}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFFC2410C),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 6),
+                                Builder(
+                                  builder: (_) {
+                                    final isCompleted = LocalStorageService.instance.isChapterCompleted(_currentChapter.chapterId);
+                                    final answerCount = LocalStorageService.instance.getChapterAnswerCount(_currentChapter.chapterId);
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isCompleted ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        isCompleted
+                                            ? (isHindi ? 'पूरा हुआ ⭐' : 'COMPLETED ⭐')
+                                            : (isHindi ? '$answerCount/5 उत्तर' : '$answerCount/5 Answers'),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          color: isCompleted ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _currentChapter.title,
+                              displayTitle,
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF1E293B),
                               ),
                             ),
+                            if (_currentChapter.author != null && _currentChapter.author!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                isHindi ? 'रचयिता: ${_currentChapter.author}' : 'By ${_currentChapter.author}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFC2410C),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -276,7 +349,7 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _currentChapter.description,
+                    displayDesc,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -290,6 +363,9 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                       spacing: 6,
                       runSpacing: 4,
                       children: _currentChapter.keyConcepts.map((concept) {
+                        final translatedConcept = isHindi
+                            ? HindiCurriculumTranslator.translateConcept(concept)
+                            : concept;
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -298,7 +374,7 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                             border: Border.all(color: const Color(0xFFFDBA74).withValues(alpha: 0.5)),
                           ),
                           child: Text(
-                            concept,
+                            translatedConcept,
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -316,17 +392,34 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                         child: OutlinedButton(
                           onPressed: () {
                             AudioService.instance.playSfx(CurioSfx.click);
-                            ConceptLessonSheet.show(
-                              context,
-                              chapter: _currentChapter,
-                              profile: activeProfile,
-                              onStartPractice: () {
-                                if (_currentChapter.activities.isNotEmpty) {
-                                  final safeIndex = nextIndex.clamp(0, _currentChapter.activities.length - 1);
-                                  _launchActivity(_currentChapter.activities[safeIndex], safeIndex);
-                                }
-                              },
-                            );
+                            if (isLiterature) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TextbookReaderScreen(
+                                    chapter: _currentChapter,
+                                    profile: activeProfile,
+                                    onStartPractice: () {
+                                      if (_currentChapter.activities.isNotEmpty) {
+                                        final safeIndex = nextIndex.clamp(0, _currentChapter.activities.length - 1);
+                                        _launchActivity(_currentChapter.activities[safeIndex], safeIndex);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ConceptLessonSheet.show(
+                                context,
+                                chapter: _currentChapter,
+                                profile: activeProfile,
+                                onStartPractice: () {
+                                  if (_currentChapter.activities.isNotEmpty) {
+                                    final safeIndex = nextIndex.clamp(0, _currentChapter.activities.length - 1);
+                                    _launchActivity(_currentChapter.activities[safeIndex], safeIndex);
+                                  }
+                                },
+                              );
+                            }
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFFC2410C),
@@ -335,18 +428,20 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('📖', style: TextStyle(fontSize: 15)),
-                              SizedBox(width: 6),
+                              const Text('📖', style: TextStyle(fontSize: 15)),
+                              const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  'Learn Concept',
+                                  isLiterature
+                                      ? (isHindi ? 'कहानी पढ़ें' : 'Read Story')
+                                      : (isHindi ? 'अवधारणा सीखें' : 'Learn Concept'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                                 ),
                               ),
                             ],
@@ -377,7 +472,9 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  nextIndex == 0 ? 'Start Practice 🚀' : 'Resume (Q${nextIndex + 1}) 🚀',
+                                  isHindi
+                                      ? (nextIndex == 0 ? 'अभ्यास शुरू करें 🚀' : 'जारी रखें (Q${nextIndex + 1}) 🚀')
+                                      : (nextIndex == 0 ? 'Start Practice 🚀' : 'Resume (Q${nextIndex + 1}) 🚀'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.white),
@@ -387,6 +484,130 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        AudioService.instance.playSfx(CurioSfx.click);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TextbookReaderScreen(
+                              chapter: _currentChapter,
+                              profile: activeProfile,
+                              onStartPractice: () {
+                                if (_currentChapter.activities.isNotEmpty) {
+                                  final safeIndex = nextIndex.clamp(0, _currentChapter.activities.length - 1);
+                                  _launchActivity(_currentChapter.activities[safeIndex], safeIndex);
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        isLiterature ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
+                        color: const Color(0xFFC2410C),
+                        size: 18,
+                      ),
+                      label: Text(
+                        isLiterature
+                            ? (isHindi ? '📖 संपूर्ण कहानी / कविता पढ़ें (Full Text)' : '📖 Read Complete Story / Poem (Full Text)')
+                            : (isHindi ? '📖 सम्पूर्ण डिजिटल पाठ्यपुस्तक (NCERT/ICSE)' : '📖 Read Complete Digital Textbook'),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFC2410C),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFF7ED),
+                        side: const BorderSide(color: Color(0xFFFDBA74), width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            AudioService.instance.playSfx(CurioSfx.click);
+                            final isEnglish = _currentChapter.subjectId == 'english';
+                            final isScience = _currentChapter.subjectId == 'science';
+                            final isEvs = _currentChapter.subjectId == 'evs';
+                            final isHindi = _currentChapter.subjectId == 'hindi';
+                            final subName = isEnglish
+                                ? strings.english
+                                : isScience
+                                    ? strings.science
+                                    : isEvs
+                                        ? strings.evsShort
+                                        : isHindi
+                                            ? strings.hindiShort
+                                            : strings.math;
+                            final primCol = isEnglish
+                                ? const Color(0xFF6366F1)
+                                : isScience
+                                    ? const Color(0xFF10B981)
+                                    : isEvs
+                                        ? const Color(0xFF059669)
+                                        : isHindi
+                                            ? const Color(0xFFEA580C)
+                                            : const Color(0xFFFF7B25);
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TimedExamScreen(
+                                  chapter: _currentChapter,
+                                  subjectId: _currentChapter.subjectId,
+                                  subjectName: subName,
+                                  primaryColor: primCol,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Text('📝', style: TextStyle(fontSize: 15)),
+                          label: Text(
+                            strings.takeExam,
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF0F172A),
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      if (_currentChapter.subjectId == 'science' || _currentChapter.subjectId == 'evs') ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              AudioService.instance.playSfx(CurioSfx.click);
+                              DiagramExplorerSheet.show(context);
+                            },
+                            icon: const Text('🔬', style: TextStyle(fontSize: 15)),
+                            label: Text(
+                              strings.exploreDiagram,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF059669),
+                              backgroundColor: const Color(0xFFECFDF5),
+                              side: const BorderSide(color: Color(0xFFA7F3D0), width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -401,7 +622,9 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                 const Text('⚡', style: TextStyle(fontSize: 20)),
                 const SizedBox(width: 8),
                 Text(
-                  'Practice Questions (${_currentChapter.activities.length})',
+                  isHindi
+                      ? 'अभ्यास प्रश्न (${_currentChapter.activities.length})'
+                      : 'Practice Questions (${_currentChapter.activities.length})',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -440,14 +663,45 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                 return _buildActivityCard(activity, idx + 1, tierTheme, nextIndex);
               }),
 
+            const SizedBox(height: 16),
+            // Start Chapter Practice / Test Action
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (_currentChapter.activities.isNotEmpty) {
+                    AudioService.instance.playSfx(CurioSfx.click);
+                    _launchActivity(_currentChapter.activities.first, 0);
+                  }
+                },
+                icon: const Icon(Icons.play_circle_fill_rounded, size: 20, color: Colors.white),
+                label: Text(
+                  strings.chapterTest,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  elevation: 2,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+
             const SizedBox(height: 30),
           ],
         ),
       ),
+      bottomNavigationBar: const AdBannerWidget(),
     );
   }
 
   Widget _buildActivityCard(Activity activity, int index, CurioTierTheme tierTheme, int nextIndex) {
+    final strings = ref.strings;
+    final isHindi = strings.isHindi;
+
     final visualIcon = activity.interactionPayload['visualIcon'] as String? ??
         (activity.activityType == ActivityType.bubblePop
             ? '🫧'
@@ -459,13 +713,19 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                         ? '⚖️'
                         : '📝'))));
 
-    final topicTitle = (activity.interactionPayload['topicTitle'] as String? ??
+    final rawTopicTitle = (activity.interactionPayload['topicTitle'] as String? ??
             activity.chapterName ??
-            activity.activityType.name)
-        .toUpperCase();
+            activity.activityType.name);
+    final topicTitle = isHindi
+        ? HindiCurriculumTranslator.translateChapterTitle(rawTopicTitle)
+        : rawTopicTitle.toUpperCase();
 
     final attempt = LocalStorageService.instance.getQuestionAttempt(activity.activityId);
     final isNextUp = (index - 1) == nextIndex;
+
+    final displayedPrompt = isHindi
+        ? HindiCurriculumTranslator.translatePrompt(activity.promptData.text)
+        : activity.promptData.text;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -498,7 +758,7 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          'QUESTION $index',
+                          isHindi ? 'प्रश्न $index' : 'QUESTION $index',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
@@ -515,7 +775,9 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            attempt.isCorrect ? '✓ Done' : '⚠️ Attempted',
+                            attempt.isCorrect
+                                ? (isHindi ? '✓ पूरा' : '✓ Done')
+                                : (isHindi ? '⚠️ प्रयास किया' : '⚠️ Attempted'),
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w900,
@@ -531,9 +793,9 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                             color: const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            '▶ NEXT UP',
-                            style: TextStyle(
+                          child: Text(
+                            isHindi ? '▶ अगला' : '▶ NEXT UP',
+                            style: const TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFD97706),
@@ -558,7 +820,7 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    activity.promptData.text,
+                    displayedPrompt,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -581,8 +843,12 @@ class _ChapterDetailScreenState extends ConsumerState<ChapterDetailScreen> {
               ),
               child: Text(
                 attempt != null
-                    ? (attempt.isCorrect ? 'Review' : 'Retry')
-                    : (isNextUp ? 'Play 🚀' : 'Play'),
+                    ? (attempt.isCorrect
+                        ? (isHindi ? 'समीक्षा' : 'Review')
+                        : (isHindi ? 'पुनः प्रयास' : 'Retry'))
+                    : (isNextUp
+                        ? (isHindi ? 'शुरू करें 🚀' : 'Play 🚀')
+                        : (isHindi ? 'खेलें' : 'Play')),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/audio/audio_service.dart';
+import '../../../../data/local/local_storage_service.dart';
 import '../../../../data/models/activity_model.dart';
 import '../../../../data/services/procedural_question_generator.dart';
 import '../../../../shared/components/curio_button.dart';
@@ -67,6 +68,7 @@ class _EquationSolverScreenState extends State<EquationSolverScreen> {
     if (payload != null && payload.containsKey('equation') && payload.containsKey('stepsRequired')) {
       _currentEquation = payload['equation'] as String? ?? '3x - 7 = 14';
       final rawSteps = payload['stepsRequired'] as List<dynamic>;
+      final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
 
       _steps = List.generate(rawSteps.length, (idx) {
         final stepMap = rawSteps[idx] as Map<String, dynamic>;
@@ -78,22 +80,28 @@ class _EquationSolverScreenState extends State<EquationSolverScreen> {
           final isAdd = action.contains('add');
           return EquationStep(
             stepNumber: 1,
-            question: 'Step 1: Isolate the variable term. What operation should you apply to both sides?',
-            correctExplanation: isAdd
-                ? 'Correct! Adding $op to both sides cancels the subtraction: resulting in $res.'
-                : 'Correct! Subtracting $op from both sides balances the equation: resulting in $res.',
+            question: isHindi
+                ? 'चरण 1: चर पद (Variable term) को अलग करें। दोनों पक्षों में कौन सी संक्रिया लागू करें?'
+                : 'Step 1: Isolate the variable term. What operation should you apply to both sides?',
+            correctExplanation: isHindi
+                ? (isAdd
+                    ? 'सही उत्तर! दोनों पक्षों में $op जोड़ने पर: $res प्राप्त होता है।'
+                    : 'सही उत्तर! दोनों पक्षों से $op घटाने पर: $res प्राप्त होता है।')
+                : (isAdd
+                    ? 'Correct! Adding $op to both sides cancels the subtraction: resulting in $res.'
+                    : 'Correct! Subtracting $op from both sides balances the equation: resulting in $res.'),
             options: isAdd
                 ? [
-                    'Add $op to both sides (+ $op)',
-                    'Subtract $op from both sides (- $op)',
-                    'Multiply both sides by $op',
-                    'Divide both sides by 2',
+                    isHindi ? 'दोनों पक्षों में $op जोड़ें (+ $op)' : 'Add $op to both sides (+ $op)',
+                    isHindi ? 'दोनों पक्षों से $op घटाएं (- $op)' : 'Subtract $op from both sides (- $op)',
+                    isHindi ? 'दोनों पक्षों को $op से गुणा करें' : 'Multiply both sides by $op',
+                    isHindi ? 'दोनों पक्षों को 2 से भाग दें' : 'Divide both sides by 2',
                   ]
                 : [
-                    'Subtract $op from both sides (- $op)',
-                    'Add $op to both sides (+ $op)',
-                    'Multiply both sides by $op',
-                    'Divide both sides by 2',
+                    isHindi ? 'दोनों पक्षों से $op घटाएं (- $op)' : 'Subtract $op from both sides (- $op)',
+                    isHindi ? 'दोनों पक्षों में $op जोड़ें (+ $op)' : 'Add $op to both sides (+ $op)',
+                    isHindi ? 'दोनों पक्षों को $op से गुणा करें' : 'Multiply both sides by $op',
+                    isHindi ? 'दोनों पक्षों को 2 से भाग दें' : 'Divide both sides by 2',
                   ],
             correctOptionIndex: 0,
             resultingEquation: res,
@@ -101,13 +109,17 @@ class _EquationSolverScreenState extends State<EquationSolverScreen> {
         } else {
           return EquationStep(
             stepNumber: 2,
-            question: 'Step 2: Solve for x. What inverse operation isolates x?',
-            correctExplanation: 'Bravo! Dividing both sides by $op isolates x: resulting in $res.',
+            question: isHindi
+                ? 'चरण 2: x का मान निकालें। कौन सी संक्रिया x को अलग करती है?'
+                : 'Step 2: Solve for x. What inverse operation isolates x?',
+            correctExplanation: isHindi
+                ? 'शाबाश! दोनों पक्षों को $op से भाग देने पर x अलग होता है: $res'
+                : 'Bravo! Dividing both sides by $op isolates x: resulting in $res.',
             options: [
-              'Subtract $op from both sides (- $op)',
-              'Divide both sides by $op (÷ $op)',
-              'Multiply both sides by $op (× $op)',
-              'Add $op to both sides (+ $op)',
+              isHindi ? 'दोनों पक्षों से $op घटाएं (- $op)' : 'Subtract $op from both sides (- $op)',
+              isHindi ? 'दोनों पक्षों को $op से भाग दें (÷ $op)' : 'Divide both sides by $op (÷ $op)',
+              isHindi ? 'दोनों पक्षों को $op से गुणा करें (× $op)' : 'Multiply both sides by $op (× $op)',
+              isHindi ? 'दोनों पक्षों में $op जोड़ें (+ $op)' : 'Add $op to both sides (+ $op)',
             ],
             correctOptionIndex: 1,
             resultingEquation: res,

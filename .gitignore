@@ -52,3 +52,7 @@ app.*.map.json
 key.properties
 **/android/key.properties
 **/android/app/*.jks
+
+# Release artifacts & scratch
+*.aab
+scratch/

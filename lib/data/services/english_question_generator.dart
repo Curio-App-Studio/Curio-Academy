@@ -56,8 +56,11 @@ class EnglishQuestionGenerator {
   }) {
     final title = chapter.title.toLowerCase();
 
-    // Kindergarten (LKG & UKG) gets 100% interactive, voice-narrated Bubble Pop activities!
+    // Kindergarten (LKG & UKG) gets early childhood interactive games: Card Match & Bubble Pop (ZERO MCQs!)
     if (studentClass.isKindergarten) {
+      if (questionIndex % 2 == 0) {
+        return _generateKindergartenEnglishCardMatch(chapter, studentClass, questionIndex);
+      }
       if (title.contains('phonics') || title.contains('letter sound') || title.contains('alphabet')) {
         return _generateLkgPhonicsBubblePop(chapter, studentClass, questionIndex);
       } else if (title.contains('rhyming')) {
@@ -1856,6 +1859,121 @@ class EnglishQuestionGenerator {
       ),
       chapterId: chapter.chapterId,
       chapterName: chapter.title,
+    );
+  }
+
+  Activity _generateKindergartenEnglishCardMatch(Chapter ch, StudentClass sc, int idx) {
+    final title = ch.title.toLowerCase();
+    List<Map<String, dynamic>> pairs;
+    String prompt;
+
+    if (title.contains('phonics') || title.contains('letter sound') || title.contains('alphabet')) {
+      final pools = [
+        [
+          {'key': 'A', 'itemA': 'Letter A', 'emojiA': '🅰️', 'itemB': 'Apple', 'emojiB': '🍎'},
+          {'key': 'B', 'itemA': 'Letter B', 'emojiA': '🅱️', 'itemB': 'Ball', 'emojiB': '⚽'},
+          {'key': 'C', 'itemA': 'Letter C', 'emojiA': '©️', 'itemB': 'Cat', 'emojiB': '🐱'},
+        ],
+        [
+          {'key': 'D', 'itemA': 'Letter D', 'emojiA': '🇩', 'itemB': 'Duck', 'emojiB': '🦆'},
+          {'key': 'E', 'itemA': 'Letter E', 'emojiA': '🇪', 'itemB': 'Elephant', 'emojiB': '🐘'},
+          {'key': 'F', 'itemA': 'Letter F', 'emojiA': '🇫', 'itemB': 'Fish', 'emojiB': '🐟'},
+        ],
+        [
+          {'key': 'S', 'itemA': 'Letter S', 'emojiA': '🇸', 'itemB': 'Sun', 'emojiB': '☀️'},
+          {'key': 'T', 'itemA': 'Letter T', 'emojiA': '🇹', 'itemB': 'Tree', 'emojiB': '🌲'},
+          {'key': 'M', 'itemA': 'Letter M', 'emojiA': '🇲', 'itemB': 'Moon', 'emojiB': '🌙'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match each letter with its picture!';
+    } else if (title.contains('rhym')) {
+      final pools = [
+        [
+          {'key': 'cat_hat', 'itemA': 'Cat 🐱', 'emojiA': '🐱', 'itemB': 'Hat 🎩', 'emojiB': '🎩'},
+          {'key': 'dog_frog', 'itemA': 'Dog 🐶', 'emojiA': '🐶', 'itemB': 'Frog 🐸', 'emojiB': '🐸'},
+          {'key': 'sun_bun', 'itemA': 'Sun ☀️', 'emojiA': '☀️', 'itemB': 'Bun 🍞', 'emojiB': '🍞'},
+        ],
+        [
+          {'key': 'bat_rat', 'itemA': 'Bat 🦇', 'emojiA': '🦇', 'itemB': 'Rat 🐀', 'emojiB': '🐀'},
+          {'key': 'car_star', 'itemA': 'Car 🚗', 'emojiA': '🚗', 'itemB': 'Star ⭐', 'emojiB': '⭐'},
+          {'key': 'bear_pear', 'itemA': 'Bear 🐻', 'emojiA': '🐻', 'itemB': 'Pear 🍐', 'emojiB': '🍐'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match the rhyming pairs!';
+    } else if (title.contains('opposite') || title.contains('antonym')) {
+      final pools = [
+        [
+          {'key': 'up_down', 'itemA': 'Up ⬆️', 'emojiA': '🎈', 'itemB': 'Down ⬇️', 'emojiB': '⚓'},
+          {'key': 'big_small', 'itemA': 'Big 🐘', 'emojiA': '🐘', 'itemB': 'Small 🐭', 'emojiB': '🐭'},
+          {'key': 'hot_cold', 'itemA': 'Hot ☀️', 'emojiA': '🔥', 'itemB': 'Cold ❄️', 'emojiB': '🍦'},
+        ],
+        [
+          {'key': 'happy_sad', 'itemA': 'Happy 😊', 'emojiA': '😄', 'itemB': 'Sad 😢', 'emojiB': '😭'},
+          {'key': 'day_night', 'itemA': 'Day ☀️', 'emojiA': '🌤️', 'itemB': 'Night 🌙', 'emojiB': '🌌'},
+          {'key': 'open_closed', 'itemA': 'Open 🚪', 'emojiA': '📂', 'itemB': 'Closed 🔒', 'emojiB': '📁'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match the opposite pairs!';
+    } else if (title.contains('action') || title.contains('animal') || title.contains('sound') || title.contains('doing word')) {
+      final pools = [
+        [
+          {'key': 'dog_woof', 'itemA': 'Dog 🐶', 'emojiA': '🐶', 'itemB': 'Woof Woof 🦴', 'emojiB': '🦴'},
+          {'key': 'cat_meow', 'itemA': 'Cat 🐱', 'emojiA': '🐱', 'itemB': 'Meow Meow 🐟', 'emojiB': '🐟'},
+          {'key': 'duck_quack', 'itemA': 'Duck 🦆', 'emojiA': '🦆', 'itemB': 'Quack Quack 🌊', 'emojiB': '🌊'},
+        ],
+        [
+          {'key': 'cow_moo', 'itemA': 'Cow 🐮', 'emojiA': '🐮', 'itemB': 'Moo Moo 🥛', 'emojiB': '🥛'},
+          {'key': 'lion_roar', 'itemA': 'Lion 🦁', 'emojiA': '🦁', 'itemB': 'Roar 👑', 'emojiB': '👑'},
+          {'key': 'bird_chirp', 'itemA': 'Bird 🐦', 'emojiA': '🐦', 'itemB': 'Chirp Chirp 🪺', 'emojiB': '🪺'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match each animal to its sound!';
+    } else {
+      // General fun learning / letters / shapes
+      final pools = [
+        [
+          {'key': 'A_apple', 'itemA': 'Letter A', 'emojiA': '🅰️', 'itemB': 'Apple', 'emojiB': '🍎'},
+          {'key': 'B_ball', 'itemA': 'Letter B', 'emojiA': '🅱️', 'itemB': 'Ball', 'emojiB': '⚽'},
+          {'key': 'C_cat', 'itemA': 'Letter C', 'emojiA': '©️', 'itemB': 'Cat', 'emojiB': '🐱'},
+        ],
+        [
+          {'key': 'D_duck', 'itemA': 'Letter D', 'emojiA': '🇩', 'itemB': 'Duck', 'emojiB': '🦆'},
+          {'key': 'S_star', 'itemA': 'Letter S', 'emojiA': '🇸', 'itemB': 'Star', 'emojiB': '⭐'},
+          {'key': 'T_tree', 'itemA': 'Letter T', 'emojiA': '🇹', 'itemB': 'Tree', 'emojiB': '🌲'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match the fun learning pairs!';
+    }
+
+    return Activity(
+      activityId: 'eng_k_match_${DateTime.now().microsecondsSinceEpoch}_$idx',
+      topicId: ch.chapterId,
+      subjectId: 'english',
+      targetGrade: sc.label,
+      gradeTier: GradeTier.earlyExplorer,
+      activityType: ActivityType.cardMatch,
+      difficultyLevel: 1,
+      pointsReward: 20,
+      promptData: PromptData(
+        text: prompt,
+        ttsFallback: prompt,
+      ),
+      interactionPayload: {
+        'topicTitle': ch.title,
+        'visualIcon': '🃏',
+        'pairs': pairs,
+      },
+      validationRule: const ValidationRule(
+        format: 'set_match',
+        expectedAnswer: [],
+      ),
+      chapterId: ch.chapterId,
+      chapterName: ch.title,
     );
   }
 

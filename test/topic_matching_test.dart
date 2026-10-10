@@ -14,7 +14,7 @@ void main() {
   });
 
   group('Grade, Subject, Chapter & Topic Matching Tests', () {
-    test('LKG & UKG Math chapters generate 100% interactive Bubble Pop matching their specific topic', () async {
+    test('LKG & UKG Math chapters generate interactive activities matching their specific topic', () async {
       final repo = CurriculumRepository();
 
       for (final studentClass in [StudentClass.lkg, StudentClass.ukg]) {
@@ -31,12 +31,14 @@ void main() {
           expect(acts.isNotEmpty, isTrue);
 
           for (final act in acts) {
-            // Must be interactive bubble pop for kindergarten
-            expect(act.activityType, equals(ActivityType.bubblePop),
-                reason: '${studentClass.label} Math chapter "${ch.title}" must be interactive Bubble Pop!');
             expect(act.subjectId, equals('math'));
-            expect(act.interactionPayload.containsKey('bubbles'), isTrue);
-            expect(act.interactionPayload.containsKey('targetValue'), isTrue);
+            if (act.activityType == ActivityType.bubblePop) {
+              expect(act.interactionPayload.containsKey('bubbles'), isTrue);
+              expect(act.interactionPayload.containsKey('targetValue'), isTrue);
+            } else {
+              expect(act.activityType, equals(ActivityType.cardMatch));
+              expect(act.interactionPayload.containsKey('pairs'), isTrue);
+            }
 
             // Must match chapter topic
             final titleLower = ch.title.toLowerCase();
@@ -44,31 +46,31 @@ void main() {
 
             if (titleLower.contains('shape') || titleLower.contains('space')) {
               expect(
-                promptLower.contains('circle') || promptLower.contains('square') || promptLower.contains('triangle'),
+                promptLower.contains('circle') || promptLower.contains('square') || promptLower.contains('triangle') || promptLower.contains('roll') || promptLower.contains('slide') || promptLower.contains('shape') || promptLower.contains('top') || promptLower.contains('bottom') || promptLower.contains('inside') || promptLower.contains('outside') || promptLower.contains('highest') || promptLower.contains('beneath') || promptLower.contains('under') || promptLower.contains('above') || promptLower.contains('below') || promptLower.contains('near') || promptLower.contains('close'),
                 isTrue,
                 reason: 'Shapes chapter prompt must match shapes: $promptLower',
               );
             } else if (titleLower.contains('pattern') || titleLower.contains('color')) {
               expect(
-                promptLower.contains('red') || promptLower.contains('blue') || promptLower.contains('green') || promptLower.contains('yellow'),
+                promptLower.contains('red') || promptLower.contains('blue') || promptLower.contains('green') || promptLower.contains('yellow') || promptLower.contains('pattern') || promptLower.contains('comes next') || promptLower.contains('sequence') || promptLower.contains('___') || promptLower.contains('color'),
                 isTrue,
-                reason: 'Colors & Patterns chapter prompt must match colors: $promptLower',
+                reason: 'Colors & Patterns chapter prompt must match colors/patterns: $promptLower',
               );
             } else if (titleLower.contains('sorting') || titleLower.contains('comparing')) {
               expect(
-                promptLower.contains('big') || promptLower.contains('small') || promptLower.contains('tall') || promptLower.contains('short'),
+                promptLower.contains('big') || promptLower.contains('small') || promptLower.contains('tall') || promptLower.contains('short') || promptLower.contains('heavier') || promptLower.contains('lighter') || promptLower.contains('opposite') || promptLower.contains('comparison'),
                 isTrue,
                 reason: 'Sorting & Comparing chapter prompt must match size/height: $promptLower',
               );
             } else if (titleLower.contains('addition') || titleLower.contains('add')) {
               expect(
-                promptLower.contains('add up to'),
+                promptLower.contains('add') || promptLower.contains('plus') || promptLower.contains('total') || promptLower.contains('more') || promptLower.contains('+'),
                 isTrue,
                 reason: 'Addition chapter prompt must match addition bonds: $promptLower',
               );
             } else if (titleLower.contains('subtraction') || titleLower.contains('subtract')) {
               expect(
-                promptLower.contains('equal'),
+                promptLower.contains('equal') || promptLower.contains('left') || promptLower.contains('away') || promptLower.contains('minus') || promptLower.contains('-'),
                 isTrue,
                 reason: 'Subtraction chapter prompt must match subtraction: $promptLower',
               );

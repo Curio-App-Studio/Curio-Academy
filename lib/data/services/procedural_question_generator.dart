@@ -2465,6 +2465,12 @@ class ProceduralQuestionGenerator {
   /// keyConcepts, rules, exampleQuestion, and description.
   /// GUARANTEED: Zero class name in prompts, rich diversity across question types, no repeated boilerplate.
   Activity generateConceptQuestionsForChapter(Chapter chapter, StudentClass studentClass, {int? variant}) {
+    if (studentClass.isKindergarten) {
+      final v = variant ?? 0;
+      return (v % 2 == 1)
+          ? _generateKindergartenMathCardMatch(chapter, studentClass, v + 1)
+          : _generateKindergartenMathBubblePop(chapter, studentClass, v + 1);
+    }
     final v = variant ?? _rng.nextInt(6);
     String prompt = '';
     String answer = '';
@@ -2486,16 +2492,62 @@ class ProceduralQuestionGenerator {
       answer = chapter.exampleAnswer!;
       explanation = chapter.exampleExplanation ?? 'This follows the core concept of ${chapter.title}.';
       final distractors = <String>[];
-      final digitsOnly = answer.replaceAll(RegExp(r'[^0-9]'), '');
-      if (digitsOnly.isNotEmpty && int.tryParse(digitsOnly) != null) {
-        final numVal = int.parse(digitsOnly);
-        final unit = answer.replaceAll(RegExp(r'[0-9]'), '').trim();
-        final unitSuffix = unit.isNotEmpty ? ' $unit' : '';
-        distractors.add('${numVal + 2}$unitSuffix');
-        distractors.add('${max(1, numVal - 2)}$unitSuffix');
-        distractors.add('${numVal + 5}$unitSuffix');
+      final isPlaceValue = prompt.toLowerCase().contains('place value') ||
+          prompt.toLowerCase().contains('face value');
+
+      // Check for parenthetical format: e.g. "70 (7 tens)" or "20 (twenty)"
+      final parenMatch = RegExp(r'^(\d+)\s*\((.*?)\)$').firstMatch(answer);
+      final currencyOrUnitMatch = RegExp(r'^([₹$]?\s*)(\d+)(\s*[a-zA-Z°%]*)$').firstMatch(answer);
+
+      if (isPlaceValue && parenMatch != null) {
+        final valStr = parenMatch.group(1)!; // e.g. "70"
+        final desc = parenMatch.group(2)!.toLowerCase(); // e.g. "7 tens"
+        final leadDigit = valStr.isNotEmpty ? valStr[0] : '7';
+
+        if (desc.contains('tens')) {
+          distractors.add('$leadDigit ($leadDigit ones)');
+          distractors.add('${leadDigit}00 ($leadDigit hundreds)');
+          distractors.add('$leadDigit (Face value)');
+        } else if (desc.contains('hundreds')) {
+          distractors.add('${leadDigit}0 ($leadDigit tens)');
+          distractors.add('$leadDigit ($leadDigit ones)');
+          distractors.add('$leadDigit (Face value)');
+        } else {
+          distractors.add('${leadDigit}0 ($leadDigit tens)');
+          distractors.add('${leadDigit}00 ($leadDigit hundreds)');
+          distractors.add('$leadDigit (Face value)');
+        }
+      } else if (isPlaceValue && int.tryParse(answer.trim()) != null) {
+        final leadDigit = answer.trim()[0];
+        distractors.add(leadDigit);
+        distractors.add('${leadDigit}0');
+        distractors.add('${leadDigit}00');
+        distractors.remove(answer.trim());
+      } else if (parenMatch != null) {
+        final numVal = int.tryParse(parenMatch.group(1)!);
+        final label = parenMatch.group(2)!;
+        if (numVal != null) {
+          distractors.add('${numVal + 2} ($label)');
+          distractors.add('${max(1, numVal - 2)} ($label)');
+          distractors.add('${numVal + 5} ($label)');
+        }
+      } else if (currencyOrUnitMatch != null) {
+        final prefix = currencyOrUnitMatch.group(1) ?? '';
+        final numVal = int.parse(currencyOrUnitMatch.group(2)!);
+        final suffix = currencyOrUnitMatch.group(3) ?? '';
+        distractors.add('$prefix${numVal + 2}$suffix');
+        distractors.add('$prefix${max(1, numVal - 2)}$suffix');
+        distractors.add('$prefix${numVal + 5}$suffix');
       } else {
-        if (answer.toLowerCase().startsWith('yes')) {
+        final firstNumMatch = RegExp(r'\d+').firstMatch(answer);
+        if (firstNumMatch != null && int.tryParse(firstNumMatch.group(0)!) != null) {
+          final numVal = int.parse(firstNumMatch.group(0)!);
+          final before = answer.substring(0, firstNumMatch.start);
+          final after = answer.substring(firstNumMatch.end);
+          distractors.add('$before${numVal + 2}$after');
+          distractors.add('$before${max(1, numVal - 2)}$after');
+          distractors.add('$before${numVal + 5}$after');
+        } else if (answer.toLowerCase().startsWith('yes')) {
           distractors.addAll(['No, only in special cases', 'No, that is not possible', 'Only when numbers are equal']);
         } else if (answer.toLowerCase().startsWith('no')) {
           distractors.addAll(['Yes, always', 'Yes, in all conditions', 'Only for negative numbers']);
@@ -2903,6 +2955,129 @@ class ProceduralQuestionGenerator {
     );
   }
 
+  Activity _generateKindergartenMathCardMatch(Chapter ch, StudentClass sc, int idx) {
+    final title = ch.title.toLowerCase();
+    List<Map<String, dynamic>> pairs;
+    String prompt;
+
+    if (title.contains('shape') || title.contains('space')) {
+      final pools = [
+        [
+          {'key': 'circle', 'itemA': 'Circle 🔴', 'emojiA': '🔴', 'itemB': 'Round Wheel 🛞', 'emojiB': '🛞'},
+          {'key': 'square', 'itemA': 'Square 🟩', 'emojiA': '🟩', 'itemB': 'Square Box 📦', 'emojiB': '📦'},
+          {'key': 'triangle', 'itemA': 'Triangle 🔺', 'emojiA': '🔺', 'itemB': 'Pizza Slice 🍕', 'emojiB': '🍕'},
+        ],
+        [
+          {'key': 'star', 'itemA': 'Star ⭐', 'emojiA': '⭐', 'itemB': 'Shining Star 🌟', 'emojiB': '🌟'},
+          {'key': 'circle_coin', 'itemA': 'Circle ⭕', 'emojiA': '⭕', 'itemB': 'Round Coin 🪙', 'emojiB': '🪙'},
+          {'key': 'square_window', 'itemA': 'Square 🔲', 'emojiA': '🔲', 'itemB': 'Square Window 🪟', 'emojiB': '🪟'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match each shape with its matching object!';
+    } else if (title.contains('pattern') || title.contains('color')) {
+      final pools = [
+        [
+          {'key': 'red', 'itemA': 'Red 🔴', 'emojiA': '🔴', 'itemB': 'Red Apple 🍎', 'emojiB': '🍎'},
+          {'key': 'green', 'itemA': 'Green 🟢', 'emojiA': '🟢', 'itemB': 'Green Leaf 🍃', 'emojiB': '🍃'},
+          {'key': 'yellow', 'itemA': 'Yellow 🟡', 'emojiA': '🟡', 'itemB': 'Yellow Sun ☀️', 'emojiB': '☀️'},
+        ],
+        [
+          {'key': 'blue', 'itemA': 'Blue 🔵', 'emojiA': '🔵', 'itemB': 'Water Drop 💧', 'emojiB': '💧'},
+          {'key': 'orange', 'itemA': 'Orange 🟠', 'emojiA': '🟠', 'itemB': 'Orange Carrot 🥕', 'emojiB': '🥕'},
+          {'key': 'purple', 'itemA': 'Purple 🟣', 'emojiA': '🟣', 'itemB': 'Purple Grape 🍇', 'emojiB': '🍇'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match each color with its colorful item!';
+    } else if (title.contains('sorting') || title.contains('comparing') || title.contains('comparison')) {
+      final pools = [
+        [
+          {'key': 'big_small', 'itemA': 'Big 🐘', 'emojiA': '🐘', 'itemB': 'Small 🐭', 'emojiB': '🐭'},
+          {'key': 'tall_short', 'itemA': 'Tall 🦒', 'emojiA': '🦒', 'itemB': 'Short 🐢', 'emojiB': '🐢'},
+          {'key': 'heavy_light', 'itemA': 'Heavy 🪨', 'emojiA': '🪨', 'itemB': 'Light 🪶', 'emojiB': '🪶'},
+        ],
+        [
+          {'key': 'more_less', 'itemA': 'More 🍎🍎🍎', 'emojiA': '🍎', 'itemB': 'Less 🍏', 'emojiB': '🍏'},
+          {'key': 'hot_cold', 'itemA': 'Hot ☀️', 'emojiA': '🔥', 'itemB': 'Cold ❄️', 'emojiB': '🍦'},
+          {'key': 'fast_slow', 'itemA': 'Fast 🐆', 'emojiA': '🐆', 'itemB': 'Slow 🐌', 'emojiB': '🐌'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match the opposite and comparison pairs!';
+    } else if (title.contains('addition') || title.contains('add')) {
+      final pools = [
+        [
+          {'key': 'add_2', 'itemA': '1 + 1', 'emojiA': '➕', 'itemB': '2 Stars ⭐⭐', 'emojiB': '⭐⭐'},
+          {'key': 'add_3', 'itemA': '2 + 1', 'emojiA': '➕', 'itemB': '3 Stars ⭐⭐⭐', 'emojiB': '⭐⭐⭐'},
+          {'key': 'add_4', 'itemA': '2 + 2', 'emojiA': '➕', 'itemB': '4 Stars ⭐⭐⭐⭐', 'emojiB': '⭐⭐⭐⭐'},
+        ],
+        [
+          {'key': 'add_3b', 'itemA': '1 + 2', 'emojiA': '➕', 'itemB': '3️⃣', 'emojiB': '3️⃣'},
+          {'key': 'add_4b', 'itemA': '3 + 1', 'emojiA': '➕', 'itemB': '4️⃣', 'emojiB': '4️⃣'},
+          {'key': 'add_5b', 'itemA': '4 + 1', 'emojiA': '➕', 'itemB': '5️⃣', 'emojiB': '5️⃣'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match addition pairs to add up correctly!';
+    } else if (title.contains('subtraction') || title.contains('subtract')) {
+      final pools = [
+        [
+          {'key': 'sub_1', 'itemA': '2 - 1', 'emojiA': '➖', 'itemB': '1 Star ⭐', 'emojiB': '⭐'},
+          {'key': 'sub_2', 'itemA': '3 - 1', 'emojiA': '➖', 'itemB': '2 Stars ⭐⭐', 'emojiB': '⭐⭐'},
+          {'key': 'sub_3', 'itemA': '4 - 1', 'emojiA': '➖', 'itemB': '3 Stars ⭐⭐⭐', 'emojiB': '⭐⭐⭐'},
+        ],
+        [
+          {'key': 'sub_2b', 'itemA': '4 - 2', 'emojiA': '➖', 'itemB': '2️⃣', 'emojiB': '2️⃣'},
+          {'key': 'sub_3b', 'itemA': '5 - 2', 'emojiA': '➖', 'itemB': '3️⃣', 'emojiB': '3️⃣'},
+          {'key': 'sub_4b', 'itemA': '5 - 1', 'emojiA': '➖', 'itemB': '4️⃣', 'emojiB': '4️⃣'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match subtraction pairs with minus to equal correct number!';
+    } else {
+      // Numbers & Counting
+      final pools = [
+        [
+          {'key': '1', 'itemA': '1️⃣', 'emojiA': '1️⃣', 'itemB': '1 Star ⭐', 'emojiB': '⭐'},
+          {'key': '2', 'itemA': '2️⃣', 'emojiA': '2️⃣', 'itemB': '2 Stars ⭐⭐', 'emojiB': '⭐⭐'},
+          {'key': '3', 'itemA': '3️⃣', 'emojiA': '3️⃣', 'itemB': '3 Stars ⭐⭐⭐', 'emojiB': '⭐⭐⭐'},
+        ],
+        [
+          {'key': '3_apples', 'itemA': '3️⃣', 'emojiA': '3️⃣', 'itemB': '3 Apples 🍎🍎🍎', 'emojiB': '🍎'},
+          {'key': '4_balls', 'itemA': '4️⃣', 'emojiA': '4️⃣', 'itemB': '4 Balls ⚽⚽⚽⚽', 'emojiB': '⚽'},
+          {'key': '5_stars', 'itemA': '5️⃣', 'emojiA': '5️⃣', 'itemB': '5 Stars ⭐⭐⭐⭐⭐', 'emojiB': '⭐'},
+        ],
+      ];
+      pairs = pools[(idx - 1) % pools.length];
+      prompt = 'Match each number with the matching count!';
+    }
+
+    return Activity(
+      activityId: 'math_k_match_${DateTime.now().microsecondsSinceEpoch}_$idx',
+      topicId: ch.chapterId,
+      subjectId: 'math',
+      targetGrade: sc.label,
+      gradeTier: GradeTier.earlyExplorer,
+      activityType: ActivityType.cardMatch,
+      difficultyLevel: 1,
+      pointsReward: 20,
+      promptData: PromptData(
+        text: prompt,
+        ttsFallback: prompt,
+      ),
+      interactionPayload: {
+        'topicTitle': ch.title,
+        'visualIcon': '🃏',
+        'pairs': pairs,
+      },
+      validationRule: const ValidationRule(
+        format: 'set_match',
+        expectedAnswer: [],
+      ),
+    );
+  }
+
   // =========================================================================
   // Class 1 Primary Math Generators
   // =========================================================================
@@ -2911,6 +3086,9 @@ class ProceduralQuestionGenerator {
 
     if (title.contains('shape') || title.contains('space')) {
       return generateShapesAndSpaceProblem(targetGrade: sc.label, variant: idx);
+    }
+    if (title.contains('sorting') || title.contains('comparing') || title.contains('comparison')) {
+      return generateClass1MeasurementProblem(variant: idx);
     }
     if (title.contains('addition') || title.contains('add')) {
       return generateClass1AdditionProblem(variant: idx);
@@ -3146,9 +3324,34 @@ class ProceduralQuestionGenerator {
   }
 
   Activity generateClass1NumbersProblem({int? variant}) {
-    final v = variant ?? _rng.nextInt(8);
+    final v = variant ?? _rng.nextInt(12);
+    final mode = v % 3;
+
+    if (mode == 0) {
+      final count = (v % 5) + 1; // 1 to 5
+      final fruits = ['🍎', '⭐', '🎈', '🐶', '🚗'];
+      final fruit = fruits[(v ~/ 3) % fruits.length];
+      final items = fruit * count;
+      final prompt = 'Count the items: $items. How many are there in total?';
+      final ans = '$count';
+      final options = ['$count', '${count + 1}', '${max(1, count - 1)}', '${count + 2}']..shuffle(_rng);
+
+      return _buildMathMcq(
+        id: 'c1_num_count_${DateTime.now().microsecondsSinceEpoch}_$v',
+        targetGrade: 'Class 1',
+        gradeTier: GradeTier.earlyExplorer,
+        topicId: 'topic_c1_numbers',
+        topicTitle: 'Counting Numbers',
+        prompt: prompt,
+        answer: ans,
+        options: options,
+        explanation: 'Count the items one by one: there are $count items in total ($items).',
+        visualIcon: '🔢',
+      );
+    }
+
     final num = (v % 8) + 2; // 2 to 9
-    final isAfter = (v % 2 == 0);
+    final isAfter = (mode == 1);
     final prompt = isAfter
         ? 'What number comes immediately AFTER $num?'
         : 'What number comes immediately BEFORE $num?';
@@ -3289,9 +3492,14 @@ class ProceduralQuestionGenerator {
 
     Activity Function(int variant) generator;
 
-    // 1. Kindergarten Tier (LKG & UKG) - 100% interactive, voice-guided Bubble Pop
+    // 1. Kindergarten Tier (LKG & UKG) - early childhood game activities: Bubble Pop & Card Match (ZERO MCQs!)
     if (studentClass.isKindergarten) {
-      generator = (v) => _generateKindergartenMathBubblePop(chapter, studentClass, v + 1);
+      generator = (v) {
+        if (v % 2 == 1) {
+          return _generateKindergartenMathCardMatch(chapter, studentClass, v + 1);
+        }
+        return _generateKindergartenMathBubblePop(chapter, studentClass, v + 1);
+      };
     }
     // 2. Class 1 Primary Math - age-appropriate, concrete foundations
     else if (studentClass == StudentClass.class1) {
@@ -3393,7 +3601,13 @@ class ProceduralQuestionGenerator {
         attempts++;
         candidate = generator(i + attempts);
         if (attempts >= 10) {
-          candidate = generateConceptQuestionsForChapter(chapter, studentClass, variant: attempts);
+          if (studentClass.isKindergarten) {
+            candidate = ((i + attempts) % 2 == 1)
+                ? _generateKindergartenMathCardMatch(chapter, studentClass, attempts + 1)
+                : _generateKindergartenMathBubblePop(chapter, studentClass, attempts + 1);
+          } else {
+            candidate = generateConceptQuestionsForChapter(chapter, studentClass, variant: attempts);
+          }
         }
       }
 
@@ -3402,7 +3616,7 @@ class ProceduralQuestionGenerator {
       final tagged = Activity(
         activityId: '${chapter.chapterId}_${candidate.activityId}',
         topicId: candidate.topicId,
-        subjectId: candidate.subjectId,
+        subjectId: chapter.subjectId.isNotEmpty ? chapter.subjectId : candidate.subjectId,
         targetGrade: candidate.targetGrade,
         gradeTier: candidate.gradeTier,
         activityType: candidate.activityType,

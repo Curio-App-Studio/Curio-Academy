@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/audio/audio_service.dart';
+import '../../../../core/localization/hindi_curriculum_translator.dart';
+import '../../../../data/local/local_storage_service.dart';
 import '../../../../data/models/activity_model.dart';
 import '../../../../data/services/procedural_question_generator.dart';
 import '../../../../shared/components/curio_progress_bar.dart';
@@ -81,14 +83,14 @@ class _FractionCauldronScreenState extends State<FractionCauldronScreen> {
     }
 
     _totalTargetCount = _cards.where((c) => c.isEquivalent).length;
-    _mascotMessage = 'Drag all fractions equal to $_targetBaseString into the Golden Cauldron!';
+    final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
+    final rawPrompt = act?.promptData.ttsFallback ?? act?.promptData.text ?? 'Drag all fractions equal to $_targetBaseString into the Golden Cauldron!';
+    final prompt = isHindi ? HindiCurriculumTranslator.translatePrompt(rawPrompt) : rawPrompt;
+    _mascotMessage = prompt;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      AudioService.instance.speakPrompt(
-        act?.promptData.ttsFallback ??
-            'Drag all fractions equivalent to $_targetBaseString into the Golden Cauldron!',
-      );
+      AudioService.instance.speakPrompt(prompt);
     });
   }
 

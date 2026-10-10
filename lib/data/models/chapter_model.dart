@@ -18,6 +18,9 @@ class Chapter {
   final String? funFact;
   final String? mascotAdvice;
   final String subjectId;
+  final String? publisher; // e.g. 'orient_blackswan', 'miranda', 'ncert', 'grammar'
+  final String? author; // e.g. 'Enid Blyton', 'माखनलाल चतुर्वेदी'
+  final String? bookTitle; // e.g. 'New Magnolia English Reader 4', 'मृदुला 4'
   final List<String> activityIds;
   List<Activity> activities;
 
@@ -28,6 +31,9 @@ class Chapter {
     required this.grade,
     this.board = 'cbse',
     this.subjectId = 'math',
+    this.publisher,
+    this.author,
+    this.bookTitle,
     required this.icon,
     this.description = '',
     this.keyConcepts = const [],
@@ -53,6 +59,9 @@ class Chapter {
       subjectId: (json['subjectId'] as String?)?.toLowerCase() ?? 'math',
       icon: json['icon'] as String? ?? '📖',
       description: json['description'] as String? ?? '',
+      publisher: json['publisher'] as String?,
+      author: json['author'] as String?,
+      bookTitle: json['bookTitle'] as String?,
       keyConcepts: (json['keyConcepts'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -81,6 +90,9 @@ class Chapter {
         'grade': grade,
         'board': board,
         'subjectId': subjectId,
+        if (publisher != null) 'publisher': publisher,
+        if (author != null) 'author': author,
+        if (bookTitle != null) 'bookTitle': bookTitle,
         'icon': icon,
         'description': description,
         'keyConcepts': keyConcepts,
@@ -100,6 +112,9 @@ class Chapter {
     String? grade,
     String? board,
     String? subjectId,
+    String? publisher,
+    String? author,
+    String? bookTitle,
     String? icon,
     String? description,
     List<String>? keyConcepts,
@@ -119,6 +134,9 @@ class Chapter {
       grade: grade ?? this.grade,
       board: board ?? this.board,
       subjectId: subjectId ?? this.subjectId,
+      publisher: publisher ?? this.publisher,
+      author: author ?? this.author,
+      bookTitle: bookTitle ?? this.bookTitle,
       icon: icon ?? this.icon,
       description: description ?? this.description,
       keyConcepts: keyConcepts ?? this.keyConcepts,

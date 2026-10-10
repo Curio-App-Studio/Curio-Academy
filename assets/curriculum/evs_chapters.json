@@ -1,0 +1,1809 @@
+[
+  {
+    "chapterId": "evs_lkg_ch01",
+    "chapterNumber": 1,
+    "title": "Our Five Senses",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👀",
+    "description": "Explore our eyes, ears, nose, tongue, and skin that help us experience the world!",
+    "keyConcepts": [
+      "Sense of Sight",
+      "Sense of Hearing",
+      "Sense of Smell",
+      "Sense of Taste",
+      "Sense of Touch"
+    ],
+    "rules": [
+      "Eyes help us see bright colors and shapes.",
+      "Ears help us listen to songs and voices.",
+      "Nose helps us smell sweet flowers."
+    ],
+    "exampleQuestion": "Which sense organ helps us taste yummy ice cream?",
+    "exampleExplanation": "Our tongue has tiny taste buds that sense sweet, salty, and sour tastes.",
+    "exampleAnswer": "The tongue helps us taste! 👅",
+    "funFact": "Butterflies can taste sweet nectar using their tiny feet!",
+    "mascotAdvice": "Look around and name three colorful things you see right now!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch02",
+    "chapterNumber": 2,
+    "title": "My Wonderful Body",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧒",
+    "description": "Learn about our head, arms, hands, fingers, legs, and toes!",
+    "keyConcepts": [
+      "Head and Hair",
+      "Hands and Fingers",
+      "Legs and Feet"
+    ],
+    "rules": [
+      "We use hands to hold, draw, and clap.",
+      "We use legs and feet to walk, jump, and run."
+    ],
+    "exampleQuestion": "How many fingers do we have on both hands together?",
+    "exampleExplanation": "Each hand has five fingers, so two hands have 5 + 5 = 10 fingers.",
+    "exampleAnswer": "Ten fingers! 🖐️🖐️",
+    "funFact": "No two people in the world have the exact same fingerprints!",
+    "mascotAdvice": "Clap your hands three times to celebrate learning your body parts!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch03",
+    "chapterNumber": 3,
+    "title": "My Loving Family",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👨‍👩‍👧‍👦",
+    "description": "Meet mother, father, brothers, sisters, and grandparents who care for us.",
+    "keyConcepts": [
+      "Parents",
+      "Grandparents",
+      "Brothers and Sisters"
+    ],
+    "rules": [
+      "Parents take care of children with love.",
+      "Grandparents tell wonderful bedtime stories."
+    ],
+    "exampleQuestion": "Who cooks nutritious food and helps us get ready for school?",
+    "exampleExplanation": "Parents and family members work together to take care of our home.",
+    "exampleAnswer": "Our loving parents and family! ❤️",
+    "funFact": "Elephants also live in big families called herds led by the oldest mother elephant!",
+    "mascotAdvice": "Give a warm hug to your family members today!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch04",
+    "chapterNumber": 4,
+    "title": "Animals and Their Young Ones",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🐾",
+    "description": "Discover friendly animal mothers and their playful baby animals.",
+    "keyConcepts": [
+      "Puppies and Kittens",
+      "Calves and Chicks",
+      "Ducklings and Lambs"
+    ],
+    "rules": [
+      "A baby dog is called a puppy.",
+      "A baby cat is called a kitten.",
+      "A baby hen is called a chick."
+    ],
+    "exampleQuestion": "What is a cute baby cat called?",
+    "exampleExplanation": "A mother cat gives birth to soft and playful kittens.",
+    "exampleAnswer": "A kitten! 🐱",
+    "funFact": "Baby kangaroos are smaller than a jellybean when they are born and stay safe in mother's pouch!",
+    "mascotAdvice": "Imitate the gentle sound of a kitten meowing!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch05",
+    "chapterNumber": 5,
+    "title": "Healthy Fruits and Vegetables",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🍎",
+    "description": "Discover crunchy apples, sweet bananas, orange carrots, and green spinach.",
+    "keyConcepts": [
+      "Fresh Fruits",
+      "Green Vegetables",
+      "Washing Produce"
+    ],
+    "rules": [
+      "Fruits and vegetables give us vitamins to stay strong.",
+      "Always wash fruits with clean water before eating."
+    ],
+    "exampleQuestion": "Which sweet yellow fruit is peeled before eating?",
+    "exampleExplanation": "Bananas have a soft yellow peel that is easy to remove.",
+    "exampleAnswer": "A banana! 🍌",
+    "funFact": "Apples can actually float in water because 25 percent of their volume is air!",
+    "mascotAdvice": "Try eating a rainbow of colorful vegetables every week!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch06",
+    "chapterNumber": 6,
+    "title": "Plants and Pretty Flowers",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌸",
+    "description": "Explore green leaves, colorful flower petals, and sweet garden fragrances.",
+    "keyConcepts": [
+      "Green Leaves",
+      "Bright Petals",
+      "Watering Plants"
+    ],
+    "rules": [
+      "Plants need sunshine, soil, and water to grow.",
+      "Flowers attract bees and pretty butterflies."
+    ],
+    "exampleQuestion": "What liquid do we pour on soil so plants don't wilt?",
+    "exampleExplanation": "Plants drink water through their roots under the ground.",
+    "exampleAnswer": "Clean water! 💧🌱",
+    "funFact": "Sunflowers turn their faces toward the sun as it moves across the sky!",
+    "mascotAdvice": "Touch flower petals gently so they stay healthy and beautiful!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch07",
+    "chapterNumber": 7,
+    "title": "Seasons and Weather",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "☀️",
+    "description": "Feel warm sunshine, splash in rainy puddles, and wear cozy winter caps.",
+    "keyConcepts": [
+      "Sunny Summer",
+      "Rainy Monsoon",
+      "Cozy Winter"
+    ],
+    "rules": [
+      "We wear cool cotton clothes in summer.",
+      "We use umbrellas and raincoats when it rains."
+    ],
+    "exampleQuestion": "What do we carry over our head to stay dry when it rains?",
+    "exampleExplanation": "An umbrella shields us from falling raindrops.",
+    "exampleAnswer": "An umbrella! ☔",
+    "funFact": "Rainbows appear when sunlight shines through falling rain droplets in the sky!",
+    "mascotAdvice": "Look out the window and tell if today is sunny, cloudy, or rainy!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_lkg_ch08",
+    "chapterNumber": 8,
+    "title": "Day, Night and the Sky",
+    "grade": "LKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌙",
+    "description": "Look up at the bright daytime sun, white clouds, and twinkling night stars.",
+    "keyConcepts": [
+      "Morning Sun",
+      "Floating Clouds",
+      "Night Moon and Stars"
+    ],
+    "rules": [
+      "The sun gives us daylight and energy.",
+      "The moon and stars glow peacefully in the dark night sky."
+    ],
+    "exampleQuestion": "When do we see the glowing moon and twinkling stars?",
+    "exampleExplanation": "After the sun sets, the sky becomes dark and stars shine at night.",
+    "exampleAnswer": "At night time! 🌙✨",
+    "funFact": "The moon does not have its own light; it reflects light from the sun like a mirror!",
+    "mascotAdvice": "Say goodnight to the moon before you close your eyes to sleep!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch01",
+    "chapterNumber": 1,
+    "title": "Parts of a Plant",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌱",
+    "description": "Understand roots, stems, green leaves, flowers, and delicious fruits.",
+    "keyConcepts": [
+      "Roots Under Soil",
+      "Stem Support",
+      "Leaves Making Food",
+      "Flowers and Fruits"
+    ],
+    "rules": [
+      "Roots hold the plant tightly in the soil.",
+      "Leaves make food for the plant using sunlight."
+    ],
+    "exampleQuestion": "Which part of the plant stays hidden underground in the soil?",
+    "exampleExplanation": "Roots grow beneath the soil to absorb water and minerals.",
+    "exampleAnswer": "The roots! 🥕🌱",
+    "funFact": "Carrots and radishes are actually thick edible plant roots!",
+    "mascotAdvice": "Notice how the green stem holds leaves up to catch the sunlight!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch02",
+    "chapterNumber": 2,
+    "title": "Animal Homes and Sounds",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏡",
+    "description": "Visit kennels, bird nests, lion dens, beehives, and cow sheds.",
+    "keyConcepts": [
+      "Nests and Burrows",
+      "Kennels and Stables",
+      "Animal Sounds"
+    ],
+    "rules": [
+      "Birds build cozy nests on trees.",
+      "Lions live in rocky dens in the forest."
+    ],
+    "exampleQuestion": "Where do honeybees live and store their sweet honey?",
+    "exampleExplanation": "Bees build hexagonal wax honeycombs in a beehive.",
+    "exampleAnswer": "A beehive! 🐝🍯",
+    "funFact": "Weaver birds tie knots with grass blades to weave waterproof hanging nests!",
+    "mascotAdvice": "Treat all animals and their homes with kindness and care!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch03",
+    "chapterNumber": 3,
+    "title": "Living and Non-Living Things",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧸",
+    "description": "Discover that living things grow, breathe, and eat, while toys do not.",
+    "keyConcepts": [
+      "Living Characteristics",
+      "Non-Living Objects",
+      "Growing Bigger"
+    ],
+    "rules": [
+      "Living things breathe air, eat food, and grow.",
+      "Non-living things like chairs and toys cannot grow."
+    ],
+    "exampleQuestion": "Does a wooden toy car need food and water to grow?",
+    "exampleExplanation": "A toy is non-living; it cannot breathe, eat, or grow bigger.",
+    "exampleAnswer": "No, a toy car is non-living! 🚗",
+    "funFact": "A giant oak tree started as a tiny acorn seed smaller than a marble!",
+    "mascotAdvice": "Observe how pets and plants grow bigger every month!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch04",
+    "chapterNumber": 4,
+    "title": "Water: Sources and Saving",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "💧",
+    "description": "Learn where water comes from and how to save every precious drop.",
+    "keyConcepts": [
+      "Rain and Rivers",
+      "Drinking and Cooking",
+      "Closing Leaky Taps"
+    ],
+    "rules": [
+      "Rain is the main natural source of fresh water.",
+      "Always close taps tightly after washing hands."
+    ],
+    "exampleQuestion": "Why must we never leave the washbasin tap running while brushing teeth?",
+    "exampleExplanation": "Turning off the tap saves buckets of fresh water from being wasted down the drain.",
+    "exampleAnswer": "To save clean water! 🚰",
+    "funFact": "Camels can drink over 100 liters of water in just ten minutes!",
+    "mascotAdvice": "Be a Curio Water Hero: check that all taps are closed tightly at home!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch05",
+    "chapterNumber": 5,
+    "title": "Keeping Clean and Healthy",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧼",
+    "description": "Master daily brushing, bathing, trimming nails, and washing hands with soap.",
+    "keyConcepts": [
+      "Hand Washing",
+      "Brushing Twice Daily",
+      "Clean Clothes"
+    ],
+    "rules": [
+      "Wash hands with soap before eating meals.",
+      "Brush teeth once in the morning and once before bedtime."
+    ],
+    "exampleQuestion": "For how many seconds should we scrub hands with soap before rinsing?",
+    "exampleExplanation": "Scrubbing hands for 20 seconds washes away microscopic germs completely.",
+    "exampleAnswer": "At least 20 seconds! 🧼⏱️",
+    "funFact": "Singing the Happy Birthday song twice takes about 20 seconds of hand-washing fun!",
+    "mascotAdvice": "Wash your hands whenever you return home from outdoor play!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch06",
+    "chapterNumber": 6,
+    "title": "Our Helpful Community Friends",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👮",
+    "description": "Meet doctors, teachers, police officers, firefighters, and postmen.",
+    "keyConcepts": [
+      "Doctors and Nurses",
+      "Firefighters",
+      "Teachers and Sanitation Helpers"
+    ],
+    "rules": [
+      "Doctors heal us when we are unwell.",
+      "Firefighters bravely put out dangerous fires."
+    ],
+    "exampleQuestion": "Who helps children learn reading, counting, and science in school?",
+    "exampleExplanation": "Teachers guide students patiently in classrooms every day.",
+    "exampleAnswer": "Our teacher! 🧑‍🏫",
+    "funFact": "Firefighter uniforms can withstand blazing flames up to 1000 degrees Celsius!",
+    "mascotAdvice": "Always say a cheerful 'Thank you' to helpers who keep our streets clean!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch07",
+    "chapterNumber": 7,
+    "title": "Means of Transport",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚗",
+    "description": "Explore traveling on roads, railways, water oceans, and flying in the sky.",
+    "keyConcepts": [
+      "Land Transport (Buses & Cars)",
+      "Water Transport (Ships & Boats)",
+      "Air Transport (Aeroplanes & Helicopters)"
+    ],
+    "rules": [
+      "Bicycles and cars travel on roads.",
+      "Aeroplanes fly high above clouds in the sky."
+    ],
+    "exampleQuestion": "Which vehicle runs on metal railway tracks and carries many passengers?",
+    "exampleExplanation": "Trains travel long distances smoothly on metal railway tracks.",
+    "exampleAnswer": "A train! 🚂",
+    "funFact": "High-speed bullet trains can travel faster than 300 kilometers per hour!",
+    "mascotAdvice": "Always wear a safety helmet when riding a bicycle or scooter!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_ukg_ch08",
+    "chapterNumber": 8,
+    "title": "Safety Rules and Good Habits",
+    "grade": "UKG",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚦",
+    "description": "Learn traffic lights, zebra crossings, and avoiding sharp or hot objects.",
+    "keyConcepts": [
+      "Traffic Light Colors",
+      "Zebra Crossing",
+      "Safe Play"
+    ],
+    "rules": [
+      "Red means STOP, Yellow means WAIT, Green means GO.",
+      "Cross the road holding an adult's hand on zebra crossings."
+    ],
+    "exampleQuestion": "What does the bright RED traffic signal instruct vehicles to do?",
+    "exampleExplanation": "Red is the universal signal for all vehicles to stop immediately.",
+    "exampleAnswer": "Stop! 🛑",
+    "funFact": "The white stripes of zebra crossings were inspired by the striped coat of wild zebras!",
+    "mascotAdvice": "Look left, right, and left again before stepping across any road!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch01",
+    "chapterNumber": 1,
+    "title": "All About Me and My Body",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧒",
+    "description": "Discover body parts, five sense organs, correct posture, and growing up.",
+    "keyConcepts": [
+      "External Body Organs",
+      "Five Senses Coordination",
+      "Good Posture and Growth"
+    ],
+    "rules": [
+      "Our neck helps our head turn in different directions.",
+      "Stand tall and sit straight to keep backbones healthy."
+    ],
+    "exampleQuestion": "Which sense organ warns us if a pot on the stove is too hot to touch?",
+    "exampleExplanation": "The skin has sensory receptors that feel heat, cold, roughness, and pain.",
+    "exampleAnswer": "Our skin (Sense of Touch)! ✋",
+    "funFact": "Human skin sheds about 30,000 to 40,000 dead skin cells every single minute!",
+    "mascotAdvice": "Keep your back straight when reading books to prevent back fatigue!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch02",
+    "chapterNumber": 2,
+    "title": "My Family and My Home",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏡",
+    "description": "Learn about nuclear and joint families, and different rooms in a peaceful home.",
+    "keyConcepts": [
+      "Nuclear Family",
+      "Joint Family",
+      "Rooms and Cleanliness"
+    ],
+    "rules": [
+      "A nuclear family has parents and their children.",
+      "A joint family includes grandparents, aunts, uncles, and cousins."
+    ],
+    "exampleQuestion": "Which room in the house is specifically designed for preparing cooked meals?",
+    "exampleExplanation": "Kitchens are equipped with stoves, clean water, and cooking utensils.",
+    "exampleAnswer": "The kitchen! 🍳",
+    "funFact": "Centuries ago, entire extended families lived together in castle compounds for mutual safety!",
+    "mascotAdvice": "Help your parents keep your study desk neat and tidy!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch03",
+    "chapterNumber": 3,
+    "title": "Food We Eat for Energy and Health",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🥗",
+    "description": "Explore energy-giving foods, body-building pulses, protective fruits, and water.",
+    "keyConcepts": [
+      "Energy Giving Foods",
+      "Body Building Foods",
+      "Protective Foods"
+    ],
+    "rules": [
+      "Rice, wheat, and potatoes give us energy to study and play.",
+      "Milk, pulses, and eggs help muscles grow strong."
+    ],
+    "exampleQuestion": "Which group of foods protects our body from falling ill: Sweets or Fresh Fruits?",
+    "exampleExplanation": "Fruits contain vitamins and minerals that boost natural immunity against illness.",
+    "exampleAnswer": "Fresh fruits and vegetables! 🍊🥦",
+    "funFact": "Carrots are packed with Vitamin A, which keeps eyesight sharp and clear!",
+    "mascotAdvice": "Drink at least 6 to 8 glasses of pure water every day!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch04",
+    "chapterNumber": 4,
+    "title": "Clothes We Wear in Different Seasons",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👕",
+    "description": "Understand light cotton in summer, warm wool in winter, and rain gear in monsoon.",
+    "keyConcepts": [
+      "Cotton from Plants",
+      "Wool from Sheep",
+      "Waterproof Raincoats"
+    ],
+    "rules": [
+      "Cotton clothes absorb sweat and keep us cool in hot weather.",
+      "Woollen sweaters trap body heat during cold winter."
+    ],
+    "exampleQuestion": "From which farm animal do we gently shear fleece to make warm woollen yarn?",
+    "exampleExplanation": "Sheep have thick fleece that is trimmed safely and spun into knitting wool.",
+    "exampleAnswer": "Sheep! 🐑",
+    "funFact": "Cotton plants produce soft fluffy seed bolls called cotton pods that are picked and spun into thread!",
+    "mascotAdvice": "Wear comfortable cotton clothes when playing outdoors in the sun!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch05",
+    "chapterNumber": 5,
+    "title": "Our Green Friends: Plants Around Us",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌿",
+    "description": "Differentiate big trees, bushy shrubs, soft herbs, climbers, and creeping vines.",
+    "keyConcepts": [
+      "Trees with Trunks",
+      "Shrubs and Herbs",
+      "Climbers and Creepers"
+    ],
+    "rules": [
+      "Trees like Banyan and Mango have hard woody trunks.",
+      "Climbers like Money Plant need support to climb upwards."
+    ],
+    "exampleQuestion": "What kind of plant is mint (pudina): a tall woody tree or a small soft herb?",
+    "exampleExplanation": "Mint has a soft, tender green stem, making it a culinary herb.",
+    "exampleAnswer": "A soft herb! 🌿",
+    "funFact": "Watermelon plants are creepers because their heavy fruits would break climbing stems!",
+    "mascotAdvice": "Never pluck leaves or flowers needlessly from living plants!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch06",
+    "chapterNumber": 6,
+    "title": "The Animal Kingdom Around Us",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🦁",
+    "description": "Classify domestic pets, farm animals, wild jungle beasts, birds, and insects.",
+    "keyConcepts": [
+      "Domestic Animals",
+      "Wild Animals",
+      "Birds and Insects"
+    ],
+    "rules": [
+      "Cows and goats provide nutritious milk.",
+      "Wild animals like tigers and bears hunt and live in natural forests."
+    ],
+    "exampleQuestion": "How many legs do crawling insects like ants, bees, and ladybugs have?",
+    "exampleExplanation": "All adult insects have exactly six jointed legs and three body parts.",
+    "exampleAnswer": "Six legs! 🐜🐞",
+    "funFact": "An ant can carry objects up to fifty times heavier than its own body weight!",
+    "mascotAdvice": "Keep a small shallow bowl of fresh water on balconies for thirsty birds in summer!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch07",
+    "chapterNumber": 7,
+    "title": "Cleanliness, Hygiene and Good Habits",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "✨",
+    "description": "Practice handwashing, dental care, short nails, exercise, and adequate sleep.",
+    "keyConcepts": [
+      "Daily Grooming",
+      "Exercise and Play",
+      "Restful Sleep"
+    ],
+    "rules": [
+      "Brush teeth twice daily to remove food particles and prevent cavities.",
+      "Children need 9 to 10 hours of sound sleep every night."
+    ],
+    "exampleQuestion": "Why must finger and toe nails be kept neatly trimmed and clean?",
+    "exampleExplanation": "Dirt and harmful bacteria collect under long nails and transfer into food during eating.",
+    "exampleAnswer": "To stop dirt and germs from entering our stomach! ✂️",
+    "funFact": "A good night's sleep allows the brain to organize everything learned during the day!",
+    "mascotAdvice": "Cover your mouth with a tissue or elbow whenever you sneeze or cough!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch08",
+    "chapterNumber": 8,
+    "title": "Safety First at Home, School and Road",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚦",
+    "description": "Follow playground safety, road crossing precautions, and sharp object care.",
+    "keyConcepts": [
+      "Road Safety and Footpaths",
+      "Bus and Playground Safety",
+      "Avoiding Fire and Sockets"
+    ],
+    "rules": [
+      "Always walk on pedestrian footpaths.",
+      "Never play with electric sockets, sharp knives, or burning matchsticks."
+    ],
+    "exampleQuestion": "Where is it safest to cross a busy road: anywhere or at the zebra crossing?",
+    "exampleExplanation": "Zebra crossings are clearly marked safe pedestrian crossing points.",
+    "exampleAnswer": "At the zebra crossing! 🦓🚶",
+    "funFact": "In some countries, school buses have fold-out stop signs to halt all surrounding traffic!",
+    "mascotAdvice": "Never push or run on stairs in school or apartment buildings!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch09",
+    "chapterNumber": 9,
+    "title": "Our Neighbourhood and Community Helpers",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏥",
+    "description": "Explore the local market, hospital, fire station, post office, and police post.",
+    "keyConcepts": [
+      "Neighbourhood Places",
+      "Emergency Services",
+      "Postal and Bank Services"
+    ],
+    "rules": [
+      "Doctors and nurses treat ill patients in hospitals.",
+      "Fire engines with sirens rush to extinguish fires quickly."
+    ],
+    "exampleQuestion": "What emergency number is dialed in India to call an ambulance for urgent medical help?",
+    "exampleExplanation": "Dialing 102 or 108 connects callers immediately to emergency medical ambulance services.",
+    "exampleAnswer": "Emergency 102 / 108! 🚑",
+    "funFact": "Modern fire engines carry their own water reservoirs and giant extendable hydraulic ladders!",
+    "mascotAdvice": "Keep emergency helpline numbers written clearly on your family pinboard!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class1_ch10",
+    "chapterNumber": 10,
+    "title": "Air and Water All Around Us",
+    "grade": "Class 1",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "💨",
+    "description": "Understand that clean air is everywhere, wind is moving air, and water is vital.",
+    "keyConcepts": [
+      "Invisible Air",
+      "Breeze and Strong Wind",
+      "Pure Drinking Water"
+    ],
+    "rules": [
+      "Air has no color, smell, or taste, but we can feel it when it moves.",
+      "Wind helps sailboats move and kites fly high."
+    ],
+    "exampleQuestion": "What happens to a deflated rubber balloon when we blow air into it?",
+    "exampleExplanation": "Air fills up the inside space, making the balloon expand and grow round.",
+    "exampleAnswer": "It expands because air occupies space! 🎈",
+    "funFact": "Earth's atmosphere of air protects our planet like a giant protective thermal blanket!",
+    "mascotAdvice": "Plant trees in your neighbourhood to keep the surrounding air fresh and clean!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch01",
+    "chapterNumber": 1,
+    "title": "Our Body and Internal Organs",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🫀",
+    "description": "Explore vital internal organs: brain, heart, lungs, stomach, bones, and muscles.",
+    "keyConcepts": [
+      "Brain and Thinking",
+      "Heart Pumping Blood",
+      "Lungs and Breathing",
+      "Stomach Digestion"
+    ],
+    "rules": [
+      "The brain inside the skull controls all our thoughts and actions.",
+      "The heart pumps oxygenated blood day and night without stopping."
+    ],
+    "exampleQuestion": "Which spongy organs inside our chest take in oxygen whenever we inhale?",
+    "exampleExplanation": "Our twin lungs expand to take in oxygen and contract to expel carbon dioxide.",
+    "exampleAnswer": "Our lungs! 🫁",
+    "funFact": "An adult human heart beats around 100,000 times every single day!",
+    "mascotAdvice": "Take deep breaths of fresh morning air to energize your lungs and brain!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch02",
+    "chapterNumber": 2,
+    "title": "Health, Hygiene and Good Posture",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧘",
+    "description": "Master a balanced diet, clean habits, correct sitting and standing posture, and rest.",
+    "keyConcepts": [
+      "Balanced Diet Portions",
+      "Correct Spinal Posture",
+      "Hygiene Routine"
+    ],
+    "rules": [
+      "Sit upright with feet flat on the floor to prevent back strain.",
+      "A balanced diet provides proteins, carbohydrates, vitamins, and minerals."
+    ],
+    "exampleQuestion": "What happens to our spine if we slouch continuously over phones or desks?",
+    "exampleExplanation": "Slouching curves the spine awkwardly, causing muscle soreness and poor posture.",
+    "exampleAnswer": "It causes back fatigue and stooped posture! 📏",
+    "funFact": "Standing tall with shoulders back improves blood flow and boosts mental alertness!",
+    "mascotAdvice": "Keep a 30 cm distance between your eyes and books or screens when studying!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch03",
+    "chapterNumber": 3,
+    "title": "Families, Relatives and Neighbours",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🤝",
+    "description": "Understand family genealogies, sharing responsibilities, and cooperative neighbourhoods.",
+    "keyConcepts": [
+      "Extended Family Relations",
+      "Sharing Home Chores",
+      "Neighbourhood Harmony"
+    ],
+    "rules": [
+      "Sharing housework ensures nobody gets overtired.",
+      "Kind neighbours celebrate festivals and support each other during emergencies."
+    ],
+    "exampleQuestion": "What do we call the parents of our mother and father?",
+    "exampleExplanation": "They are our maternal and paternal grandparents.",
+    "exampleAnswer": "Grandparents! 👴👵",
+    "funFact": "In honeybee colonies, every single bee has a specific job: nursing, foraging, or defending the hive!",
+    "mascotAdvice": "Greet your neighbours politely with a smile whenever you see them!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch04",
+    "chapterNumber": 4,
+    "title": "Food: Sources, Storage and Digestion",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🍲",
+    "description": "Trace food from agricultural farms to kitchen tables, and learn safe food storage.",
+    "keyConcepts": [
+      "Plants and Animals Food Sources",
+      "Raw vs Cooked Food",
+      "Safe Food Storage"
+    ],
+    "rules": [
+      "Grains, fruits, and vegetables come from farms.",
+      "Cooking softens food and destroys harmful bacteria."
+    ],
+    "exampleQuestion": "Why must leftover cooked food be kept covered in a cold refrigerator?",
+    "exampleExplanation": "Cold temperatures slow down bacterial growth, keeping food fresh for longer.",
+    "exampleAnswer": "To prevent spoilage and bacterial growth! ❄️🍛",
+    "funFact": "Honey found in ancient Egyptian pharaoh tombs over 3000 years old is still completely edible!",
+    "mascotAdvice": "Never waste food on your plate: take only as much as you can happily eat!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch05",
+    "chapterNumber": 5,
+    "title": "Houses We Live In and Seasonal Clothes",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏡",
+    "description": "Explore permanent pucca houses, temporary tents, stilt houses, and natural fibers.",
+    "keyConcepts": [
+      "Pucca and Kutcha Houses",
+      "Special Shelters (Houseboats & Igloos)",
+      "Natural and Synthetic Fibers"
+    ],
+    "rules": [
+      "Pucca houses built of bricks, cement, and steel are strong and long-lasting.",
+      "Houseboats float gently on tranquil lakes in Kashmir and Kerala."
+    ],
+    "exampleQuestion": "Why do people in rainy regions like Assam build houses on raised wooden stilts?",
+    "exampleExplanation": "Stilts keep the living floors high above rising floodwaters and damp soil.",
+    "exampleAnswer": "To stay safe from floods and crawling creatures! 🪵🏠",
+    "funFact": "Igloos made from compressed snow blocks stay warm inside because snow traps insulating air pockets!",
+    "mascotAdvice": "Air out your bedroom daily by opening windows for natural cross-ventilation!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch06",
+    "chapterNumber": 6,
+    "title": "Plants: Habitats, Uses and Care",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌳",
+    "description": "Discover desert cacti, water lilies, medicinal neem, timber trees, and plant care.",
+    "keyConcepts": [
+      "Plant Habitats",
+      "Medicinal and Industrial Uses",
+      "Caring for Greenery"
+    ],
+    "rules": [
+      "Neem and Tulsi leaves have natural medicinal germ-fighting qualities.",
+      "Trees provide timber, paper, rubber, and cool shade."
+    ],
+    "exampleQuestion": "Where do spiky cactus plants grow naturally: in dry deserts or wet swamps?",
+    "exampleExplanation": "Cacti store water in fleshy green stems and thrive in dry, arid desert environments.",
+    "exampleAnswer": "In dry deserts! 🌵",
+    "funFact": "The sacred Tulsi plant releases beneficial oxygen throughout both day and evening!",
+    "mascotAdvice": "Water indoor and outdoor plants during early morning or evening to reduce evaporation!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch07",
+    "chapterNumber": 7,
+    "title": "Animals: Habitats, Diets and Protection",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🐘",
+    "description": "Classify herbivores, carnivores, omnivores, animal adaptation, and wildlife compassion.",
+    "keyConcepts": [
+      "Herbivores, Carnivores, Omnivores",
+      "Land and Aquatic Habitats",
+      "Compassion for Animals"
+    ],
+    "rules": [
+      "Cows and deer eat plant grass (Herbivores).",
+      "Lions and eagles eat animal meat (Carnivores).",
+      "Bears and humans eat both (Omnivores)."
+    ],
+    "exampleQuestion": "Which animal diet category does a rabbit belong to: herbivore, carnivore, or omnivore?",
+    "exampleExplanation": "Rabbits feed exclusively on green vegetation, grass, and crunchy vegetables.",
+    "exampleAnswer": "Herbivore! 🐇🥕",
+    "funFact": "Blue whales are the largest creatures on Earth, yet they eat tiny shrimp-like krill!",
+    "mascotAdvice": "Never tease street or zoo animals; always treat animals with patience and kindness!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch08",
+    "chapterNumber": 8,
+    "title": "Air, Atmosphere and Wind Power",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🪁",
+    "description": "Examine properties of air, gentle breezes, storms, air pollution, and windmills.",
+    "keyConcepts": [
+      "Air Has Weight and Occupies Space",
+      "Breezes and Cyclonic Storms",
+      "Renewable Wind Energy"
+    ],
+    "rules": [
+      "Air exerts pressure and occupies space.",
+      "Windmills harness moving wind to generate clean electricity."
+    ],
+    "exampleQuestion": "What causes smoke pollution in city air: green trees or motor vehicle exhaust?",
+    "exampleExplanation": "Motor vehicle exhaust and factory smoke release soot and toxic fumes into breathable air.",
+    "exampleAnswer": "Motor vehicle and factory smoke! 🏭🚗",
+    "funFact": "A gentle breeze moves tree leaves gently, but gale winds can uproot giant trees!",
+    "mascotAdvice": "Walk or cycle for short distances to keep city air fresh and pollution-free!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch09",
+    "chapterNumber": 9,
+    "title": "Water: The Water Cycle and Conservation",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌊",
+    "description": "Explore evaporation, condensation, rain precipitation, groundwater, and saving water.",
+    "keyConcepts": [
+      "The Three States of Water",
+      "The Natural Water Cycle",
+      "Rainwater Harvesting"
+    ],
+    "rules": [
+      "Water evaporates into vapour with heat, cools into clouds, and falls as rain.",
+      "Rainwater harvesting stores precious monsoon rain for dry months."
+    ],
+    "exampleQuestion": "When wet clothes dry in the bright sunshine, where does the water disappear to?",
+    "exampleExplanation": "The liquid water absorbs solar heat and evaporates into invisible water vapour in the air.",
+    "exampleAnswer": "It evaporates into water vapour! ☀️💧",
+    "funFact": "The water falling as rain today has been recycled on Earth for over four billion years!",
+    "mascotAdvice": "Collect rainwater in clean buckets to water garden plants and clean courtyards!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class2_ch10",
+    "chapterNumber": 10,
+    "title": "Rocks, Minerals, Soil and Earth Seasons",
+    "grade": "Class 2",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🪨",
+    "description": "Examine hard granite, soft chalk, fertile topsoil, weather changes, and seasons.",
+    "keyConcepts": [
+      "Hard and Soft Rocks",
+      "Formation of Fertile Soil",
+      "Earth's Revolution and Seasons"
+    ],
+    "rules": [
+      "Rocks break down over thousands of years into fine fertile soil.",
+      "Marble is a hard smooth rock used to build majestic monuments like the Taj Mahal."
+    ],
+    "exampleQuestion": "Which soft white rock is commonly used by teachers to write on classroom blackboards?",
+    "exampleExplanation": "Chalk is a soft, powdery sedimentary rock formed from ancient marine shells.",
+    "exampleAnswer": "Chalk rock! 🖍️",
+    "funFact": "The Taj Mahal in Agra is crafted entirely from gleaming white Makrana marble stone!",
+    "mascotAdvice": "Feel different soils in gardens: sandy soil feels gritty while clay feels sticky!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch01",
+    "chapterNumber": 1,
+    "title": "Poonam's Day Out: Animal Diversity",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🐒",
+    "description": "Observe how animals move: flying, crawling, hopping, walking, and swimming.",
+    "keyConcepts": [
+      "Animal Locomotion",
+      "Habitats in Trees, Water, and Soil",
+      "Classification by Movement"
+    ],
+    "rules": [
+      "Birds use wings to fly; fish use fins to swim; snakes use belly scales to slither.",
+      "Frogs can both jump on land and swim smoothly in ponds."
+    ],
+    "exampleQuestion": "Which animal can slither silently on the ground without having any legs at all?",
+    "exampleExplanation": "Snakes have long flexible spines and scales that grip the ground as they slither.",
+    "exampleAnswer": "A snake! 🐍",
+    "funFact": "Chameleons can move their two eyes independently in two opposite directions at the same time!",
+    "mascotAdvice": "Sit quietly under a tree and list all the creatures you spot within ten minutes!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch02",
+    "chapterNumber": 2,
+    "title": "The Plant Fairy: Leaves, Stems and Trunks",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🍃",
+    "description": "Examine leaf margins, veins, textures, natural aromas, and tree bark rubbings.",
+    "keyConcepts": [
+      "Leaf Margins (Smooth vs Serrated)",
+      "Leaf Scents (Neem, Mint, Lemon)",
+      "Bark Texture Rubbings"
+    ],
+    "rules": [
+      "Leaves have distinct margins: some are smooth, while rose leaves have serrated edges.",
+      "Rubbing crayons over paper on tree bark reveals fascinating bark textures."
+    ],
+    "exampleQuestion": "Can you identify a mint or coriander plant with eyes closed using only your nose?",
+    "exampleExplanation": "Yes, aromatic leaves release volatile oils with characteristic identifiable fragrances.",
+    "exampleAnswer": "Yes, by its distinct herbal fragrance! 👃🌿",
+    "funFact": "The giant Amazon water lily produces floating circular leaves up to 3 meters across that can support a small child!",
+    "mascotAdvice": "Create beautiful leaf rubbings in your scrapbook using fallen autumn leaves!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch03",
+    "chapterNumber": 3,
+    "title": "Water O' Water: Sources and Community Wells",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏞️",
+    "description": "Explore natural water sources, drought scarcity, traditional storage, and river paths.",
+    "keyConcepts": [
+      "Rivers, Lakes, and Springs",
+      "Water Scarcity and Droughts",
+      "Traditional Water Utensils"
+    ],
+    "rules": [
+      "Water has no fixed shape; it takes the shape of whatever vessel holds it.",
+      "In water-scarce villages, people walk miles with earthen pots to fetch clean water."
+    ],
+    "exampleQuestion": "Why do traditional clay matkas keep drinking water naturally cool during scorching summers?",
+    "exampleExplanation": "Microscopic pores in clay allow slow seepage; evaporation of water drops cools the pot.",
+    "exampleAnswer": "Due to natural evaporative cooling through clay pores! 🏺",
+    "funFact": "Only 3 percent of all water on Earth is freshwater, and most of that is frozen in polar glaciers!",
+    "mascotAdvice": "Never leave a drinking glass half-full; pour leftover clean water into potted plants!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch04",
+    "chapterNumber": 4,
+    "title": "Our First School: The Loving Family",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👨‍👩‍👦",
+    "description": "Discover how our family teaches us our first values, speech, respect, and habits.",
+    "keyConcepts": [
+      "Family as Primary Educator",
+      "Family Resemblances and Habits",
+      "Respect and Care for Elders"
+    ],
+    "rules": [
+      "We learn speaking, sharing, and good manners from our family before going to school.",
+      "Many family members share facial features, laughter styles, or vocal tones."
+    ],
+    "exampleQuestion": "Why is our home and family called our very first school?",
+    "exampleExplanation": "Because before entering any classroom, we learn love, speech, and moral values from family.",
+    "exampleAnswer": "Because we learn foundational life habits from our family! 🏡",
+    "funFact": "In Indian culture, touching elders' feet (Charan Sparsh) is a respectful gesture seeking blessings!",
+    "mascotAdvice": "Sit with your grandparents and listen to an inspiring story about their childhood!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch05",
+    "chapterNumber": 5,
+    "title": "Chhotu's House: Shelter and Animal Guests",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏠",
+    "description": "Understand dividing living spaces, hygiene, and uninvited house animal visitors.",
+    "keyConcepts": [
+      "Converting Spaces into Homes",
+      "Separating Living, Cooking, and Sleeping Areas",
+      "Uninvited Animal Guests"
+    ],
+    "rules": [
+      "A house becomes a home when people live together with love and care.",
+      "Lizards, ants, spiders, and sparrows are uninvited animal guests in houses."
+    ],
+    "exampleQuestion": "Which uninvited eight-legged creature weaves sticky circular webs in room corners?",
+    "exampleExplanation": "Spiders produce liquid silk from abdomen spinnerets to weave insect-catching webs.",
+    "exampleAnswer": "A spider! 🕷️",
+    "funFact": "Spider silk is five times stronger than steel wire of the same thickness!",
+    "mascotAdvice": "Keep windows screened and food covered to discourage insect pests naturally!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch06",
+    "chapterNumber": 6,
+    "title": "Foods We Eat: Regional and Cultural Delicacies",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🍛",
+    "description": "Explore regional staples: rice in south/east, wheat in north, millet in deserts.",
+    "keyConcepts": [
+      "Regional Agricultural Staples",
+      "Nutritional Balance",
+      "Cultural Food Traditions"
+    ],
+    "rules": [
+      "People in coastal areas eat rice and fish because both are locally plentiful.",
+      "People in Rajasthan eat rotis made of bajra and jowar millets."
+    ],
+    "exampleQuestion": "Why do different regions of India have completely different traditional staple diets?",
+    "exampleExplanation": "Staple diets depend on local climate, soil conditions, and what crops grow best nearby.",
+    "exampleAnswer": "Because local crops and climate differ across regions! 🌾🍲",
+    "funFact": "India is the world's largest producer of nutritious, climate-resilient millets like ragi and bajra!",
+    "mascotAdvice": "Appreciate and taste traditional homemade dishes from different Indian states!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch07",
+    "chapterNumber": 7,
+    "title": "Saying Without Speaking: Non-Verbal Expression",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🎭",
+    "description": "Learn about sign language, classical dance mudras, facial expressions, and empathy.",
+    "keyConcepts": [
+      "Sign Language Communication",
+      "Classical Dance Mudras",
+      "Empathy and Inclusion"
+    ],
+    "rules": [
+      "People who cannot hear or speak use expressive sign language to communicate fluently.",
+      "Dancers convey emotions like joy, bravery, and peace through hand mudras and eyes."
+    ],
+    "exampleQuestion": "How can we understand if our pet dog is joyful without it uttering a single word?",
+    "exampleExplanation": "By observing body language: an energetic wagging tail and relaxed ears show joyful excitement.",
+    "exampleAnswer": "By watching its wagging tail and happy expressions! 🐕",
+    "funFact": "Human facial muscles can produce over 10,000 distinct facial expressions!",
+    "mascotAdvice": "Practice kindness and patience with friends who communicate using sign language!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch08",
+    "chapterNumber": 8,
+    "title": "Flying High: The Bird Kingdom",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🦅",
+    "description": "Examine bird beaks adapted for food, wing feathers, claws, and bird nests.",
+    "keyConcepts": [
+      "Beak Shapes and Diets",
+      "Feather Functions (Flight and Warmth)",
+      "Nesting Materials"
+    ],
+    "rules": [
+      "Woodpeckers have chisel beaks to drill tree bark; parrots have curved beaks to crack nuts.",
+      "Feathers keep birds warm and provide aerodynamic lift during flight."
+    ],
+    "exampleQuestion": "Which majestic bird with vibrant tail feathers is honored as the National Bird of India?",
+    "exampleExplanation": "The Indian Peacock (Pavo cristatus) is celebrated for its shimmering iridescent blue-green plumage.",
+    "exampleAnswer": "The Peacock! 🦚",
+    "funFact": "Hummingbirds are the only birds capable of flying backwards and hovering upside down in mid-air!",
+    "mascotAdvice": "Never keep wild birds caged in small cages; birds belong free in the open sky!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch09",
+    "chapterNumber": 9,
+    "title": "It's Raining: Clouds, Rain and Agriculture",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌧️",
+    "description": "Understand rain formation, farmers' joy, monsoon seasons, and water puddles.",
+    "keyConcepts": [
+      "Cloud Formation",
+      "Rain and Agriculture Dependence",
+      "Animals and Rain Joy"
+    ],
+    "rules": [
+      "Rain is vital for farmers to cultivate paddy, maize, cotton, and vegetables.",
+      "Puffy dark rain clouds called nimbus clouds bring nourishing monsoon showers."
+    ],
+    "exampleQuestion": "Why do peacocks spread their magnificent fan of feathers and dance when rain clouds gather?",
+    "exampleExplanation": "Peacocks are naturally exhilarated by the cool breeze, humidity, and thunder of oncoming rain.",
+    "exampleAnswer": "To celebrate the cool monsoon breeze and rain! 🦚🌧️",
+    "funFact": "The rainiest place on planet Earth is Mawsynram in Meghalaya, India, receiving over 11,000 mm of rain annually!",
+    "mascotAdvice": "Notice the earthy fragrance called 'Petrichor' when the first raindrops hit parched soil!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch10",
+    "chapterNumber": 10,
+    "title": "What is Cooking: Fuels, Stoves and Vessels",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🍳",
+    "description": "Examine cooking methods: boiling, steaming, baking, frying; and modern vs solar fuels.",
+    "keyConcepts": [
+      "Cooking Techniques",
+      "Traditional and Modern Cooking Fuels",
+      "Utensil Materials"
+    ],
+    "rules": [
+      "Steaming idlis and boiling rice preserve maximum nutrients without adding excess oil.",
+      "Solar cookers use mirrors to reflect sunlight and cook nutritious lentils without smoke."
+    ],
+    "exampleQuestion": "Which cooking method uses hot dry oven heat to make fluffy bread, cakes, and cookies?",
+    "exampleExplanation": "Baking surrounds dough with circulated dry heat inside an oven.",
+    "exampleAnswer": "Baking! 🍞🎂",
+    "funFact": "Solar cookers operate entirely on clean, free, renewable solar energy with zero carbon emissions!",
+    "mascotAdvice": "Stay a safe distance away from hot pans, boiling oil, and gas burners in kitchens!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch11",
+    "chapterNumber": 11,
+    "title": "From Here to There: The Evolution of Transport",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚆",
+    "description": "Trace travel from walking and bullock carts to trains, metro systems, and airliners.",
+    "keyConcepts": [
+      "Evolution of Land Travel",
+      "Special Purpose Vehicles (Ambulance, Fire Engine)",
+      "Public Transportation"
+    ],
+    "rules": [
+      "Bicycles and electric metros reduce traffic congestion and air pollution.",
+      "Special vehicles like ambulances have flashing lights and sirens to clear traffic fast."
+    ],
+    "exampleQuestion": "Why is traveling by train or metro bus better for city air than fifty individual cars?",
+    "exampleExplanation": "One mass transit train carries hundreds of commuters, using far less fuel per person.",
+    "exampleAnswer": "It carries hundreds of people, saving fuel and reducing pollution! 🚇",
+    "funFact": "The Indian Railways network operates over 13,000 passenger trains across the country daily!",
+    "mascotAdvice": "Always stand patiently in queue when boarding school buses or public transport!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class3_ch12",
+    "chapterNumber": 12,
+    "title": "Work We Do: Occupations and Community Teamwork",
+    "grade": "Class 3",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👷",
+    "description": "Explore various professions, dignity of labour, division of work, and daily contribution.",
+    "keyConcepts": [
+      "Diversity of Occupations",
+      "Dignity of All Labour",
+      "Teamwork in Communities"
+    ],
+    "rules": [
+      "Every job from farmer and sanitation worker to engineer and doctor is vital for society.",
+      "No honest work is superior or inferior; all productive work deserves dignity and respect."
+    ],
+    "exampleQuestion": "What essential contribution does a farmer make to every household every day?",
+    "exampleExplanation": "Farmers cultivate grains, vegetables, and fruits that provide daily food sustenance.",
+    "exampleAnswer": "Growing food crops for the whole nation! 🌾🧑‍🌾",
+    "funFact": "Over 50 percent of India's population works hard in agriculture to provide food for everyone!",
+    "mascotAdvice": "Always address shopkeepers, sweepers, and delivery persons with kindness and respect!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch01",
+    "chapterNumber": 1,
+    "title": "Going to School: Bridges and Paths Across India",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌉",
+    "description": "Discover children using bamboo bridges in Assam, trolley ropes in Ladakh, and vallams in Kerala.",
+    "keyConcepts": [
+      "Bamboo and Rope Bridges",
+      "Camel Carts and Bullock Carts",
+      "Determination to Study"
+    ],
+    "rules": [
+      "In Ladakh, children cross deep valleys using an iron rope and wooden trolley pulleys.",
+      "In parts of Kerala, children cross backwaters in small wooden canoes called vallams."
+    ],
+    "exampleQuestion": "Why do students in hilly or river valleys cross difficult paths daily just to reach school?",
+    "exampleExplanation": "Their thirst for education and learning inspires them to overcome geographic hurdles courageously.",
+    "exampleAnswer": "Their deep dedication and enthusiasm for learning! 🎒📚",
+    "funFact": "Living root bridges in Meghalaya are grown by training aerial ficus tree roots across rivers over decades!",
+    "mascotAdvice": "Value your school education and help classmates when learning challenging topics!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch02",
+    "chapterNumber": 2,
+    "title": "Ear to Ear: Animal Ears and Skin Patterns",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👂",
+    "description": "Learn why some animal ears are external while others are internal holes; mammals vs egg-layers.",
+    "keyConcepts": [
+      "Visible External Ears (Pinnae)",
+      "Internal Hidden Ear Holes",
+      "Mammals Giving Birth vs Oviparous Egg Layers"
+    ],
+    "rules": [
+      "Animals with visible ears and body hair give birth to young babies (Mammals / Viviparous).",
+      "Animals without external ears and with scales/feathers lay eggs (Oviparous)."
+    ],
+    "exampleQuestion": "Does a hen have visible external ears, and does it give birth to babies or lay eggs?",
+    "exampleExplanation": "Hens have tiny hidden ear holes covered by feathers and reproduce by laying eggs.",
+    "exampleAnswer": "It has hidden ear holes and lays eggs! 🐔🥚",
+    "funFact": "African elephants have giant ears that pump warm blood through thin veins to cool their entire body!",
+    "mascotAdvice": "Observe how dogs perk up their ears to identify distant or quiet sounds!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch03",
+    "chapterNumber": 3,
+    "title": "A Day with Nandu: Elephant Herds and Wildlife",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🐘",
+    "description": "Study elephant herd structure led by the oldest female, daily routines, and social bonds.",
+    "keyConcepts": [
+      "Matriarchal Herd Leadership",
+      "Elephant Diet and Mud Baths",
+      "Wildlife Protection"
+    ],
+    "rules": [
+      "Elephant herds consist only of females and young calves, led by the oldest female matriarch.",
+      "Adult elephants eat over 100 kg of leaves and twigs daily and love bathing in cool mud."
+    ],
+    "exampleQuestion": "Why do elephants enthusiastically coat their thick skin with wet river mud?",
+    "exampleExplanation": "Wet mud acts as a natural sunscreen and shields elephant skin from insect bites.",
+    "exampleAnswer": "To cool down and protect skin from sun and insects! 🐘💦",
+    "funFact": "Elephants can communicate with each other over miles using low-frequency rumbles beneath the range of human hearing!",
+    "mascotAdvice": "Support wildlife conservation to protect wild animal habitats and migration corridors!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch04",
+    "chapterNumber": 4,
+    "title": "The Story of Amrita: The Bishnoi Tree Protectors",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌳",
+    "description": "Learn about the brave Bishnoi community who hugged Khejadi trees to save them from axes.",
+    "keyConcepts": [
+      "The Sacred Khejadi Tree",
+      "Bishnoi Heritage and Conservation",
+      "The Chipko Spirit"
+    ],
+    "rules": [
+      "The Khejadi tree thrives in arid desert areas with minimal water, providing shade and beans.",
+      "Amrita Devi and villagers sacrificed their lives hugging trees, inspiring environmental movements."
+    ],
+    "exampleQuestion": "Why are trees essential for rainfall, fertile soil, and fresh air in communities?",
+    "exampleExplanation": "Tree roots anchor fertile soil, leaves transpire water vapour to form rain, and release oxygen.",
+    "exampleAnswer": "They anchor soil, attract rainfall, and purify breathing air! 🌲",
+    "funFact": "The inspiring sacrifice of Amrita Devi in 1730 laid the moral foundation for India's Chipko Movement!",
+    "mascotAdvice": "Plant and nurture a sapling in your school or home compound to honour nature!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch05",
+    "chapterNumber": 5,
+    "title": "Anita and the Honeybees: Apiculture and Empowerment",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🐝",
+    "description": "Discover queen bees, worker bees, drone bees, honey collection, and girl child education.",
+    "keyConcepts": [
+      "Hierarchy of the Bee Colony",
+      "Pollination and Honey Production",
+      "Overcoming Social Barriers"
+    ],
+    "rules": [
+      "The Queen bee lays all eggs; female worker bees collect sweet nectar and build the honeycomb.",
+      "Bees perform a waggle dance to communicate the exact direction and distance of flowers."
+    ],
+    "exampleQuestion": "What vital ecological service do bees provide when visiting flowers for sweet nectar?",
+    "exampleExplanation": "Bees transfer pollen grains between flowers, enabling plants to produce fruits and seeds (Pollination).",
+    "exampleAnswer": "Pollination, which allows plants to produce food and seeds! 🌸🐝",
+    "funFact": "To make one single jar of honey, bees collectively visit over two million flowers!",
+    "mascotAdvice": "Never disturb bee hives; bees are peaceful pollinators working hard for nature!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch06",
+    "chapterNumber": 6,
+    "title": "Omana's Journey: Railways, Geography and Maps",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚂",
+    "description": "Experience an Indian railway journey: platform tickets, train reservation charts, and landscapes.",
+    "keyConcepts": [
+      "Railway Station Operations",
+      "Ticket Confirmation and Travel Charts",
+      "Changing Geographic Landscapes"
+    ],
+    "rules": [
+      "Train reservation charts show seat numbers, passenger ages, and coach codes.",
+      "Traveling south across Gujarat, Maharashtra, and Goa reveals changing crops, soil, and architecture."
+    ],
+    "exampleQuestion": "What information printed on a railway train ticket tells passengers where to sit?",
+    "exampleExplanation": "The Coach number (e.g. S3 or B1) and Berth seat number indicate the exact assigned seat.",
+    "exampleAnswer": "The Coach and Berth number! 🎫",
+    "funFact": "The Konkan Railway passes through over 90 tunnels and crosses more than 2,000 bridges along scenic coastlines!",
+    "mascotAdvice": "Always wait behind the yellow safety line on railway platforms until the train stops!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch07",
+    "chapterNumber": 7,
+    "title": "Changing Families: Life Stages and Relocations",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👶",
+    "description": "Understand family transitions: birth of a baby, weddings, migrations, and adaptability.",
+    "keyConcepts": [
+      "Newborn Babies in Families",
+      "Wedding Celebrations and Relatives",
+      "Job Relocations and New Homes"
+    ],
+    "rules": [
+      "Families grow and adapt when new babies are born or relatives marry.",
+      "Job transfers require families to adjust to new cities, languages, and school environments."
+    ],
+    "exampleQuestion": "How does daily life in a family change when a newborn baby sister or brother arrives?",
+    "exampleExplanation": "Everyone happily pitches in to care for the infant with warmth, quiet, and affection.",
+    "exampleAnswer": "Family members joyfully share tasks to care for the infant! 🍼",
+    "funFact": "Human babies develop the ability to recognize their mother's voice even before they are born!",
+    "mascotAdvice": "Welcome new students in your class warmly to help them feel at home!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch08",
+    "chapterNumber": 8,
+    "title": "Reaching Grandmother's Home: River Ferries and Transit",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚢",
+    "description": "Explore traveling by bus, auto, and scenic water ferry to reach backwater islands.",
+    "keyConcepts": [
+      "Water Ferries and Waterways",
+      "Calculating Travel Fares and Time",
+      "Backwater Ecosystems"
+    ],
+    "rules": [
+      "Ferries carry pedestrians, bicycles, and produce safely across broad rivers.",
+      "Reading travel timetables helps plan punctual connections between buses and ferries."
+    ],
+    "exampleQuestion": "Why are water ferries preferred over building giant bridges in some winding backwater channels?",
+    "exampleExplanation": "Ferries navigate winding waterways flexibly without expensive concrete construction across wide channels.",
+    "exampleAnswer": "They navigate waterways flexibly and cost-effectively! ⛴️",
+    "funFact": "Kerala's tranquil backwaters form an interconnected 900-kilometer network of canals, rivers, and lakes!",
+    "mascotAdvice": "Always hold handrails firmly when boarding or disembarking from boats and ferries!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch09",
+    "chapterNumber": 9,
+    "title": "Roots to Flowers: Plant Anatomy and Desert Flora",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌵",
+    "description": "Examine deep taproots, banyan aerial prop roots, and the extraordinary desert oak.",
+    "keyConcepts": [
+      "Taproots vs Fibrous Roots",
+      "Banyan Aerial Prop Roots",
+      "Desert Oak Deep Water Seeking Roots"
+    ],
+    "rules": [
+      "Banyan trees drop aerial roots from branches that grow into secondary supporting trunks.",
+      "The Desert Oak of Australia has roots that plunge 30 meters deep until reaching groundwater."
+    ],
+    "exampleQuestion": "Why do giant banyan trees grow long hanging ropes from their overhead branches?",
+    "exampleExplanation": "Those ropes are aerial roots that reach the ground to provide strong pillar support for heavy branches.",
+    "exampleAnswer": "They are prop roots providing pillar support! 🌳",
+    "funFact": "The Great Banyan Tree near Kolkata covers over 3.5 acres and resembles an entire forest from one tree!",
+    "mascotAdvice": "Look closely at the underside of leaves to observe the branching vein networks!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch10",
+    "chapterNumber": 10,
+    "title": "Eating Together: Mid-Day Meals and Festivals",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🍲",
+    "description": "Explore community feasts during Assam's Bihu festival, langars, and school mid-day meals.",
+    "keyConcepts": [
+      "Community Feasting at Bihu (Bhela Ghar)",
+      "Langar Service in Gurdwaras",
+      "School Mid-Day Meal Nutrition"
+    ],
+    "rules": [
+      "Bihu celebrations in Assam involve community feasting, cooking Bora rice, and building Bhela Ghars.",
+      "Mid-day meals guarantee that every child receives fresh, nutritious food at school."
+    ],
+    "exampleQuestion": "What valuable life lessons do students learn when eating lunch together in school?",
+    "exampleExplanation": "They learn sharing, social equality, brotherhood, and eating diverse nutritious foods.",
+    "exampleAnswer": "Equality, sharing, and community brotherhood! 🍱🤝",
+    "funFact": "The Golden Temple in Amritsar serves free hot meals (Langar) to over 100,000 visitors every day regardless of religion!",
+    "mascotAdvice": "Wash your hands thoroughly and express gratitude before sitting down to enjoy meals!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch11",
+    "chapterNumber": 11,
+    "title": "Water Purification and Preventing Epidemics",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧪",
+    "description": "Examine water filtration, boiling, waterborne illnesses (cholera, jaundice), and clean storage.",
+    "keyConcepts": [
+      "Water Contamination Sources",
+      "Boiling, Filtering, and Chlorination",
+      "Preventing Waterborne Diseases"
+    ],
+    "rules": [
+      "Boiling water vigorously for 10 minutes kills microscopic disease-causing bacteria and germs.",
+      "Contaminated water spreads illnesses like cholera, dysentery, and jaundice."
+    ],
+    "exampleQuestion": "Why is drinking boiled and filtered water essential during rainy monsoon seasons?",
+    "exampleExplanation": "Monsoon floods often mix sewage and muddy runoff with city drinking water pipelines.",
+    "exampleAnswer": "To kill invisible pathogens and prevent waterborne sickness! 🫗",
+    "funFact": "Ancient civilizations used multi-layer pots of gravel, sand, and charcoal to filter murky river water!",
+    "mascotAdvice": "Always cover water storage vessels with clean lids and use long-handled ladles to scoop water!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class4_ch12",
+    "chapterNumber": 12,
+    "title": "A River's Journey: From Mountain to Sea",
+    "grade": "Class 4",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏞️",
+    "description": "Trace pure mountain springs turning into muddy, industrial-polluted city rivers.",
+    "keyConcepts": [
+      "Source in Pristine Glaciers",
+      "Agricultural Runoff and Industrial Effluents",
+      "River Conservation"
+    ],
+    "rules": [
+      "Rivers start clear and sweet in mountains but collect sewage, chemical waste, and trash near cities.",
+      "Conserving rivers ensures survival for aquatic fish, wildlife, and human agriculture."
+    ],
+    "exampleQuestion": "Where is river water naturally cleanest and purest: near mountain glaciers or downstream of industrial cities?",
+    "exampleExplanation": "Near mountain glaciers before human settlements discharge untreated sewage and factory chemicals.",
+    "exampleAnswer": "Near its high mountain origin! 🏔️💧",
+    "funFact": "The sacred Ganga and Brahmaputra rivers together form the Sundarbans, the world's largest river delta!",
+    "mascotAdvice": "Never toss plastic bags, flower garlands, or trash into rivers, ponds, or lakes!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch01",
+    "chapterNumber": 1,
+    "title": "Super Senses of Animals",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🦅",
+    "description": "Discover eagle vision, dog olfactory power, ant pheromones, bat echolocation, and sleep patterns.",
+    "keyConcepts": [
+      "Ultra-Sharp Vision in Birds of Prey",
+      "Canine Scent Tracking",
+      "Echolocation and Infrasound"
+    ],
+    "rules": [
+      "Eagles can spot tiny mice on the ground from 2 kilometers high up in the sky.",
+      "Ants leave invisible scent trails called pheromones so follower ants never lose their way."
+    ],
+    "exampleQuestion": "Why do trained dogs tilt their heads and sniff the ground to track missing objects?",
+    "exampleExplanation": "Dogs have up to 300 million olfactory receptors in their noses, making their smell 40 times keener than humans.",
+    "exampleAnswer": "Their super-sensitive sense of smell tracks minute scent particles! 🐕",
+    "funFact": "Bats navigate pitch-black caves flawlessly by emitting high-frequency ultrasonic clicks and hearing the bounce (echolocation)!",
+    "mascotAdvice": "Protect pets and street animals from loud cracker noises because their hearing is far more sensitive than ours!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch02",
+    "chapterNumber": 2,
+    "title": "A Snake Charmer's Story: Reptiles and Venom",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🐍",
+    "description": "Examine Kalbeliya traditions, four venomous snakes of India, fangs, and lifesaving antivenom.",
+    "keyConcepts": [
+      "The Four Poisonous Snakes of India",
+      "Snake Fangs and Venom Ducts",
+      "Lifesaving Antivenom Production"
+    ],
+    "rules": [
+      "Only four snakes in India are dangerously poisonous: Cobra, Common Krait, Russell's Viper, and Saw-scaled Viper.",
+      "Antivenom medicine is manufactured scientifically from diluted snake venom itself."
+    ],
+    "exampleQuestion": "Are snakes natural friends or enemies of agricultural crop farmers?",
+    "exampleExplanation": "Snakes are true friends of farmers because they eat rodents and rats that destroy standing grain crops.",
+    "exampleAnswer": "Friends of farmers, because they control destructive rats! 🌾🐍",
+    "funFact": "Snakes do not have external ears; they perceive ground vibrations through their jaw bones and body scales!",
+    "mascotAdvice": "If someone is bitten by a snake, keep them calm and rush them immediately to a hospital with antivenom!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch03",
+    "chapterNumber": 3,
+    "title": "From Tasting to Digesting",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "👅",
+    "description": "Trace food journey: salivary amylase in mouth, stomach acid churning, and glucose energy.",
+    "keyConcepts": [
+      "Tongue Taste Zones",
+      "Chewing and Salivary Digestion",
+      "Stomach Acid and Intestinal Absorption"
+    ],
+    "rules": [
+      "Saliva breaks down complex starches into sweet simpler sugars as we chew food slowly.",
+      "The stomach produces hydrochloric acid and digestive enzymes to churn food into a liquid chyme."
+    ],
+    "exampleQuestion": "Why do doctors immediately administer a glucose drip to patients suffering from severe dehydration?",
+    "exampleExplanation": "Glucose enters the bloodstream directly without needing prolonged digestion, providing instant cellular energy.",
+    "exampleAnswer": "It provides immediate energy without needing digestion! 💉⚡",
+    "funFact": "The stomach lining produces a protective mucus layer to stop its own powerful acid from harming itself!",
+    "mascotAdvice": "Chew every bite of food thoroughly at least 20 to 30 times before swallowing!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch04",
+    "chapterNumber": 4,
+    "title": "Mangoes Round the Year: Food Preservation",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🥭",
+    "description": "Learn about Mamidi Tandra (aam papad), sun-drying, pickling in oil/salt, and sugar canning.",
+    "keyConcepts": [
+      "Sun-Drying and Dehydration",
+      "Pickling with Salt, Spices and Oil",
+      "Boiling, Canning and Refrigeration"
+    ],
+    "rules": [
+      "Bacteria and fungi need moisture to grow; sun-drying removes water so food stays good for months.",
+      "Salt and mustard oil in pickles create an environment where harmful microbes cannot survive."
+    ],
+    "exampleQuestion": "Why do grandparents coat mango pickle slices thoroughly with plenty of salt and mustard oil?",
+    "exampleExplanation": "High salt and oil concentrations draw out moisture and act as natural preservatives against mold and microbes.",
+    "exampleAnswer": "To preserve the mangoes from microbial spoilage! 🏺🥭",
+    "funFact": "In ancient times, salt was so valuable as a preservative that Roman soldiers were sometimes paid in salt ('salary')!",
+    "mascotAdvice": "Inspect food labels for 'Best Before' dates before buying packaged pantry goods!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch05",
+    "chapterNumber": 5,
+    "title": "Seeds and Seeds: Germination and Travel",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🌱",
+    "description": "Explore seed coats, cotyledon food stores, wind/water dispersal, velcro burrs, and insectivorous pitcher plants.",
+    "keyConcepts": [
+      "Seed Anatomy and Germination Conditions",
+      "Seed Dispersal by Wind, Animals, Water, and Explosive Pods",
+      "Carnivorous Pitcher Plants"
+    ],
+    "rules": [
+      "Seeds need moisture, air, and warmth to germinate successfully.",
+      "Cocklebur seeds with tiny hooks inspired George de Mestral to invent Velcro fasteners!"
+    ],
+    "exampleQuestion": "How does the insectivorous Pitcher plant (Nepenthes) trap insects in nutrient-poor soils?",
+    "exampleExplanation": "It has a slippery pitcher-shaped leaf with sweet nectar that lures insects inside, where they slide into digestive juices.",
+    "exampleAnswer": "With slippery leaves and sweet digestive juices! 🪴🪰",
+    "funFact": "Some dandelion seeds with feathery parachutes can drift on high wind currents for over 100 kilometers!",
+    "mascotAdvice": "Sprout whole moong or gram seeds in a damp cotton cloth to make a healthy, protein-rich snack!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch06",
+    "chapterNumber": 6,
+    "title": "Every Drop Counts: Ancient Water Architecture",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏛️",
+    "description": "Study Ghadsisar lake in Jaisalmer, interconnected reservoirs, stepwells (baolis), and rainwater wisdom.",
+    "keyConcepts": [
+      "The 9 Interconnected Lakes of Ghadsisar",
+      "Stepped Wells (Baolis) for Travellers",
+      "Traditional Water Conservation"
+    ],
+    "rules": [
+      "King Ghadsi of Jaisalmer engineered 9 interconnected lakes: overflow from one filled the next flawlessly.",
+      "Stepwells allowed travellers to descend stone staircases to access cool clean water year-round."
+    ],
+    "exampleQuestion": "Why did ancient Indian rulers construct deep stepwells (baolis) along caravan trading routes?",
+    "exampleExplanation": "To provide free, cool resting stations and drinking water for traveling merchants and their camels.",
+    "exampleAnswer": "To provide shelter and clean drinking water for travellers! 🪜💧",
+    "funFact": "Rani ki Vav, a magnificent 7-storey deep stepped well in Gujarat, is recognized as a UNESCO World Heritage site!",
+    "mascotAdvice": "Install rainwater collection systems on rooftops so precious monsoon rain recharges groundwater aquifers!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch07",
+    "chapterNumber": 7,
+    "title": "Experiments with Water: Density and Flotation",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "⛵",
+    "description": "Explore density, why iron nails sink while giant steel ships float, the Dead Sea, and salt solubility.",
+    "keyConcepts": [
+      "Floating vs Sinking (Buoyancy and Shape)",
+      "Water Density and Dissolved Solutes",
+      "The Hyper-Saline Dead Sea"
+    ],
+    "rules": [
+      "An iron nail sinks, but a steel ship floats because its hollow shape displaces a huge volume of water.",
+      "Objects float more easily in dense salty water than in pure freshwater."
+    ],
+    "exampleQuestion": "Why can people float comfortably on the surface of the Dead Sea without any fear of sinking?",
+    "exampleExplanation": "The Dead Sea is intensely salty (dense), exerting immense buoyant upward push that holds bodies afloat.",
+    "exampleAnswer": "Because the extremely salty water is denser than the human body! 🌊🧂",
+    "funFact": "Mahatma Gandhi led the historic 1930 Dandi March to produce salt from seawater, protesting unjust British salt taxes!",
+    "mascotAdvice": "Experiment at home: see if a fresh lemon sinks in plain water but floats when you stir in several spoons of salt!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch08",
+    "chapterNumber": 8,
+    "title": "A Treat for Mosquitoes: Malaria, Dengue and Anaemia",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🦟",
+    "description": "Trace female Anopheles mosquito vector, malaria parasites in blood, haemoglobin, and iron foods.",
+    "keyConcepts": [
+      "Female Anopheles and Plasmodium Parasite",
+      "Mosquito Breeding in Stagnant Water",
+      "Anaemia, Haemoglobin and Iron-Rich Diets"
+    ],
+    "rules": [
+      "Female Anopheles mosquitoes transmit malaria parasites when biting humans to nourish their eggs.",
+      "Eating amla, jaggery (gur), and green leafy vegetables boosts iron and haemoglobin levels."
+    ],
+    "exampleQuestion": "Why do municipal health workers spray kerosene or oil over open stagnant drains in neighborhoods?",
+    "exampleExplanation": "A thin oil layer on water cuts off atmospheric oxygen, suffocating floating mosquito larvae and pupae.",
+    "exampleAnswer": "To block oxygen and destroy breeding mosquito larvae! 🛢️🦟",
+    "funFact": "Sir Ronald Ross discovered that mosquitoes transmit malaria while working in Hyderabad, India, winning the 1902 Nobel Prize!",
+    "mascotAdvice": "Empty and clean water coolers, flowerpot saucers, and discarded tires every Sunday to eliminate mosquito breeding!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch09",
+    "chapterNumber": 9,
+    "title": "Up You Go: Mountaineering and Leadership",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧗",
+    "description": "Explore Nehru Institute of Mountaineering, expedition gear, group leader duties, and Bachendri Pal.",
+    "keyConcepts": [
+      "Mountaineering Equipment (Rappelling, Pitons, Crampons)",
+      "Responsibilities of an Expedition Leader",
+      "Bachendri Pal Scaling Mt Everest"
+    ],
+    "rules": [
+      "A true group leader walks at the back, assists struggling climbers, and ensures everyone has food and rest.",
+      "Bachendri Pal became the first Indian woman to reach the 8,848-meter summit of Mount Everest in 1984."
+    ],
+    "exampleQuestion": "Why do high-altitude mountain climbers carry portable oxygen cylinders above 8,000 meters?",
+    "exampleExplanation": "Atmospheric air pressure drops drastically at high altitudes, making oxygen scarce and thin to breathe.",
+    "exampleAnswer": "Because the air is extremely thin and low in oxygen! 🏔️🫁",
+    "funFact": "Mount Everest's summit was named Sagarmatha ('Forehead of the Sky') in Nepal and Chomolungma in Tibet!",
+    "mascotAdvice": "A great leader always encourages the team, shares credit, and helps the slowest teammate succeed!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch10",
+    "chapterNumber": 10,
+    "title": "Walls Tell Stories: Golconda Fort Architecture",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🏰",
+    "description": "Examine 16th-century acoustic architecture, bastions, cannon metallurgy, and royal water lift systems.",
+    "keyConcepts": [
+      "Acoustic Architecture and Echo Warnings",
+      "Bastions (Burj) for Fort Defense",
+      "Hydraulic Water Lift Wheels"
+    ],
+    "rules": [
+      "A clap beneath the entrance dome of Golconda can be heard clearly at the hilltop pavilion 1 km away.",
+      "Curved outward bastions (burj) gave soldiers wide panoramic view angles to spot approaching attackers."
+    ],
+    "exampleQuestion": "Why were fort walls built with curved circular bastions instead of plain flat walls?",
+    "exampleExplanation": "Bastions allowed soldiers to see in all directions and shoot arrows without exposing themselves.",
+    "exampleAnswer": "To provide panoramic viewing angles and defensive cover! 🛡️🏰",
+    "funFact": "Golconda was historically world-famous for trading the world's most legendary diamonds, including the Koh-i-Noor!",
+    "mascotAdvice": "Visit historical monuments and museums to discover how ancient engineers solved complex water and defense problems!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch11",
+    "chapterNumber": 11,
+    "title": "Sunita in Space: Gravity and Space Science",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🚀",
+    "description": "Explore zero gravity life, Space Shuttle flights, Sunita Williams, earth continents, and gravity.",
+    "keyConcepts": [
+      "Microgravity Living Conditions",
+      "Earth's Gravitational Attraction",
+      "Globe Continents and Artificial Boundaries"
+    ],
+    "rules": [
+      "In space orbit, things and people float weightlessly because spacecraft are in continuous freefall.",
+      "From space, Earth appears as one united blue-and-white globe without any artificial political borders."
+    ],
+    "exampleQuestion": "Why do astronauts in orbit have to strap themselves to their beds when sleeping in the Space Shuttle?",
+    "exampleExplanation": "Without gravity anchoring them down, they would float around the cabin and bump into instrument panels.",
+    "exampleAnswer": "To keep from floating and bumping into walls during sleep! 🛰️👨‍🚀",
+    "funFact": "Indian-origin astronaut Sunita Williams spent over 320 days in space and conducted multiple spacewalks outside the ISS!",
+    "mascotAdvice": "Look at a globe: notice how oceans connect all countries together into one shared global home!",
+    "activityIds": []
+  },
+  {
+    "chapterId": "evs_class5_ch12",
+    "chapterNumber": 12,
+    "title": "Like Father, Like Daughter: Genetics and Habits",
+    "grade": "Class 5",
+    "board": "all",
+    "subjectId": "evs",
+    "icon": "🧬",
+    "description": "Examine inherited traits (eye color, curly hair, height), identical twins, and Gregor Mendel's peas.",
+    "keyConcepts": [
+      "Inherited Physical Characteristics",
+      "Identical vs Fraternal Twins",
+      "Gregor Mendel's Experiments on Pea Plants"
+    ],
+    "rules": [
+      "Children inherit physical features like earlobe attachment, eye pigment, and hair texture from parents.",
+      "Polio is caused by a virus and is NOT an inherited trait passed through family genes."
+    ],
+    "exampleQuestion": "Who discovered the fundamental laws of genetic inheritance by patiently cross-breeding garden pea plants?",
+    "exampleExplanation": "Austrian monk Gregor Mendel cross-bred thousands of pea plants and revealed how traits pass across generations.",
+    "exampleAnswer": "Gregor Mendel, the Father of Genetics! 🔬🌱",
+    "funFact": "Identical twins have matching genetic DNA, yet they have slightly different unique fingerprints!",
+    "mascotAdvice": "While physical traits are inherited, skills like painting, coding, and kindness are mastered through practice!",
+    "activityIds": []
+  }
+]

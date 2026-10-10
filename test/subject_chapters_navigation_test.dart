@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:curio_math/data/local/local_storage_service.dart';
+import 'package:curio_math/data/models/student_profile.dart';
 import 'package:curio_math/features/home_dashboard/presentation/home_dashboard_screen.dart';
 import 'package:curio_math/features/subject_chapters/presentation/subject_chapters_screen.dart';
 
@@ -31,13 +32,38 @@ void main() {
       expect(find.text('Pick a Subject 🎨'), findsOneWidget);
       expect(find.text('Math'), findsOneWidget);
       expect(find.text('English'), findsOneWidget);
-      expect(find.text('Science'), findsOneWidget);
+      // Science is hidden for Class 1 (available starting Class 3)
+      expect(find.text('Science'), findsNothing);
 
       // Chapters header and chapter cards should NOT be present on HomeDashboardScreen
       expect(find.text('Math Chapters'), findsNothing);
       expect(find.text('English Chapters'), findsNothing);
       expect(find.textContaining('CHAPTER 1'), findsNothing);
       expect(find.text('Practice & Play'), findsNothing);
+    });
+
+    testWidgets('HomeDashboardScreen displays Science for Class 3 and above', (WidgetTester tester) async {
+      await LocalStorageService.instance.saveStudentProfile(const StudentProfile(
+        board: BoardType.cbse,
+        studentClass: StudentClass.class3,
+        studentName: 'Aarav',
+        avatarIcon: '🚀',
+      ));
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Math'), findsOneWidget);
+      expect(find.text('English'), findsOneWidget);
+      expect(find.text('Science'), findsOneWidget);
     });
 
     testWidgets('Tapping Math subject card navigates to SubjectChaptersScreen and back', (WidgetTester tester) async {

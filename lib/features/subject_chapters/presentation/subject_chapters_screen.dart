@@ -2,25 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/audio/audio_service.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/hindi_curriculum_translator.dart';
 import '../../../core/profile/profile_provider.dart';
 import '../../../core/theme/grade_tier_extension.dart';
 import '../../../data/local/local_storage_service.dart';
-import '../../../data/models/activity_model.dart';
 import '../../../data/models/chapter_model.dart';
 import '../../../data/models/student_profile.dart';
 import '../../../data/repositories/curriculum_repository.dart';
 import '../../../presentation/widgets/ad_banner_widget.dart';
 import '../../../shared/components/language_switch_button.dart';
 import '../../../shared/components/scratchpad_drawer.dart';
-import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
-import '../../activities/card_match/presentation/card_match_screen.dart';
-import '../../activities/concept_quiz/presentation/concept_challenge_screen.dart';
-import '../../activities/drag_drop/presentation/fraction_cauldron_screen.dart';
-import '../../activities/grid_calc/presentation/equation_solver_screen.dart';
+import '../../../shared/dialogs/avatar_selector_dialog.dart';
 import '../../chapter_detail/presentation/chapter_detail_screen.dart';
 import '../../concept_learning/presentation/concept_lesson_sheet.dart';
-import '../../onboarding/presentation/board_class_selector_dialog.dart';
+import '../../concept_learning/presentation/textbook_reader_screen.dart';
+import '../../diagram_explorer/presentation/diagram_explorer_sheet.dart';
+import '../../exam_mode/presentation/timed_exam_screen.dart';
 import '../../settings/presentation/voice_settings_sheet.dart';
+import '../../adventure_map/presentation/adventure_island_screen.dart';
+import '../../../data/services/literature_reading_service.dart';
+import '../../spell_bee/presentation/spell_bee_hub_screen.dart';
+import '../../math_tables/presentation/math_tables_screen.dart';
 
 /// Dedicated Subject Chapters Screen:
 /// Displays all curriculum chapters for the selected subject (e.g. Math or English)
@@ -49,6 +51,7 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
   bool _isLoading = true;
   StudentClass? _lastLoadedClass;
   BoardType? _lastLoadedBoard;
+  String _activeLanguageTrack = 'literature'; // 'literature' vs 'grammar'
 
   @override
   void initState() {
@@ -63,13 +66,44 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
     final activeProfile = ref.read(studentProfileProvider);
     _lastLoadedClass = activeProfile.studentClass;
     _lastLoadedBoard = activeProfile.board;
+
+    if (!CurriculumRepository.isSubjectAvailableForClass(widget.subjectId, activeProfile.studentClass)) {
+      if (mounted) {
+        final strings = ref.strings;
+        final rangeMsg = widget.subjectId == 'science'
+            ? (strings.isHindi ? 'कक्षा 3 से उपलब्ध है।' : 'available starting from Class 3.')
+            : (strings.isHindi ? 'कक्षा 5 तक उपलब्ध है।' : 'available for LKG to Class 5.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              strings.isHindi
+                  ? '${widget.subjectName} $rangeMsg'
+                  : '${widget.subjectName} is $rangeMsg',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
+      final isLanguage = widget.subjectId == 'hindi';
+      final currentPref = LocalStorageService.instance.getPreferredPublisher(widget.subjectId);
+      final defaultPub = activeProfile.board == BoardType.icse
+          ? (widget.subjectId == 'hindi' ? 'miranda' : null)
+          : (activeProfile.board == BoardType.cbse ? 'ncert' : null);
+      final activePub = (widget.subjectId == 'english') ? null : (currentPref ?? defaultPub);
+
       final chapters = await _repository.getChaptersForClass(
         activeProfile.studentClass,
         board: activeProfile.board,
         subjectId: widget.subjectId,
+        publisher: activePub,
+        track: isLanguage ? _activeLanguageTrack : null,
       );
       if (mounted) {
         setState(() {
@@ -84,9 +118,9 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
     }
   }
 
-  void _openBoardClassSelector() {
+  void _openEditProfile() {
     AudioService.instance.playSfx(CurioSfx.click);
-    BoardClassSelectorDialog.show(context).then((_) {
+    AvatarSelectorDialog.show(context).then((_) {
       _loadCurriculum();
     });
   }
@@ -113,68 +147,7 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
   }
 
   void _practiceChapter(Chapter chapter) {
-    AudioService.instance.playSfx(CurioSfx.click);
-    final activeProfile = ref.read(studentProfileProvider);
-
-    final saved = LocalStorageService.instance.getChapterActivities(chapter.chapterId);
-    final activities = (saved != null && saved.isNotEmpty)
-        ? saved
-        : (chapter.activities.isNotEmpty
-            ? chapter.activities
-            : _repository.generateActivitiesForChapter(
-                chapter.chapterId,
-                activeProfile.studentClass,
-                count: 3,
-                chapter: chapter,
-              ));
-
-    final nextIndex = LocalStorageService.instance.getNextQuestionIndexForChapter(
-      chapter.chapterId,
-      activities,
-    );
-
-    final safeIndex = activities.isNotEmpty
-        ? nextIndex.clamp(0, activities.length - 1)
-        : 0;
-
-    final targetActivity = activities.isNotEmpty ? activities[safeIndex] : null;
-    Widget targetScreen;
-
-    if (targetActivity != null && targetActivity.activityType == ActivityType.cardMatch) {
-      targetScreen = CardMatchScreen(
-        activity: targetActivity,
-        activities: activities,
-        initialLevelIndex: safeIndex,
-      );
-    } else if (targetActivity != null &&
-        (targetActivity.activityType == ActivityType.bubblePop ||
-            activeProfile.studentClass.isKindergarten)) {
-      targetScreen = BubblePopScreen(
-        activity: targetActivity,
-        activities: activities,
-        initialLevelIndex: safeIndex,
-      );
-    } else if (targetActivity != null && targetActivity.activityType == ActivityType.dragDrop) {
-      targetScreen = FractionCauldronScreen(activity: targetActivity);
-    } else if (targetActivity != null && targetActivity.activityType == ActivityType.gridCalc) {
-      targetScreen = EquationSolverScreen(activity: targetActivity);
-    } else {
-      targetScreen = ConceptChallengeScreen(
-        chapter: chapter.copyWith(activities: activities),
-        activities: activities,
-        initialIndex: safeIndex,
-        studentClass: activeProfile.studentClass,
-        onActivitiesUpdated: (updatedActivities) {
-          LocalStorageService.instance.saveChapterActivities(chapter.chapterId, updatedActivities);
-        },
-      );
-    }
-
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => targetScreen),
-    ).then((_) {
-      _loadCurriculum();
-    });
+    _openChapter(chapter);
   }
 
   @override
@@ -192,7 +165,19 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
     }
 
     final isEnglish = widget.subjectId == 'english';
-    final localizedSubjectName = isEnglish ? strings.english : strings.math;
+    final isScience = widget.subjectId == 'science';
+    final isEvs = widget.subjectId == 'evs';
+    final isHindi = widget.subjectId == 'hindi';
+    final isMath = widget.subjectId == 'math' || widget.subjectId == 'mathematics';
+    final localizedSubjectName = isEnglish
+        ? strings.english
+        : isScience
+            ? strings.science
+            : isEvs
+                ? strings.evsShort
+                : isHindi
+                    ? strings.hindiShort
+                    : strings.math;
 
     return Scaffold(
       appBar: AppBar(
@@ -246,6 +231,37 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
           ],
         ),
         actions: [
+          if (_chapters.isNotEmpty)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              icon: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.25)),
+                ),
+                child: const Icon(
+                  Icons.map_rounded,
+                  color: Color(0xFF0D9488),
+                  size: 18,
+                ),
+              ),
+              tooltip: strings.isHindi ? 'द्वीप यात्रा (Island Map)' : 'Island Map',
+              onPressed: () {
+                AudioService.instance.playSfx(CurioSfx.click);
+                AdventureIslandScreen.push(
+                  context,
+                  chapters: _chapters,
+                  subjectId: widget.subjectId,
+                  subjectName: localizedSubjectName,
+                  emoji: widget.emoji,
+                  primaryColor: widget.primaryColor,
+                );
+              },
+            ),
           const LanguageSwitchButton(),
           const SizedBox(width: 2),
           ValueListenableBuilder<bool>(
@@ -271,16 +287,37 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
             icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF475569), size: 21),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onSelected: (value) {
-              if (value == 'voice') {
+              if (value == 'island_map' && _chapters.isNotEmpty) {
+                AudioService.instance.playSfx(CurioSfx.click);
+                AdventureIslandScreen.push(
+                  context,
+                  chapters: _chapters,
+                  subjectId: widget.subjectId,
+                  subjectName: localizedSubjectName,
+                  emoji: widget.emoji,
+                  primaryColor: widget.primaryColor,
+                );
+              } else if (value == 'voice') {
                 AudioService.instance.playSfx(CurioSfx.click);
                 VoiceSettingsSheet.show(context);
               } else if (value == 'scratchpad') {
                 _openScratchpad();
-              } else if (value == 'board_class') {
-                _openBoardClassSelector();
+              } else if (value == 'edit_profile' || value == 'board_class') {
+                _openEditProfile();
               }
             },
             itemBuilder: (context) => [
+              if (_chapters.isNotEmpty)
+                PopupMenuItem(
+                  value: 'island_map',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.map_rounded, color: Color(0xFF0D9488), size: 20),
+                      const SizedBox(width: 10),
+                      Text(strings.isHindi ? 'द्वीप यात्रा (Island Map)' : 'Adventure Island Map', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    ],
+                  ),
+                ),
               PopupMenuItem(
                 value: 'voice',
                 child: Row(
@@ -303,12 +340,12 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                   ),
                 ),
               PopupMenuItem(
-                value: 'board_class',
+                value: 'edit_profile',
                 child: Row(
                   children: [
-                    const Icon(Icons.school_rounded, color: Color(0xFF10B981), size: 20),
+                    const Icon(Icons.account_circle_rounded, color: Color(0xFF10B981), size: 20),
                     const SizedBox(width: 10),
-                    Text(strings.changeBoard, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    Text(strings.editProfile, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                   ],
                 ),
               ),
@@ -317,10 +354,7 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
           const SizedBox(width: 6),
         ],
       ),
-      bottomNavigationBar: const SafeArea(
-        top: false,
-        child: AdBannerWidget(),
-      ),
+      bottomNavigationBar: const AdBannerWidget(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -330,7 +364,27 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
               // Subject Hero Banner
               _buildSubjectHeroBanner(activeProfile, strings),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+
+              if (isMath) ...[
+                _buildLearnTablesBanner(context, strings),
+                const SizedBox(height: 14),
+              ],
+
+              if (isEnglish) ...[
+                _buildSpellBeeBanner(context, strings),
+                const SizedBox(height: 14),
+              ],
+
+              if (isHindi) ...[
+                _buildLanguageTrackSelector(activeProfile, strings),
+                if (_activeLanguageTrack == 'literature')
+                  _buildPublisherSelectorBar(activeProfile, strings)
+                else
+                  _buildGrammarInfoBanner(strings),
+              ] else ...[
+                _buildPublisherSelectorBar(activeProfile, strings),
+              ],
 
               // Section Header
               Row(
@@ -338,7 +392,17 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      isEnglish ? strings.englishChapters : strings.mathChapters,
+                      isEnglish
+                          ? strings.englishChapters
+                          : isScience
+                              ? strings.scienceChapters
+                              : isEvs
+                                  ? strings.evsChapters
+                                  : isHindi
+                                      ? (_activeLanguageTrack == 'grammar'
+                                          ? (strings.isHindi ? 'व्याकरण पाठ' : 'Grammar Chapters')
+                                          : (strings.isHindi ? 'साहित्य पाठ व कविताएं' : 'Literature Stories & Poems'))
+                                      : strings.mathChapters,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -405,6 +469,20 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
   }
 
   Widget _buildSubjectHeroBanner(StudentProfile activeProfile, AppLocalizations strings) {
+    final isEnglish = widget.subjectId == 'english';
+    final isScience = widget.subjectId == 'science';
+    final isEvs = widget.subjectId == 'evs';
+    final isHindi = widget.subjectId == 'hindi';
+    final localizedSubjectName = isEnglish
+        ? strings.english
+        : isScience
+            ? strings.science
+            : isEvs
+                ? strings.evsShort
+                : isHindi
+                    ? strings.hindiShort
+                    : strings.math;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -488,17 +566,324 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                 Text(
                   widget.subjectId == 'english'
                       ? strings.englishSubtitle
-                      : strings.mathSubtitle,
+                      : widget.subjectId == 'science'
+                          ? strings.scienceSubtitle
+                          : widget.subjectId == 'evs'
+                              ? strings.evsSubtitle
+                              : widget.subjectId == 'hindi'
+                                  ? strings.hindiSubtitle
+                                  : strings.mathSubtitle,
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
                     color: widget.primaryColor.withValues(alpha: 0.9),
                   ),
                 ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        AudioService.instance.playSfx(CurioSfx.click);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TimedExamScreen(
+                              chapters: _chapters,
+                              subjectId: widget.subjectId,
+                              subjectName: localizedSubjectName,
+                              primaryColor: widget.primaryColor,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Text('📝', style: TextStyle(fontSize: 13)),
+                      label: Text(
+                        strings.startTimedExam,
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    if (widget.subjectId == 'science' || widget.subjectId == 'evs')
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          AudioService.instance.playSfx(CurioSfx.click);
+                          DiagramExplorerSheet.show(context);
+                        },
+                        icon: const Text('🔬', style: TextStyle(fontSize: 13)),
+                        label: Text(
+                          strings.exploreDiagram,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: widget.primaryColor,
+                          backgroundColor: Colors.white,
+                          side: BorderSide(color: widget.primaryColor.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    if (_chapters.isNotEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          AudioService.instance.playSfx(CurioSfx.click);
+                          AdventureIslandScreen.push(
+                            context,
+                            chapters: _chapters,
+                            subjectId: widget.subjectId,
+                            subjectName: localizedSubjectName,
+                            emoji: widget.emoji,
+                            primaryColor: widget.primaryColor,
+                          );
+                        },
+                        icon: const Icon(Icons.map_rounded, size: 14),
+                        label: Text(
+                          strings.isHindi ? 'द्वीप यात्रा' : 'Island Map',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF0D9488),
+                          backgroundColor: Colors.white,
+                          side: const BorderSide(color: Color(0xFF0D9488), width: 1.2),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLearnTablesBanner(BuildContext context, AppLocalizations strings) {
+    final isHindiUi = strings.isHindi;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        AudioService.instance.playSfx(CurioSfx.click);
+        MathTablesScreen.push(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF059669), Color(0xFF047857)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF059669).withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text('🔢', style: TextStyle(fontSize: 26)),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          isHindiUi ? 'पहाड़े सीखें (Tables 1-20) 🌟' : 'Learn Tables (1 to 20) 🌟',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isHindiUi ? 'नया' : 'NEW',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isHindiUi
+                        ? 'बोलकर सीखें, 3D कार्ड्स, खाली स्थान व स्पीड टेस्ट!'
+                        : 'Voice chant, visual dots, flashcards & speed quiz!',
+                    style: const TextStyle(
+                      color: Color(0xFFD1FAE5),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                isHindiUi ? 'सीखें' : 'Learn',
+                style: const TextStyle(
+                  color: Color(0xFF065F46),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpellBeeBanner(BuildContext context, AppLocalizations strings) {
+    final isHindiUi = strings.isHindi;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        AudioService.instance.playSfx(CurioSfx.click);
+        SpellBeeHubScreen.push(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFD97706).withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text('🐝', style: TextStyle(fontSize: 26)),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          isHindiUi ? 'स्पेल बी चैंपियन 🏆' : 'Spell Bee Champion 🏆',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isHindiUi ? 'विशेष गेम' : 'FEATURED',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isHindiUi
+                        ? 'आवाज से स्पेलिंग सीखें • 10 स्टेज एडवेंचर व 60s स्प्रिंट!'
+                        : 'Interactive voice spelling • 10 Stage Adventure & 60s Sprint!',
+                    style: const TextStyle(
+                      color: Color(0xFFFEF3C7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                isHindiUi ? 'खेलें' : 'Play',
+                style: const TextStyle(
+                  color: Color(0xFFB45309),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -509,6 +894,29 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
     ThemeData theme,
     StudentProfile activeProfile,
   ) {
+    final strings = ref.strings;
+    final isHindi = strings.isHindi;
+    final isEnglish = widget.subjectId == 'english';
+    final isScience = widget.subjectId == 'science';
+    final isEvs = widget.subjectId == 'evs';
+    final isHindiSub = widget.subjectId == 'hindi';
+    final localizedSubjectName = isEnglish
+        ? strings.english
+        : isScience
+            ? strings.science
+            : isEvs
+                ? strings.evsShort
+                : isHindiSub
+                    ? strings.hindiShort
+                    : strings.math;
+
+    final displayedTitle = isHindi
+        ? HindiCurriculumTranslator.translateChapterTitle(chapter.title)
+        : chapter.title;
+    final displayedDescription = isHindi
+        ? HindiCurriculumTranslator.translateChapterDescription(chapter.chapterId, chapter.description)
+        : chapter.description;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14.0),
       child: Material(
@@ -561,7 +969,9 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  'CHAPTER ${chapter.chapterNumber}',
+                                  isHindi
+                                      ? 'अध्याय ${chapter.chapterNumber}'
+                                      : 'CHAPTER ${chapter.chapterNumber}',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w900,
@@ -570,6 +980,24 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                                   ),
                                 ),
                               ),
+                              if (LiteratureReadingService.instance.isLiteratureChapter(chapter)) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEA580C).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    chapter.icon == '📜' ? (isHindi ? '📜 कविता' : '📜 Poem') : (isHindi ? '📖 कहानी' : '📖 Story'),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFFC2410C),
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const Spacer(),
                               Builder(
                                 builder: (_) {
@@ -585,7 +1013,9 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        '$solvedCount/${chapter.activities.length} Solved ✓',
+                                        isHindi
+                                            ? '$solvedCount/${chapter.activities.length} हल किया ✓'
+                                            : '$solvedCount/${chapter.activities.length} Solved ✓',
                                         style: const TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w900,
@@ -595,7 +1025,9 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                                     );
                                   }
                                   return Text(
-                                    '${chapter.activities.length} Practice Sets',
+                                    isHindi
+                                        ? '${chapter.activities.length} अभ्यास सेट'
+                                        : '${chapter.activities.length} Practice Sets',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
@@ -608,17 +1040,28 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            chapter.title,
+                            displayedTitle,
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF1E293B),
                             ),
                           ),
-                          if (chapter.description.isNotEmpty) ...[
+                          if (chapter.author != null && chapter.author!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              isHindi ? 'रचयिता: ${chapter.author}' : 'By ${chapter.author}',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: widget.primaryColor,
+                              ),
+                            ),
+                          ],
+                          if (displayedDescription.isNotEmpty) ...[
                             const SizedBox(height: 3),
                             Text(
-                              chapter.description,
+                              displayedDescription,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -668,33 +1111,84 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
                 // Action Row
                 Row(
                   children: [
+                    Builder(
+                      builder: (_) {
+                        final isLit = LiteratureReadingService.instance.isLiteratureChapter(chapter);
+                        return OutlinedButton.icon(
+                          onPressed: () {
+                            AudioService.instance.playSfx(CurioSfx.click);
+                            if (isLit) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TextbookReaderScreen(
+                                    chapter: chapter,
+                                    profile: activeProfile,
+                                    onStartPractice: () => _openChapter(chapter),
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ConceptLessonSheet.show(
+                                context,
+                                chapter: chapter,
+                                profile: activeProfile,
+                                onStartPractice: () => _openChapter(chapter),
+                              );
+                            }
+                          },
+                          icon: Text(chapter.icon == '📜' ? '📜' : '📖', style: const TextStyle(fontSize: 14)),
+                          label: Text(
+                            isLit
+                                ? (chapter.icon == '📜'
+                                    ? (isHindi ? 'कविता पढ़ें' : 'Read Poem')
+                                    : (isHindi ? 'कहानी पढ़ें' : 'Read Story'))
+                                : (isHindi ? 'सीखें (Learn)' : 'Learn'),
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFC2410C),
+                            backgroundColor: const Color(0xFFFFF7ED),
+                            side: const BorderSide(color: Color(0xFFFDBA74), width: 1.2),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
                     OutlinedButton.icon(
                       onPressed: () {
                         AudioService.instance.playSfx(CurioSfx.click);
-                        ConceptLessonSheet.show(
-                          context,
-                          chapter: chapter,
-                          profile: activeProfile,
-                          onStartPractice: () => _openChapter(chapter),
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TimedExamScreen(
+                              chapter: chapter,
+                              subjectId: widget.subjectId,
+                              subjectName: localizedSubjectName,
+                              primaryColor: widget.primaryColor,
+                            ),
+                          ),
                         );
                       },
-                      icon: const Text('📖', style: TextStyle(fontSize: 14)),
-                      label: const Text(
-                        'Learn',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                      icon: const Text('📝', style: TextStyle(fontSize: 13)),
+                      label: Text(
+                        isHindi ? 'टेस्ट' : 'Test',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFC2410C),
-                        backgroundColor: const Color(0xFFFFF7ED),
-                        side: const BorderSide(color: Color(0xFFFDBA74), width: 1.2),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        foregroundColor: widget.primaryColor,
+                        side: BorderSide(color: widget.primaryColor.withValues(alpha: 0.4)),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                     const Spacer(),
                     TextButton.icon(
                       onPressed: () => _practiceChapter(chapter),
-                      icon: const Text('Practice & Play', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      icon: Text(
+                        isHindi ? 'अभ्यास खेलें' : 'Practice & Play',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                      ),
                       label: const Icon(Icons.arrow_forward_rounded, size: 16),
                       style: TextButton.styleFrom(
                         foregroundColor: widget.primaryColor,
@@ -707,6 +1201,494 @@ class _SubjectChaptersScreenState extends ConsumerState<SubjectChaptersScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLanguageTrackSelector(StudentProfile activeProfile, AppLocalizations strings) {
+    final isLiterature = _activeLanguageTrack == 'literature';
+    final isHindiUi = strings.isHindi;
+
+    final litTitle = widget.subjectId == 'hindi'
+        ? (isHindiUi ? 'पाठ्यपुस्तक (Reader)' : 'Literature Reader')
+        : (isHindiUi ? 'साहित्य (Reader)' : 'Literature Reader');
+
+    final gramTitle = widget.subjectId == 'hindi'
+        ? (isHindiUi ? 'व्याकरण (Grammar)' : 'Hindi Grammar')
+        : (isHindiUi ? 'व्याकरण (Grammar)' : 'English Grammar');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                if (_activeLanguageTrack != 'literature') {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  setState(() {
+                    _activeLanguageTrack = 'literature';
+                  });
+                  _loadCurriculum();
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: isLiterature ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isLiterature
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('📖', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        litTitle,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: isLiterature ? FontWeight.w900 : FontWeight.w700,
+                          color: isLiterature ? widget.primaryColor : const Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                if (_activeLanguageTrack != 'grammar') {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  setState(() {
+                    _activeLanguageTrack = 'grammar';
+                  });
+                  _loadCurriculum();
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: !isLiterature ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: !isLiterature
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('✍️', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        gramTitle,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: !isLiterature ? FontWeight.w900 : FontWeight.w700,
+                          color: !isLiterature ? widget.primaryColor : const Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrammarInfoBanner(AppLocalizations strings) {
+    final isHindiUi = strings.isHindi;
+    final isHindiSub = widget.subjectId == 'hindi';
+
+    final text = isHindiSub
+        ? (isHindiUi
+            ? 'सम्पूर्ण हिंदी व्याकरण व रचना — संज्ञा, सर्वनाम, क्रिया, काल, विलोम, पर्यायवाची आदि।'
+            : 'Complete Hindi Grammar & Composition — Nouns, Pronouns, Verbs, Tenses & Vocabulary.')
+        : (isHindiUi
+            ? 'सम्पूर्ण अंग्रेजी व्याकरण व रचना — Nouns, Verbs, Tenses, Prepositions व Skills।'
+            : 'Universal English Grammar & Skills — Nouns, Verbs, Tenses, Prepositions & Composition.');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: widget.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: widget.primaryColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: Text('✍️', style: TextStyle(fontSize: 20)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isHindiSub
+                      ? (isHindiUi ? 'व्याकरण पुस्तक' : 'Grammar & Composition')
+                      : (isHindiUi ? 'ग्रामर पुस्तक' : 'English Grammar & Composition'),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    color: widget.primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublisherSelectorBar(StudentProfile activeProfile, AppLocalizations strings) {
+    final publishers = _repository.getAvailablePublishers(
+      subjectId: widget.subjectId,
+      studentClass: activeProfile.studentClass,
+      board: activeProfile.board,
+    );
+    if (publishers.isEmpty) return const SizedBox.shrink();
+
+    final currentPref = LocalStorageService.instance.getPreferredPublisher(widget.subjectId);
+    final defaultPub = activeProfile.board == BoardType.icse
+        ? (widget.subjectId == 'english' ? 'orient_blackswan' : (widget.subjectId == 'hindi' ? 'miranda' : 'all'))
+        : (activeProfile.board == BoardType.cbse ? 'ncert' : 'all');
+    final activeId = currentPref ?? defaultPub;
+    final activeItem = publishers.firstWhere(
+      (p) => p['id'] == activeId,
+      orElse: () => publishers.first,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: widget.primaryColor.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: widget.primaryColor.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _openPublisherBottomSheet(publishers, activeId, strings),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: widget.primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Icon(Icons.menu_book_rounded, color: widget.primaryColor, size: 22),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            strings.isHindi ? 'पाठ्यपुस्तक (Book)' : 'School Book',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: widget.primaryColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              activeItem['badge'] ?? '',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                                color: widget.primaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        activeItem['book'] ?? activeItem['name'] ?? '',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: widget.primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        strings.isHindi ? 'बदलें' : 'Change',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: widget.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: widget.primaryColor),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openPublisherBottomSheet(
+    List<Map<String, String>> publishers,
+    String currentId,
+    AppLocalizations strings,
+  ) {
+    AudioService.instance.playSfx(CurioSfx.click);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  const Text('🎒', style: TextStyle(fontSize: 26)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          strings.isHindi ? 'स्कूल की पाठ्यपुस्तक चुनें' : 'Choose Your School Book',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        Text(
+                          strings.isHindi
+                              ? 'पाठ्यक्रम आपके बच्चे की स्कूल पुस्तक से मेल खाएगा'
+                              : 'Curio Academy matches your child’s actual school bag!',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              ...publishers.map((pub) {
+                final isSelected = pub['id'] == currentId;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      AudioService.instance.playSfx(CurioSfx.correctCheer);
+                      await LocalStorageService.instance.savePreferredPublisher(widget.subjectId, pub['id']!);
+                      if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                      }
+                      if (mounted) {
+                        _loadCurriculum();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isSelected ? widget.primaryColor.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? widget.primaryColor : const Color(0xFFE2E8F0),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: isSelected ? widget.primaryColor : const Color(0xFFE2E8F0),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                isSelected ? Icons.check_rounded : Icons.menu_book_rounded,
+                                color: isSelected ? Colors.white : const Color(0xFF64748B),
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        pub['name'] ?? '',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: isSelected ? widget.primaryColor : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Text(
+                                        pub['badge'] ?? '',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  pub['book'] ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 }

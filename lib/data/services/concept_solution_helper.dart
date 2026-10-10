@@ -1,3 +1,4 @@
+import '../../core/localization/hindi_curriculum_translator.dart';
 import '../models/activity_model.dart';
 import '../models/chapter_model.dart';
 
@@ -12,6 +13,7 @@ class ConceptSolutionDetails {
   final String conceptDetail;
   final List<String> formulasAndRules;
   final String proTip;
+  final bool isHindi;
 
   const ConceptSolutionDetails({
     required this.questionText,
@@ -23,11 +25,28 @@ class ConceptSolutionDetails {
     required this.conceptDetail,
     required this.formulasAndRules,
     required this.proTip,
+    this.isHindi = false,
   });
 
   /// Audio narration text for TTS read-aloud
   String get speechNarration {
     final buffer = StringBuffer();
+    if (isHindi) {
+      buffer.writeln('यहाँ इस प्रश्न की अवधारणा और समाधान है।');
+      buffer.writeln('सही उत्तर $correctAnswer है।');
+      if (steps.isNotEmpty) {
+        buffer.writeln('चरणबद्ध समाधान:');
+        for (int i = 0; i < steps.length; i++) {
+          buffer.writeln('चरण ${i + 1}: ${steps[i]}');
+        }
+      }
+      buffer.writeln('मुख्य अवधारणा: $conceptTitle। $conceptDetail');
+      if (formulasAndRules.isNotEmpty) {
+        buffer.writeln('यह नियम याद रखें: ${formulasAndRules.first}');
+      }
+      return buffer.toString();
+    }
+
     buffer.writeln('Here is the concept and solution for this question.');
     buffer.writeln('The correct answer is $correctAnswer.');
     if (steps.isNotEmpty) {
@@ -50,7 +69,11 @@ class ConceptSolutionHelper {
   static final ConceptSolutionHelper instance = ConceptSolutionHelper._();
   ConceptSolutionHelper._();
 
-  ConceptSolutionDetails getDetails(Activity activity, {Chapter? chapter}) {
+  ConceptSolutionDetails getDetails(
+    Activity activity, {
+    Chapter? chapter,
+    bool isHindi = false,
+  }) {
     final payload = activity.interactionPayload;
     final prompt = activity.promptData.text;
     final visualIcon = payload['visualIcon'] as String? ?? (activity.subjectId == 'english' ? '📚' : '📐');
@@ -104,6 +127,24 @@ class ConceptSolutionHelper {
     // 5. Pro Tip
     final proTip = (payload['proTip'] as String?) ?? _generateProTip(prompt, activity, chapter);
 
+    if (isHindi) {
+      return ConceptSolutionDetails(
+        questionText: HindiCurriculumTranslator.translatePrompt(prompt),
+        visualIcon: visualIcon,
+        correctAnswer: HindiCurriculumTranslator.translateOption(correctAnswer),
+        hint: HindiCurriculumTranslator.translateHint(hint),
+        steps: steps.asMap().entries.map((entry) {
+          final translated = HindiCurriculumTranslator.translateStep(entry.value);
+          return translated.startsWith('चरण') ? translated : 'चरण ${entry.key + 1}: $translated';
+        }).toList(),
+        conceptTitle: HindiCurriculumTranslator.translateConcept(conceptTitle),
+        conceptDetail: HindiCurriculumTranslator.translateChapterDescription(conceptDetail, conceptTitle),
+        formulasAndRules: formulas.map(HindiCurriculumTranslator.translateRule).toList(),
+        proTip: proTip.isNotEmpty ? 'स्मार्ट टिप 🌟: ${HindiCurriculumTranslator.translateHint(proTip)}' : '',
+        isHindi: true,
+      );
+    }
+
     return ConceptSolutionDetails(
       questionText: prompt,
       visualIcon: visualIcon,
@@ -114,6 +155,7 @@ class ConceptSolutionHelper {
       conceptDetail: conceptDetail,
       formulasAndRules: formulas,
       proTip: proTip,
+      isHindi: false,
     );
   }
 
@@ -233,6 +275,10 @@ class ConceptSolutionHelper {
       return 'Remember:\n• Acute < 90°\n• Right = 90° (square corner)\n• Obtuse is between 90° and 180°\n• Straight = 180°.';
     }
 
+    if (lower.contains('slide') || lower.contains('roll') || activity.topicId == 'shapes_space') {
+      return 'Look closely at the object shape. Flat surfaces slide, rounded surfaces roll.';
+    }
+
     // 3. Math - Decimals (digits before and after point)
     if (lower.contains('decimal') || RegExp(r'\b\d+\.\d+\b').hasMatch(prompt)) {
       return 'Line up the decimal points straight down before adding, subtracting, or comparing decimals!';
@@ -311,7 +357,7 @@ class ConceptSolutionHelper {
       return 'A conjunction connects words, phrases, or clauses (e.g. and, but, because, although, or, so).';
     }
 
-    if (lower.contains('article') || lower.contains(' a ') || lower.contains(' an ') || lower.contains(' the ')) {
+    if (activity.subjectId == 'english' && (lower.contains('article') || lower.contains('vowel') || lower.contains('consonant') || lower.contains('choose a, an') || lower.contains('a/an/the'))) {
       return 'Use "an" before vowel sounds (a, e, i, o, u). Use "a" before consonant sounds. Use "the" when speaking of a specific item.';
     }
 
@@ -446,6 +492,12 @@ class ConceptSolutionHelper {
   (String, String) _synthesizeConceptInfo(String prompt, Activity activity, Chapter? chapter) {
     final lower = prompt.toLowerCase();
 
+    if (lower.contains('slide') || lower.contains('roll') || activity.topicId == 'shapes_space') {
+      return (
+        'Rolling and Sliding Objects (Shapes and Space)',
+        'Objects with flat, smooth surfaces slide along a surface. Objects with curved, round surfaces roll along a surface. Objects with both flat and curved surfaces can both roll and slide.'
+      );
+    }
     if (lower.contains('quadrant') || lower.contains('coordinate') || lower.contains('abscissa')) {
       return (
         'Cartesian Coordinate System',

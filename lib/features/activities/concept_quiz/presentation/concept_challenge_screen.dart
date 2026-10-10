@@ -1,20 +1,24 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/audio/audio_service.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/localization/hindi_curriculum_translator.dart';
 import '../../../../data/local/local_storage_service.dart';
 import '../../../../data/models/activity_model.dart';
 import '../../../../data/models/chapter_model.dart';
 import '../../../../data/models/student_attempt_model.dart';
 import '../../../../data/models/student_profile.dart';
+import '../../../../data/repositories/curriculum_repository.dart';
 import '../../../../data/services/concept_solution_helper.dart';
-import '../../../../data/services/procedural_question_generator.dart';
 import '../../../../shared/components/gamified_card.dart';
 import '../../../../shared/components/scratchpad_drawer.dart';
 import '../../../../shared/dialogs/reward_dialog.dart';
-import '../../bubble_pop/presentation/bubble_pop_screen.dart';
 import '../../../../shared/components/language_switch_button.dart';
 import 'question_solution_sheet.dart';
+import '../../../../services/ad_service.dart';
 
-class ConceptChallengeScreen extends StatefulWidget {
+class ConceptChallengeScreen extends ConsumerStatefulWidget {
   final Activity? activity;
   final Chapter? chapter;
   final List<Activity>? activities;
@@ -33,10 +37,10 @@ class ConceptChallengeScreen extends StatefulWidget {
   });
 
   @override
-  State<ConceptChallengeScreen> createState() => _ConceptChallengeScreenState();
+  ConsumerState<ConceptChallengeScreen> createState() => _ConceptChallengeScreenState();
 }
 
-class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
+class _ConceptChallengeScreenState extends ConsumerState<ConceptChallengeScreen> {
   late List<Activity> _activitiesList;
   late int _currentIndex;
   late Activity _currentActivity;
@@ -48,6 +52,14 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
   bool _showHint = false;
   int _currentQuestionMistakes = 0;
   bool _usedHintOnCurrentQuestion = false;
+  final Set<int> _eliminatedIndices = {};
+  Timer? _rewardTimer;
+
+  @override
+  void dispose() {
+    _rewardTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -87,12 +99,17 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       _showHint = false;
       _currentQuestionMistakes = 0;
       _usedHintOnCurrentQuestion = false;
+      _eliminatedIndices.clear();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (act.activityType != ActivityType.bubblePop) {
-        AudioService.instance.speakPrompt(act.promptData.ttsFallback ?? act.promptData.text);
+        final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
+        final promptToSpeak = isHindi
+            ? HindiCurriculumTranslator.translatePrompt(act.promptData.text)
+            : (act.promptData.ttsFallback ?? act.promptData.text);
+        AudioService.instance.speakPrompt(promptToSpeak, isHindi: isHindi);
       }
     });
   }
@@ -143,6 +160,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       timestamp: DateTime.now(),
     );
     LocalStorageService.instance.saveQuestionAttempt(attempt);
+    if (isCorrect && pointsEarned > 0) {
+      LocalStorageService.instance.addDiscoveryPoints(pointsEarned);
+    }
 
     setState(() {
       _selectedIndex = index;
@@ -152,9 +172,15 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       _answersGiven++;
     });
 
+    // Seamless auto-flow: pre-generate next question if currently at or near the last question
+    if (_currentIndex + 1 >= _activitiesList.length) {
+      _generateAndAppendNextQuestion();
+    }
+
     if (isCorrect) {
       AudioService.instance.playSfx(CurioSfx.correctCheer);
-      Future.delayed(const Duration(milliseconds: 650), () {
+      _rewardTimer?.cancel();
+      _rewardTimer = Timer(const Duration(milliseconds: 650), () {
         if (!mounted) return;
         final congratMessage = starsAwarded == 3
             ? 'Awesome! Perfect answer on your first try! 🌟'
@@ -172,6 +198,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
           },
           onReplay: () {
             _retryQuestion();
+          },
+          onBackToQuestions: () {
+            Navigator.of(context).pop();
           },
         );
       });
@@ -192,21 +221,17 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
 
   void _skipQuestion() {
     AudioService.instance.playSfx(CurioSfx.click);
+    if (_currentIndex + 1 >= _activitiesList.length) {
+      _generateAndAppendNextQuestion();
+    }
     _goToNextQuestion();
   }
 
   void _goToNextQuestion() {
     AudioService.instance.playSfx(CurioSfx.click);
 
-    final isAtLastQuestion = _currentIndex + 1 >= _activitiesList.length;
-    final hasGivenTwoOrMoreAnswers = _answersGiven >= 2;
-
-    // After giving 2 answers, or whenever reaching the end of the question list:
-    // Automatically generate and add the next authentic chapter question!
-    if (isAtLastQuestion || hasGivenTwoOrMoreAnswers) {
-      if (isAtLastQuestion) {
-        _generateAndAppendNextQuestion();
-      }
+    if (_currentIndex + 1 >= _activitiesList.length) {
+      _generateAndAppendNextQuestion();
     }
 
     if (_currentIndex + 1 < _activitiesList.length) {
@@ -224,14 +249,16 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
           chapterNumber: 1,
           title: _currentActivity.chapterName ?? 'Concept Practice',
           grade: widget.studentClass.label,
+          subjectId: _currentActivity.subjectId,
           icon: '✨',
         );
 
     final existingPrompts = _activitiesList.map((a) => a.promptData.text).toSet();
-    final newActs = ProceduralQuestionGenerator.instance.generateActivitiesForChapter(
-      chapter,
+    final newActs = CurriculumRepository.instance.generateActivitiesForChapter(
+      chapter.chapterId,
       widget.studentClass,
       count: 1,
+      chapter: chapter,
       existingPromptTexts: existingPrompts,
     );
 
@@ -240,13 +267,6 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
       widget.onActivitiesUpdated?.call(_activitiesList);
       // Persist updated question list to local storage immediately
       LocalStorageService.instance.saveChapterActivities(chapter.chapterId, _activitiesList);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✨ Question ${_activitiesList.length} automatically added and saved!'),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
   }
 
@@ -261,39 +281,63 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_currentActivity.activityType == ActivityType.bubblePop) {
-      return BubblePopScreen(
-        activity: _currentActivity,
-        activities: _activitiesList,
-        initialLevelIndex: _currentIndex,
-      );
-    }
+    final strings = ref.strings;
+    final isHindi = strings.isHindi;
 
     final payload = _currentActivity.interactionPayload;
-    final options = (payload['options'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-        ['Option A', 'Option B', 'Option C', 'Option D'];
-    final explanation = payload['explanation'] as String? ?? 'Review the concept and try again!';
+    List<String>? candidateOptions = (payload['options'] as List<dynamic>?)?.map((e) => e.toString()).toList();
+    if (candidateOptions == null || candidateOptions.isEmpty) {
+      if (payload.containsKey('bubbles') && (payload['bubbles'] as List).isNotEmpty) {
+        candidateOptions = (payload['bubbles'] as List)
+            .map((b) => b['label']?.toString() ?? b['value']?.toString() ?? '')
+            .toSet()
+            .where((s) => s.isNotEmpty)
+            .take(4)
+            .toList();
+      }
+    }
+    final rawOptions = candidateOptions ?? ['Option A', 'Option B', 'Option C', 'Option D'];
+    final options = isHindi
+        ? rawOptions.map(HindiCurriculumTranslator.translateOption).toList()
+        : rawOptions;
+    final rawExplanation = payload['explanation'] as String? ?? 'Review the concept and try again!';
+    final explanation = isHindi
+        ? (rawExplanation.contains('Correct') || rawExplanation.contains('Great') || rawExplanation.contains('Awesome')
+            ? 'बहुत बढ़िया! अवधारणा को याद रखें और अभ्यास करते रहें!'
+            : rawExplanation)
+        : rawExplanation;
     final visualIcon = payload['visualIcon'] as String? ?? '📐';
-    final topicTitle = payload['topicTitle'] as String? ??
+    final rawTopicTitle = payload['topicTitle'] as String? ??
         _currentActivity.chapterName ??
         _currentActivity.topicId;
+    final topicTitle = isHindi
+        ? HindiCurriculumTranslator.translateChapterTitle(rawTopicTitle)
+        : rawTopicTitle;
+
+    final displayedPrompt = isHindi
+        ? HindiCurriculumTranslator.translatePrompt(_currentActivity.promptData.text)
+        : _currentActivity.promptData.text;
 
     final bool isLastOrAutoAdding = (_currentIndex + 1 >= _activitiesList.length) || (_answersGiven >= 2);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      bottomNavigationBar: _buildBottomActionBar(isLastOrAutoAdding),
+      bottomNavigationBar: _buildBottomActionBar(isLastOrAutoAdding, strings, isHindi),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Question ${_currentIndex + 1} of ${_activitiesList.length}',
+              isHindi
+                  ? 'प्रश्न ${_currentIndex + 1} / ${_activitiesList.length}'
+                  : 'Question ${_currentIndex + 1} of ${_activitiesList.length}',
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
             ),
             Text(
-              widget.chapter?.title ?? _currentActivity.chapterName ?? _currentActivity.targetGrade,
+              isHindi
+                  ? HindiCurriculumTranslator.translateChapterTitle(widget.chapter?.title ?? _currentActivity.chapterName ?? _currentActivity.targetGrade)
+                  : (widget.chapter?.title ?? _currentActivity.chapterName ?? _currentActivity.targetGrade),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
@@ -480,10 +524,8 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                               tooltip: 'Read Question Aloud',
                               onPressed: () {
                                 AudioService.instance.playSfx(CurioSfx.click);
-                                AudioService.instance.speakPrompt(
-                                  _currentActivity.promptData.ttsFallback ??
-                                  _currentActivity.promptData.text,
-                                );
+                                final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
+                                AudioService.instance.speakPrompt(displayedPrompt, isHindi: isHindi);
                               },
                             ),
                             const SizedBox(width: 8),
@@ -506,7 +548,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _currentActivity.promptData.text,
+                      displayedPrompt,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
@@ -523,10 +565,55 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
 
               // 2. Options Grid/List
               ...List.generate(options.length, (idx) {
-                final optionValue = options[idx];
+                final displayedOption = options[idx];
+                final rawOption = rawOptions[idx];
                 final isSelected = _selectedIndex == idx;
-                final isExpected = (optionValue.trim().toLowerCase() ==
+                final isExpected = (rawOption.trim().toLowerCase() ==
                     _currentActivity.validationRule.expectedAnswer?.toString().trim().toLowerCase());
+
+                final isEliminated = _eliminatedIndices.contains(idx);
+                if (isEliminated) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Opacity(
+                      opacity: 0.3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE2E8F0),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.close_rounded, size: 18, color: Color(0xFF94A3B8)),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                displayedOption,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF94A3B8),
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
 
                 Color cardBg = Colors.white;
                 Color border = const Color(0xFFE2E8F0);
@@ -548,7 +635,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () => _handleOptionTap(idx, optionValue),
+                    onTap: () => _handleOptionTap(idx, rawOption),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -589,7 +676,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                           const SizedBox(width: 14),
                           Expanded(
                             child: Text(
-                              optionValue,
+                              displayedOption,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -627,7 +714,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Showing your previous response: ${options[_selectedIndex ?? 0]} (${_isCorrect ? "Correct ✓" : "Needs Review"}).',
+                            isHindi
+                                ? 'आपका पिछला उत्तर: ${options[_selectedIndex ?? 0]} (${_isCorrect ? "सही ✓" : "समीक्षा आवश्यक"}).'
+                                : 'Showing your previous response: ${options[_selectedIndex ?? 0]} (${_isCorrect ? "Correct ✓" : "Needs Review"}).',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -658,7 +747,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          _isCorrect ? 'Excellent job! $explanation' : explanation,
+                          _isCorrect
+                              ? (isHindi ? 'शानदार कार्य! बिल्कुल सही उत्तर 🌟' : 'Excellent job! $explanation')
+                              : (isHindi ? 'कोई बात नहीं! एक बार फिर प्रयास करें या संकेत देखें! 💡' : explanation),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -684,9 +775,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                     );
                   },
                   icon: const Icon(Icons.menu_book_rounded, size: 18),
-                  label: const Text(
-                    'View Full Solution & Concept Details 💡',
-                    style: TextStyle(
+                  label: Text(
+                    isHindi ? 'पूर्ण हल और अवधारणा विवरण देखें 💡' : 'View Full Solution & Concept Details 💡',
+                    style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -707,9 +798,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                 OutlinedButton.icon(
                   onPressed: _retryQuestion,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text(
-                    'Retry This Question',
-                    style: TextStyle(
+                  label: Text(
+                    strings.retryQuestion,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                     ),
@@ -723,13 +814,39 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
+
+                // 4b. Action: Back to Question List
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AudioService.instance.playSfx(CurioSfx.click);
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.list_alt_rounded, size: 18),
+                  label: Text(
+                    isHindi ? 'प्रश्नावली पर वापस जाएं 📋' : 'Back to Question List 📋',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E293B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 1,
+                  ),
+                ),
                 const SizedBox(height: 14),
               ],
 
               // 5. Scratchpad Callout Button
               OutlinedButton.icon(
                 icon: const Icon(Icons.draw_rounded, size: 20),
-                label: const Text('Open Scratchpad for Calculations ✏️'),
+                label: Text(strings.openScratchpad),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   foregroundColor: const Color(0xFF2563EB),
@@ -750,14 +867,15 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                     child: TextButton.icon(
                       icon: Icon(
                         _showHint ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded,
-                        size: 20,
+                        size: 19,
                         color: const Color(0xFFD97706),
                       ),
                       label: Text(
-                        _showHint ? 'Hide Hint' : 'Need a Hint? 💡',
+                        _showHint ? strings.hideHint : strings.needAHint,
                         style: const TextStyle(
                           color: Color(0xFFB45309),
                           fontWeight: FontWeight.w800,
+                          fontSize: 12,
                         ),
                       ),
                       onPressed: () {
@@ -765,18 +883,67 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                       },
                     ),
                   ),
+                  if (options.length >= 3)
+                    Expanded(
+                      child: TextButton.icon(
+                        icon: Icon(
+                          _eliminatedIndices.isNotEmpty ? Icons.check_circle_rounded : Icons.highlight_off_rounded,
+                          size: 19,
+                          color: _eliminatedIndices.isNotEmpty ? const Color(0xFF10B981) : const Color(0xFF0D9488),
+                        ),
+                        label: Text(
+                          _eliminatedIndices.isNotEmpty ? '50:50 Used' : '50:50 Clue 🎯',
+                          style: TextStyle(
+                            color: _eliminatedIndices.isNotEmpty ? const Color(0xFF059669) : const Color(0xFF0F766E),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                        onPressed: (_isAnswered || _eliminatedIndices.isNotEmpty)
+                            ? null
+                            : () {
+                                AdService().showRewardedAd(
+                                  onUserEarnedReward: (reward) {
+                                    final expected = _currentActivity.validationRule.expectedAnswer?.toString().trim().toLowerCase();
+                                    final wrongIndices = <int>[];
+                                    for (int i = 0; i < rawOptions.length; i++) {
+                                      if (rawOptions[i].trim().toLowerCase() != expected) {
+                                        wrongIndices.add(i);
+                                      }
+                                    }
+                                    wrongIndices.shuffle();
+                                    setState(() {
+                                      _eliminatedIndices.addAll(wrongIndices.take(2));
+                                    });
+                                    AudioService.instance.playSfx(CurioSfx.starAward);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          LocalStorageService.instance.isClosedTester || LocalStorageService.instance.isPremiumUser
+                                              ? '⭐ VIP Lifeline: 2 incorrect options eliminated for free!'
+                                              : '🎯 50:50 Lifeline: 2 incorrect options eliminated!',
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                      ),
+                    ),
                   Expanded(
                     child: TextButton.icon(
                       icon: const Icon(
                         Icons.auto_stories_rounded,
-                        size: 20,
+                        size: 19,
                         color: Color(0xFF4F46E5),
                       ),
-                      label: const Text(
-                        'Full Solution 🔍',
-                        style: TextStyle(
+                      label: Text(
+                        strings.fullExplanation,
+                        style: const TextStyle(
                           color: Color(0xFF4338CA),
                           fontWeight: FontWeight.w800,
+                          fontSize: 12,
                         ),
                       ),
                       onPressed: () {
@@ -797,6 +964,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                     final details = ConceptSolutionHelper.instance.getDetails(
                       _currentActivity,
                       chapter: widget.chapter,
+                      isHindi: isHindi,
                     );
                     return Container(
                       margin: const EdgeInsets.only(top: 8),
@@ -820,12 +988,12 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
-                                  Text('💡', style: TextStyle(fontSize: 20)),
-                                  SizedBox(width: 8),
+                                children: [
+                                  const Text('💡', style: TextStyle(fontSize: 20)),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Pedagogical Hint & Clue',
-                                    style: TextStyle(
+                                    strings.pedagogicalHint,
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: Color(0xFF92400E),
@@ -866,18 +1034,20 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                             },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Text(
-                                  'Still stuck? View step-by-step solution',
-                                  style: TextStyle(
+                                  isHindi
+                                      ? 'अटक गए हैं? चरणबद्ध समाधान देखें'
+                                      : 'Still stuck? View step-by-step solution',
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF4338CA),
                                     decoration: TextDecoration.underline,
                                   ),
                                 ),
-                                SizedBox(width: 4),
-                                Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF4338CA)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF4338CA)),
                               ],
                             ),
                           ),
@@ -894,7 +1064,7 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
     );
   }
 
-  Widget _buildBottomActionBar(bool isLast) {
+  Widget _buildBottomActionBar(bool isLast, AppLocalizations strings, bool isHindi) {
     final canGoPrev = _currentIndex > 0;
 
     return SafeArea(
@@ -917,27 +1087,38 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
         ),
         child: Row(
           children: [
-            // 1. Previous Question Button
+            // 1. Previous Question OR Back to Questions Button
             OutlinedButton.icon(
-              onPressed: canGoPrev ? _goToPreviousQuestion : null,
+              onPressed: (_isAnswered || canGoPrev)
+                  ? () {
+                      AudioService.instance.playSfx(CurioSfx.click);
+                      if (_isAnswered) {
+                        Navigator.of(context).pop();
+                      } else if (canGoPrev) {
+                        _goToPreviousQuestion();
+                      }
+                    }
+                  : null,
               icon: Icon(
-                Icons.arrow_back_rounded,
+                _isAnswered ? Icons.list_alt_rounded : Icons.arrow_back_rounded,
                 size: 18,
-                color: canGoPrev ? const Color(0xFF334155) : const Color(0xFF94A3B8),
+                color: (_isAnswered || canGoPrev) ? const Color(0xFF334155) : const Color(0xFF94A3B8),
               ),
               label: Text(
-                'Prev',
+                _isAnswered
+                    ? (isHindi ? 'प्रश्नावली 📋' : 'Questions 📋')
+                    : strings.prevQuestion,
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
-                  color: canGoPrev ? const Color(0xFF334155) : const Color(0xFF94A3B8),
+                  color: (_isAnswered || canGoPrev) ? const Color(0xFF334155) : const Color(0xFF94A3B8),
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                backgroundColor: canGoPrev ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                backgroundColor: (_isAnswered || canGoPrev) ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
                 side: BorderSide(
-                  color: canGoPrev ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0),
+                  color: (_isAnswered || canGoPrev) ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0),
                   width: 1.3,
                 ),
                 shape: RoundedRectangleBorder(
@@ -956,9 +1137,9 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                   size: 19,
                   color: Color(0xFFB45309),
                 ),
-                label: const Text(
-                  'Skip',
-                  style: TextStyle(
+                label: Text(
+                  strings.skipQuestion,
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
                     color: Color(0xFFB45309),
@@ -987,8 +1168,8 @@ class _ConceptChallengeScreenState extends State<ConceptChallengeScreen> {
                 ),
                 label: Text(
                   _isAnswered
-                      ? (isLast ? 'Next Question (New ✨)' : 'Next Question ➡️')
-                      : 'Next ➔',
+                      ? (isLast ? strings.nextQuestionNew : strings.nextQuestion)
+                      : (isHindi ? 'अगला ➔' : 'Next ➔'),
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 15,

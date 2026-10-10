@@ -6,19 +6,50 @@ import '../../../core/profile/profile_provider.dart';
 import '../../../core/theme/grade_tier_extension.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../../../data/models/student_profile.dart';
+import '../../../data/repositories/curriculum_repository.dart';
 import '../../../presentation/widgets/ad_banner_widget.dart';
 import '../../../shared/components/language_switch_button.dart';
 import '../../../shared/components/scratchpad_drawer.dart';
-import '../../onboarding/presentation/board_class_selector_dialog.dart';
 import '../../settings/presentation/voice_settings_sheet.dart';
 import '../../subject_chapters/presentation/subject_chapters_screen.dart';
+import '../../../shared/dialogs/avatar_selector_dialog.dart';
+import '../../../core/services/in_app_update_service.dart';
+import '../../../core/services/in_app_review_service.dart';
+import '../../membership/presentation/membership_paywall_sheet.dart';
+import '../../arcade/presentation/speed_math_arcade_screen.dart';
+import '../../arcade/presentation/split_screen_duel_screen.dart';
+import '../../adventure_map/presentation/adventure_island_screen.dart';
+import '../../spell_bee/presentation/spell_bee_hub_screen.dart';
+import '../../math_tables/presentation/math_tables_screen.dart';
 
-class HomeDashboardScreen extends ConsumerWidget {
+class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
 
-  void _openBoardClassSelector(BuildContext context) {
+  @override
+  ConsumerState<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
+
+class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      InAppUpdateService.instance.checkForUpdate(context: context);
+      _checkMilestoneReview();
+    });
+  }
+
+  Future<void> _checkMilestoneReview() async {
+    final stars = LocalStorageService.instance.totalStars;
+    final shouldShow = await InAppReviewService.instance.shouldPromptMilestoneReview(stars);
+    if (shouldShow && mounted) {
+      await InAppReviewService.instance.showMilestoneDialog(context);
+    }
+  }
+
+  void _openEditProfile(BuildContext context) {
     AudioService.instance.playSfx(CurioSfx.click);
-    BoardClassSelectorDialog.show(context);
+    AvatarSelectorDialog.show(context);
   }
 
   void _openScratchpad(BuildContext context) {
@@ -52,7 +83,7 @@ class HomeDashboardScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final activeProfile = ref.watch(studentProfileProvider);
     final tierTheme = Theme.of(context).extension<CurioTierTheme>() ?? CurioTierTheme.primaryBuilder();
     final theme = Theme.of(context);
@@ -135,18 +166,39 @@ class HomeDashboardScreen extends ConsumerWidget {
                 VoiceSettingsSheet.show(context);
               } else if (value == 'scratchpad') {
                 _openScratchpad(context);
-              } else if (value == 'board_class') {
-                _openBoardClassSelector(context);
+              } else if (value == 'edit_profile' || value == 'board_class') {
+                _openEditProfile(context);
+              } else if (value == 'membership') {
+                AudioService.instance.playSfx(CurioSfx.click);
+                MembershipPaywallSheet.show(context);
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'membership',
+                child: Row(
+                  children: [
+                    const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFF9800), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        (ref.strings.isHindi ? 'विज्ञापन हटाएं / VIP 👑' : 'Remove Ads / VIP 👑'),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'voice',
                 child: Row(
                   children: [
                     const Icon(Icons.record_voice_over_rounded, color: Color(0xFF6366F1), size: 20),
                     const SizedBox(width: 10),
-                    Text(strings.voiceCompanion, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    Expanded(
+                      child: Text(strings.voiceCompanion, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), overflow: TextOverflow.ellipsis),
+                    ),
                   ],
                 ),
               ),
@@ -157,17 +209,21 @@ class HomeDashboardScreen extends ConsumerWidget {
                     children: [
                       const Icon(Icons.draw_rounded, color: Color(0xFFFF7B25), size: 20),
                       const SizedBox(width: 10),
-                      Text(strings.scratchpad, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      Expanded(
+                        child: Text(strings.scratchpad, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
               PopupMenuItem(
-                value: 'board_class',
+                value: 'edit_profile',
                 child: Row(
                   children: [
-                    const Icon(Icons.school_rounded, color: Color(0xFF10B981), size: 20),
+                    const Icon(Icons.account_circle_rounded, color: Color(0xFF10B981), size: 20),
                     const SizedBox(width: 10),
-                    Text(strings.changeBoard, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    Expanded(
+                      child: Text(strings.editProfile, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), overflow: TextOverflow.ellipsis),
+                    ),
                   ],
                 ),
               ),
@@ -176,10 +232,7 @@ class HomeDashboardScreen extends ConsumerWidget {
           const SizedBox(width: 6),
         ],
       ),
-      bottomNavigationBar: const SafeArea(
-        top: false,
-        child: AdBannerWidget(),
-      ),
+      bottomNavigationBar: const AdBannerWidget(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -187,22 +240,34 @@ class HomeDashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Student Greeting Card
-              _buildStudentGreetingCard(theme, activeProfile, ref),
+              _buildStudentGreetingCard(context, theme, activeProfile, ref),
 
               const SizedBox(height: 14),
 
               // 2. Total Stars Achievement Card
               _buildTotalStarsHeroCard(ref),
 
+              // 2b. Mistake Vault Card
+              ValueListenableBuilder<int>(
+                valueListenable: LocalStorageService.instance.mistakeCountNotifier,
+                builder: (context, mistakeCount, _) {
+                  if (mistakeCount == 0) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: _buildMistakeVaultCard(context, mistakeCount, ref),
+                  );
+                },
+              ),
+
               const SizedBox(height: 18),
 
-              // 3. Class Selection (Direct kid-friendly carousel & changer)
-              _buildClassSelectionSection(context, activeProfile, theme, ref),
-
-              const SizedBox(height: 18),
-
-              // 4. Subject Selection Cards (Tapping opens dedicated chapters screen)
+              // 3. Subject Selection Cards (Tapping opens dedicated chapters screen)
               _buildSubjectSelectionSection(context, theme, activeProfile, ref),
+
+              const SizedBox(height: 18),
+
+              // 4. Arcade & Multiplayer Fun Zone
+              _buildArcadeZoneSection(context, ref),
 
               const SizedBox(height: 24),
             ],
@@ -299,34 +364,120 @@ class HomeDashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          '$totalStars',
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF78350F),
-                            height: 1.1,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            strings.totalStars,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFFB45309),
+                    const SizedBox(height: 6),
+                    ValueListenableBuilder<int>(
+                      valueListenable: LocalStorageService.instance.totalPointsNotifier,
+                      builder: (context, totalPoints, _) {
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFDE68A)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('⭐', style: TextStyle(fontSize: 13)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$totalStars',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF78350F),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    strings.totalStars,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF92400E),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('💎', style: TextStyle(fontSize: 13)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$totalPoints',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF1E40AF),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    strings.isHindi ? 'पॉइंट्स' : 'Points',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1E40AF),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ValueListenableBuilder<int>(
+                              valueListenable: LocalStorageService.instance.streakNotifier,
+                              builder: (context, streak, _) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF1F2),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFFECDD3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('🔥', style: TextStyle(fontSize: 13)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$streak',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFFBE123C),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        strings.dailyStreak,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF9F1239),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       strings.keepPracticingMotivation,
                       style: const TextStyle(
@@ -345,11 +496,867 @@ class HomeDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStudentGreetingCard(ThemeData theme, StudentProfile activeProfile, WidgetRef ref) {
+  Widget _buildMistakeVaultCard(BuildContext context, int count, WidgetRef ref) {
     final strings = ref.strings;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFDBA74), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEA580C).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFB923C), Color(0xFFEA580C)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFEA580C).withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Text('🎯', style: TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      strings.mistakeVault,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF9A3412),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEA580C),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  strings.mistakeVaultSubtitle,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFC2410C),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => _showMistakeVaultSheet(context, ref),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEA580C),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  strings.practiceMistakes,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_forward_rounded, size: 14),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArcadeZoneSection(BuildContext context, WidgetRef ref) {
+    final strings = ref.strings;
+    final isHindi = strings.isHindi;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                isHindi ? '🎮 आर्केड और गेम्स ज़ोन' : '🎮 Arcade & Fun Zone',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E293B),
+                  letterSpacing: -0.2,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDE9FE),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                isHindi ? 'मल्टीप्लेयर' : 'Multiplayer',
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: Color(0xFF6D28D9)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isHindi ? 'रैपिड-फायर गणित चुनौतियां और 2-खिलाड़ी मुकाबला' : 'Rapid-fire math sprints & split-screen battles',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            // 1. Speed Math Card
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  SpeedMathArcadeScreen.push(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('⚡', style: TextStyle(fontSize: 26)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('60s', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        isHindi ? 'स्पीड मैथ' : 'Speed Math',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+                      ),
+                      const SizedBox(height: 3),
+                      ValueListenableBuilder<int>(
+                        valueListenable: LocalStorageService.instance.speedMathHighScoreNotifier,
+                        builder: (context, highScore, _) {
+                          return Text(
+                            highScore > 0
+                                ? '${isHindi ? "सर्वश्रेष्ठ" : "Best"}: 🏆 $highScore'
+                                : (isHindi ? '60 सेकंड का स्प्रिंट' : '60s Math Sprint'),
+                            style: const TextStyle(color: Color(0xFFE0E7FF), fontSize: 11, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // 2. 2-Player Duel Card
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  SplitScreenDuelScreen.push(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF7B25), Color(0xFFEA580C)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF7B25).withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('⚔️', style: TextStyle(fontSize: 26)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('1 vs 1', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        isHindi ? '2-खिलाड़ी मुकाबला' : '2-Player Duel',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        isHindi ? 'स्प्लिट स्क्रीन बैटल 🦁' : 'Split-Screen Duel 🦁',
+                        style: const TextStyle(color: Color(0xFFFFEDD5), fontSize: 11, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // 3. Spell Bee Champion Card
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            AudioService.instance.playSfx(CurioSfx.click);
+            SpellBeeHubScreen.push(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD97706).withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text('🐝', style: TextStyle(fontSize: 24)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              isHindi ? 'स्पेल बी चैंपियन' : 'Spell Bee Champion',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isHindi ? 'नया 🌟' : 'NEW 🌟',
+                              style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      ValueListenableBuilder<int>(
+                        valueListenable: LocalStorageService.instance.spellBeeHighScoreNotifier,
+                        builder: (context, highScore, _) {
+                          return Text(
+                            highScore > 0
+                                ? '${isHindi ? "सर्वश्रेष्ठ" : "Best"}: 🏆 $highScore pts'
+                                : (isHindi ? 'आवाज से स्पेलिंग सीखें • 10 स्टेज व 60s स्प्रिंट' : 'Voice Spelling • 10 Stages & 60s Sprint'),
+                            style: const TextStyle(color: Color(0xFFFEF3C7), fontSize: 11.5, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 16),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Learn Tables (पहाड़े सीखें) Card
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            AudioService.instance.playSfx(CurioSfx.click);
+            MathTablesScreen.push(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF059669), Color(0xFF047857)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF059669).withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text('🔢', style: TextStyle(fontSize: 24)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              isHindi ? 'पहाड़े सीखें (1-20)' : 'Learn Tables (1 to 20)',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isHindi ? 'नया 🌟' : 'NEW 🌟',
+                              style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isHindi
+                            ? 'बोलकर सीखें, 3D कार्ड्स, खाली स्थान व टेस्ट'
+                            : 'Voice Chant, 3D Flashcards & Speed Test',
+                        style: const TextStyle(color: Color(0xFFD1FAE5), fontSize: 11.5, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 16),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 4. Adventure Island Learning Path Map Card
+        Consumer(
+          builder: (context, ref, _) {
+            final activeProfile = ref.watch(studentProfileProvider);
+            return InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                AudioService.instance.playSfx(CurioSfx.click);
+                _openAdventureIslandFromDashboard(context, activeProfile);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0D9488).withValues(alpha: 0.28),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.map_rounded, color: Colors.white, size: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  isHindi ? 'द्वीप यात्रा (Adventure Map)' : 'Adventure Island Map',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text('QUEST 🗺️', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            isHindi ? 'अध्याय नक्शा, खजाना और पाथवे एडवेंचर' : 'Visual chapter quest, treasure chests & avatar trail',
+                            style: const TextStyle(color: Color(0xFFCCFBF1), fontSize: 11, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _openAdventureIslandFromDashboard(BuildContext context, StudentProfile profile) {
+    final strings = ref.strings;
+    final isHindi = strings.isHindi;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.map_rounded, color: Color(0xFF0D9488), size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isHindi ? 'द्वीप यात्रा चुनें' : 'Choose Adventure Island',
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+                          ),
+                          Text(
+                            isHindi ? 'विषय चुनें और अपनी यात्रा शुरू करें' : 'Select a subject to begin your quest map',
+                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildIslandSubjectTile(
+                  ctx,
+                  subjectId: 'mathematics',
+                  subjectName: strings.math,
+                  emoji: '📐',
+                  color: const Color(0xFF2563EB),
+                  profile: profile,
+                ),
+                const SizedBox(height: 8),
+                _buildIslandSubjectTile(
+                  ctx,
+                  subjectId: 'english',
+                  subjectName: strings.english,
+                  emoji: '📖',
+                  color: const Color(0xFF7C3AED),
+                  profile: profile,
+                ),
+                if (!profile.studentClass.isKindergarten) ...[
+                  const SizedBox(height: 8),
+                  _buildIslandSubjectTile(
+                    ctx,
+                    subjectId: 'science',
+                    subjectName: strings.science,
+                    emoji: '🔬',
+                    color: const Color(0xFF059669),
+                    profile: profile,
+                  ),
+                ],
+                const SizedBox(height: 8),
+                _buildIslandSubjectTile(
+                  ctx,
+                  subjectId: 'hindi',
+                  subjectName: strings.hindiShort,
+                  emoji: '🇮🇳',
+                  color: const Color(0xFFEA580C),
+                  profile: profile,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIslandSubjectTile(
+    BuildContext sheetContext, {
+    required String subjectId,
+    required String subjectName,
+    required String emoji,
+    required Color color,
+    required StudentProfile profile,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () async {
+        Navigator.pop(sheetContext);
+        final defaultPub = profile.board == BoardType.icse
+            ? (subjectId == 'english' ? 'orient_blackswan' : (subjectId == 'hindi' ? 'miranda' : null))
+            : (profile.board == BoardType.cbse ? 'ncert' : null);
+        final chapters = await CurriculumRepository().getChaptersForClass(
+          profile.studentClass,
+          board: profile.board,
+          subjectId: subjectId,
+          publisher: defaultPub,
+        );
+        if (mounted) {
+          AdventureIslandScreen.push(
+            context,
+            chapters: chapters,
+            subjectId: subjectId,
+            subjectName: subjectName,
+            emoji: emoji,
+            primaryColor: color,
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                subjectName,
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: color),
+              ),
+            ),
+            Icon(Icons.arrow_forward_rounded, color: color, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMistakeVaultSheet(BuildContext context, WidgetRef ref) {
+    final strings = ref.strings;
+    final mistakes = LocalStorageService.instance.getMistakes();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 26)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            strings.mistakeVault,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                          ),
+                          Text(
+                            strings.mistakeVaultSubtitle,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: mistakes.isEmpty
+                    ? Center(
+                        child: Text(
+                          strings.noMistakes,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        itemCount: mistakes.length,
+                        itemBuilder: (c, idx) {
+                          final m = mistakes[idx];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF7ED),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFFED7AA)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFDBA74).withValues(alpha: 0.3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFC2410C))),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        m.chapterId.isNotEmpty ? m.chapterId.replaceAll('_', ' ').toUpperCase() : 'PRACTICE QUESTION',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEA580C)),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        m.selectedOptionText.isNotEmpty
+                                            ? 'Selected: "${m.selectedOptionText}"'
+                                            : 'Incorrect attempt',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFFEA580C)),
+                                  label: Text(
+                                    strings.isHindi ? 'हटाएं' : 'Clear',
+                                    style: const TextStyle(color: Color(0xFFEA580C), fontWeight: FontWeight.w800, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    await LocalStorageService.instance.clearQuestionAttempt(m.activityId);
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStudentGreetingCard(
+    BuildContext context,
+    ThemeData theme,
+    StudentProfile activeProfile,
+    WidgetRef ref,
+  ) {
+    final strings = ref.strings;
+    final greetingText = strings.formatGreeting(activeProfile.studentName);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
@@ -368,55 +1375,215 @@ class HomeDashboardScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF9800).withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+          // 1. Mascot Avatar Circle with Edit Badge & Tap to Change
+          InkWell(
+            borderRadius: BorderRadius.circular(25),
+            onTap: () {
+              AudioService.instance.playSfx(CurioSfx.click);
+              AvatarSelectorDialog.show(context);
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF9800).withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      activeProfile.avatarIcon,
+                      style: const TextStyle(fontSize: 27),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(3.5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      size: 11,
+                      color: Color(0xFFEA580C),
+                    ),
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: LocalStorageService.instance.closedTesterNotifier,
+                  builder: (context, isClosed, _) {
+                    final isPremium = isClosed || LocalStorageService.instance.isPremiumUser;
+                    if (!isPremium) return const SizedBox.shrink();
+                    return Positioned(
+                      top: -4,
+                      left: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Text('👑', style: TextStyle(fontSize: 10)),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-            child: const Center(
-              child: Text('🦊', style: TextStyle(fontSize: 26)),
-            ),
           ),
           const SizedBox(width: 12),
+
+          // 2. Greeting Title ("Hello <name> 👋") & Subtitle
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  strings.studentGreeting,
-                  style: const TextStyle(
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF7C2D12),
-                    letterSpacing: -0.2,
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    AudioService.instance.playSfx(CurioSfx.click);
+                    AvatarSelectorDialog.show(context);
+                  },
+                  child: Text(
+                    greetingText,
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF7C2D12),
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  strings.studentGreetingSubtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF9A3412),
+                const SizedBox(height: 3),
+                  Wrap(
+                    spacing: 5,
+                    runSpacing: 3,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEA580C),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          activeProfile.studentClass.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFED7AA)),
+                        ),
+                        child: Text(
+                          activeProfile.board.code,
+                          style: const TextStyle(
+                            color: Color(0xFFC2410C),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          AudioService.instance.playSfx(CurioSfx.click);
+                          MembershipPaywallSheet.show(context);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: LocalStorageService.instance.closedTesterNotifier,
+                          builder: (context, isClosed, _) {
+                            final isPremium = isClosed || LocalStorageService.instance.isPremiumUser;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                gradient: isPremium
+                                    ? const LinearGradient(
+                                        colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                                      )
+                                    : null,
+                                color: isPremium ? null : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isPremium ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isPremium ? Icons.workspace_premium_rounded : Icons.star_border_rounded,
+                                      size: 11,
+                                      color: isPremium ? const Color(0xFFD97706) : const Color(0xFF64748B),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      isPremium ? 'PREMIUM USER 👑' : 'GET PREMIUM ⭐',
+                                      style: TextStyle(
+                                        color: isPremium ? const Color(0xFF92400E) : const Color(0xFF475569),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(width: 8),
+
+          // 3. Audio Narration Button
           Material(
             color: Colors.white,
             shape: const CircleBorder(),
@@ -426,7 +1593,7 @@ class HomeDashboardScreen extends ConsumerWidget {
               onTap: () {
                 AudioService.instance.playSfx(CurioSfx.click);
                 AudioService.instance.speakPrompt(
-                  '${strings.studentGreeting}. ${strings.studentGreetingSubtitle}',
+                  '$greetingText. ${strings.studentGreetingSubtitle}',
                 );
               },
               child: const Padding(
@@ -440,166 +1607,7 @@ class HomeDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildClassSelectionSection(
-    BuildContext context,
-    StudentProfile activeProfile,
-    ThemeData theme,
-    WidgetRef ref,
-  ) {
-    final strings = ref.strings;
-    final classIcons = <StudentClass, String>{
-      StudentClass.lkg: '🐥',
-      StudentClass.ukg: '🎈',
-      StudentClass.class1: '🚀',
-      StudentClass.class2: '🎨',
-      StudentClass.class3: '🌟',
-      StudentClass.class4: '⚡',
-      StudentClass.class5: '🎯',
-      StudentClass.class6: '🔬',
-      StudentClass.class7: '🏆',
-      StudentClass.class8: '👑',
-    };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                strings.selectClassTitle,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1E293B),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => _openBoardClassSelector(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFCBD5E1)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${activeProfile.board.code} ⚙️',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF475569),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 58,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: StudentClass.values.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final c = StudentClass.values[index];
-              final isSelected = c == activeProfile.studentClass;
-              final emoji = classIcons[c] ?? '🎒';
-
-              return InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  if (isSelected) return;
-                  AudioService.instance.playSfx(CurioSfx.click);
-                  ref.read(studentProfileProvider.notifier).updateProfile(
-                    board: activeProfile.board,
-                    studentClass: c,
-                  );
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? const LinearGradient(
-                            colors: [Color(0xFFFF7B25), Color(0xFFF97316)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: isSelected ? null : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFFEA580C) : const Color(0xFFE2E8F0),
-                      width: isSelected ? 2 : 1.2,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFFFF7B25).withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(emoji, style: const TextStyle(fontSize: 19)),
-                      const SizedBox(width: 6),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.label,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                              color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                            ),
-                          ),
-                          if (isSelected)
-                            Text(
-                              strings.active,
-                              style: const TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFFFFF7ED),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildSubjectSelectionSection(
     BuildContext context,
@@ -608,6 +1616,8 @@ class HomeDashboardScreen extends ConsumerWidget {
     WidgetRef ref,
   ) {
     final strings = ref.strings;
+    final showScience = CurriculumRepository.isSubjectAvailableForClass('science', activeProfile.studentClass);
+    final showEvs = CurriculumRepository.isSubjectAvailableForClass('evs', activeProfile.studentClass);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -678,8 +1688,139 @@ class HomeDashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        _buildScienceSubjectCard(context, strings, activeProfile),
+        // Secondary Subject Row(s)
+        if (showScience && showEvs) ...[
+          // Class 3-5: Science & EVS + full width Hindi
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSubjectCard(
+                  title: strings.science,
+                  subtitle: strings.scienceSubtitle,
+                  emoji: '🔬',
+                  primaryColor: const Color(0xFF10B981),
+                  lightBgColor: const Color(0xFFECFDF5),
+                  actionText: 'View Chapters ➔',
+                  onTap: () => _openSubject(
+                    context,
+                    subjectId: 'science',
+                    subjectName: strings.science,
+                    emoji: '🔬',
+                    primaryColor: const Color(0xFF10B981),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSubjectCard(
+                  title: strings.evsShort,
+                  subtitle: strings.evsSubtitle,
+                  emoji: '🌿',
+                  primaryColor: const Color(0xFF059669),
+                  lightBgColor: const Color(0xFFECFDF5),
+                  actionText: 'View Chapters ➔',
+                  onTap: () => _openSubject(
+                    context,
+                    subjectId: 'evs',
+                    subjectName: strings.evs,
+                    emoji: '🌿',
+                    primaryColor: const Color(0xFF059669),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildHindiSubjectCard(context, strings, activeProfile),
+        ] else if (showScience) ...[
+          // Class 6-8: Science & Hindi (2x2 grid)
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSubjectCard(
+                  title: strings.science,
+                  subtitle: strings.scienceSubtitle,
+                  emoji: '🔬',
+                  primaryColor: const Color(0xFF10B981),
+                  lightBgColor: const Color(0xFFECFDF5),
+                  actionText: 'View Chapters ➔',
+                  onTap: () => _openSubject(
+                    context,
+                    subjectId: 'science',
+                    subjectName: strings.science,
+                    emoji: '🔬',
+                    primaryColor: const Color(0xFF10B981),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSubjectCard(
+                  title: strings.hindiShort,
+                  subtitle: strings.hindiSubtitle,
+                  emoji: '🔤',
+                  primaryColor: const Color(0xFFEA580C),
+                  lightBgColor: const Color(0xFFFFF7ED),
+                  actionText: 'View Chapters ➔',
+                  onTap: () => _openSubject(
+                    context,
+                    subjectId: 'hindi',
+                    subjectName: strings.hindi,
+                    emoji: '🔤',
+                    primaryColor: const Color(0xFFEA580C),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ] else if (showEvs) ...[
+          // LKG - Class 2: EVS & Hindi (2x2 grid)
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSubjectCard(
+                  title: strings.hindiShort,
+                  subtitle: strings.hindiSubtitle,
+                  emoji: '🔤',
+                  primaryColor: const Color(0xFFEA580C),
+                  lightBgColor: const Color(0xFFFFF7ED),
+                  actionText: 'View Chapters ➔',
+                  onTap: () => _openSubject(
+                    context,
+                    subjectId: 'hindi',
+                    subjectName: strings.hindi,
+                    emoji: '🔤',
+                    primaryColor: const Color(0xFFEA580C),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSubjectCard(
+                  title: strings.evsShort,
+                  subtitle: strings.evsSubtitle,
+                  emoji: '🌿',
+                  primaryColor: const Color(0xFF059669),
+                  lightBgColor: const Color(0xFFECFDF5),
+                  actionText: 'View Chapters ➔',
+                  onTap: () => _openSubject(
+                    context,
+                    subjectId: 'evs',
+                    subjectName: strings.evs,
+                    emoji: '🌿',
+                    primaryColor: const Color(0xFF059669),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          const SizedBox(height: 10),
+          _buildHindiSubjectCard(context, strings, activeProfile),
+        ],
       ],
     );
   }
@@ -782,32 +1923,18 @@ class HomeDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScienceSubjectCard(BuildContext context, AppLocalizations strings, StudentProfile profile) {
-    const scienceColor = Color(0xFF10B981);
+  Widget _buildHindiSubjectCard(BuildContext context, AppLocalizations strings, StudentProfile profile) {
+    const hindiColor = Color(0xFFEA580C);
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
         AudioService.instance.playSfx(CurioSfx.click);
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Text('🔬', style: TextStyle(fontSize: 20)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Curio Science is launching soon for ${profile.studentClass.label}! 🧪✨',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            backgroundColor: const Color(0xFF0F766E),
-            duration: const Duration(seconds: 3),
-          ),
+        _openSubject(
+          context,
+          subjectId: 'hindi',
+          subjectName: strings.hindi,
+          emoji: '🔤',
+          primaryColor: hindiColor,
         );
       },
       child: Container(
@@ -819,9 +1946,9 @@ class HomeDashboardScreen extends ConsumerWidget {
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: hindiColor.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -831,53 +1958,68 @@ class HomeDashboardScreen extends ConsumerWidget {
               width: 38,
               height: 38,
               decoration: const BoxDecoration(
-                color: Color(0xFFECFDF5),
+                color: Color(0xFFFFF7ED),
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('🔬', style: TextStyle(fontSize: 20)),
+                child: Text('🔤', style: TextStyle(fontSize: 20)),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    strings.science,
-                    style: const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E293B),
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          strings.hindi,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFEDD5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          strings.isHindi ? 'नया! ✨' : 'NEW! ✨',
+                          style: const TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFC2410C),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 2),
                   Text(
-                    strings.scienceSubtitle,
+                    strings.hindiSubtitle,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF64748B),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: scienceColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                strings.comingSoon,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: scienceColor,
-                ),
-              ),
-            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFFEA580C)),
           ],
         ),
       ),

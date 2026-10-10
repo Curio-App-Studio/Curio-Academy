@@ -223,7 +223,7 @@ void main() {
       }
     });
 
-    test('All LKG English chapters generate 100% interactive Bubble Pop activities with voice TTS', () async {
+    test('LKG English chapters generate balanced interactive Bubble Pop and visual activities with voice TTS', () async {
       final repo = CurriculumRepository();
       final chapters = await repo.getChaptersForClass(
         StudentClass.lkg,
@@ -240,14 +240,17 @@ void main() {
 
         expect(activities.length, equals(3));
         for (final act in activities) {
-          expect(act.activityType, equals(ActivityType.bubblePop),
-              reason: 'LKG activity must be interactive Bubble Pop, not text MCQ');
           expect(act.promptData.ttsFallback, isNotNull,
               reason: 'LKG activity must have TTS audio prompt');
-          expect(act.interactionPayload.containsKey('bubbles'), isTrue);
-          final bubbles = act.interactionPayload['bubbles'] as List;
-          expect(bubbles.length, greaterThanOrEqualTo(5));
-          expect(act.interactionPayload.containsKey('targetValue'), isTrue);
+          if (act.activityType == ActivityType.bubblePop) {
+            expect(act.interactionPayload.containsKey('bubbles'), isTrue);
+            final bubbles = act.interactionPayload['bubbles'] as List;
+            expect(bubbles.length, greaterThanOrEqualTo(5));
+            expect(act.interactionPayload.containsKey('targetValue'), isTrue);
+          } else {
+            expect(act.activityType, equals(ActivityType.cardMatch));
+            expect(act.interactionPayload.containsKey('pairs'), isTrue);
+          }
         }
       }
     });

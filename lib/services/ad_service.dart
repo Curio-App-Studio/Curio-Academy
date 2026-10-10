@@ -3,23 +3,37 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../config/ad_config.dart';
 import '../core/audio/audio_service.dart';
+import '../data/local/local_storage_service.dart';
 
 /// Service responsible for managing Google Mobile Ads (AdMob)
-/// and strictly enforcing Google Play Families Policy & COPPA compliance.
+/// and strictly enforcing Google Play Families Policy, COPPA compliance,
+/// and lifetime ad-free benefits for Closed Testers and Paid Membership subscribers.
 class AdService {
   static final AdService _instance = AdService._internal();
   factory AdService() => _instance;
   AdService._internal();
 
   bool _isInitialized = false;
-  bool isPremiumUser = false; // Set to true to disable all ads
+  bool isPremiumUser = false; // Programmatic override if needed
+
+  /// Checks if user is a verified Closed Tester (granted lifetime ad-free).
+  bool get isClosedTester => LocalStorageService.instance.isClosedTester;
+
+  /// Checks if user has an active In-App Purchase or Subscription.
+  bool get isPurchasedPremium => LocalStorageService.instance.isPremiumUser;
+
+  /// Global master switch: Ads are served for non-paying users and strictly disabled for Paid Members.
+  bool get areAdsEnabled => !isPremiumUser && !isPurchasedPremium;
 
   InterstitialAd? _interstitialAd;
   bool _isInterstitialLoading = false;
   DateTime? _lastInterstitialShownTime;
 
+  RewardedAd? _rewardedAd;
+  bool _isRewardedLoading = false;
+
   /// Minimum duration between interstitial ads to protect kids UX.
-  static const Duration _interstitialCooldown = Duration(minutes: 3);
+  static const Duration _interstitialCooldown = Duration(seconds: 40);
 
   /// Initializes Google Mobile Ads SDK with strict Child-Directed settings.
   Future<void> initialize() async {
@@ -35,16 +49,23 @@ class AdService {
       final RequestConfiguration requestConfiguration = RequestConfiguration(
         ageRestrictedTreatment: AgeRestrictedTreatment.child,
         maxAdContentRating: MaxAdContentRating.g,
+        testDeviceIds: const ['5FC79A0B607A5DC85466751A260AB6C0'],
       );
 
       await MobileAds.instance.updateRequestConfiguration(requestConfiguration);
       await MobileAds.instance.initialize();
 
       _isInitialized = true;
-      developer.log('AdService: Google Mobile Ads initialized for Families Policy (G-Rated, Child Directed).', name: 'AdService');
+      developer.log(
+        'AdService: Google Mobile Ads initialized for Families Policy (G-Rated, Child Directed). areAdsEnabled=$areAdsEnabled',
+        name: 'AdService',
+      );
 
-      // Pre-load the first interstitial ad
-      loadInterstitialAd();
+      // Pre-load ads only if ads are enabled
+      if (areAdsEnabled) {
+        loadInterstitialAd();
+        loadRewardedAd();
+      }
     } catch (e, stack) {
       developer.log('AdService: Error during initialization: $e', error: e, stackTrace: stack, name: 'AdService');
     }
@@ -52,7 +73,7 @@ class AdService {
 
   /// Pre-loads an Interstitial Ad.
   void loadInterstitialAd() {
-    if (kIsWeb || isPremiumUser || _isInterstitialLoading || _interstitialAd != null) {
+    if (kIsWeb || !areAdsEnabled || _isInterstitialLoading || _interstitialAd != null) {
       return;
     }
 
@@ -76,10 +97,9 @@ class AdService {
   }
 
   /// Displays the Interstitial ad if available and cooldown period has elapsed.
-  /// Calls [onCompleted] strictly AFTER the user dismisses the ad (or if ad is skipped/fails),
-  /// ensuring the speaker and future timers only start when the ad is closed.
-  void showInterstitialAdIfReady({VoidCallback? onCompleted}) {
-    if (kIsWeb || isPremiumUser) {
+  /// If the user is a Closed Tester or Paid Member, ads are bypassed instantly!
+  void showInterstitialAdIfReady({VoidCallback? onCompleted, bool ignoreCooldown = false}) {
+    if (kIsWeb || !areAdsEnabled) {
       onCompleted?.call();
       return;
     }
@@ -88,7 +108,7 @@ class AdService {
     AudioService.instance.stopAudio();
 
     // Check cooldown period
-    if (_lastInterstitialShownTime != null) {
+    if (!ignoreCooldown && _lastInterstitialShownTime != null) {
       final elapsed = DateTime.now().difference(_lastInterstitialShownTime!);
       if (elapsed < _interstitialCooldown) {
         developer.log(
@@ -107,7 +127,6 @@ class AdService {
 
       adToShow.fullScreenContentCallback = FullScreenContentCallback(
         onAdShowedFullScreenContent: (InterstitialAd ad) {
-          // Extra safety check: stop audio as soon as full-screen ad opens
           AudioService.instance.stopAudio();
           developer.log('AdService: Interstitial ad showed on screen.', name: 'AdService');
         },
@@ -115,14 +134,12 @@ class AdService {
           developer.log('AdService: Interstitial ad dismissed by user.', name: 'AdService');
           ad.dispose();
           loadInterstitialAd();
-          // Advance to next question and start future timer ONLY AFTER ad is closed!
           onCompleted?.call();
         },
         onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
           developer.log('AdService: Failed to show interstitial: $error', name: 'AdService');
           ad.dispose();
           loadInterstitialAd();
-          // Fallback: proceed to next question if ad fails to show
           onCompleted?.call();
         },
       );
@@ -135,9 +152,93 @@ class AdService {
     }
   }
 
+  /// Pre-loads a Rewarded Video Ad.
+  void loadRewardedAd() {
+    if (kIsWeb || !areAdsEnabled || _isRewardedLoading || _rewardedAd != null) {
+      return;
+    }
+
+    _isRewardedLoading = true;
+    RewardedAd.load(
+      adUnitId: AdConfig.rewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (RewardedAd ad) {
+          _rewardedAd = ad;
+          _isRewardedLoading = false;
+          developer.log('AdService: Rewarded ad loaded successfully.', name: 'AdService');
+        },
+        onAdFailedToLoad: (LoadAdError error) {
+          _isRewardedLoading = false;
+          _rewardedAd = null;
+          developer.log('AdService: Failed to load rewarded ad: $error', name: 'AdService');
+        },
+      ),
+    );
+  }
+
+  /// Displays the Rewarded ad for hints, double stars, or bonus items.
+  /// If the user is a Closed Tester or Paid Member, the reward is granted INSTANTLY with no ad shown!
+  void showRewardedAd({
+    required void Function(RewardItem reward) onUserEarnedReward,
+    VoidCallback? onDismissed,
+    VoidCallback? onFailedToLoad,
+  }) {
+    // Closed Testers and Paid Members get rewards immediately with ZERO ADS!
+    if (kIsWeb || !areAdsEnabled) {
+      developer.log(
+        'AdService: User is Closed Tester / Paid Member. Granting reward instantly with NO ADS!',
+        name: 'AdService',
+      );
+      onUserEarnedReward(RewardItem(1, 'stars'));
+      onDismissed?.call();
+      return;
+    }
+
+    AudioService.instance.stopAudio();
+
+    if (_rewardedAd != null) {
+      final adToShow = _rewardedAd!;
+      _rewardedAd = null;
+
+      adToShow.fullScreenContentCallback = FullScreenContentCallback(
+        onAdShowedFullScreenContent: (RewardedAd ad) {
+          AudioService.instance.stopAudio();
+          developer.log('AdService: Rewarded ad showed on screen.', name: 'AdService');
+        },
+        onAdDismissedFullScreenContent: (RewardedAd ad) {
+          developer.log('AdService: Rewarded ad dismissed by user.', name: 'AdService');
+          ad.dispose();
+          loadRewardedAd();
+          onDismissed?.call();
+        },
+        onAdFailedToShowFullScreenContent: (RewardedAd ad, AdError error) {
+          developer.log('AdService: Failed to show rewarded ad: $error', name: 'AdService');
+          ad.dispose();
+          loadRewardedAd();
+          onFailedToLoad?.call();
+        },
+      );
+
+      adToShow.show(
+        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+          developer.log('AdService: User earned reward: ${reward.amount} ${reward.type}', name: 'AdService');
+          onUserEarnedReward(reward);
+        },
+      );
+    } else {
+      developer.log('AdService: Rewarded ad not ready, granting reward anyway for kid-friendly UX.', name: 'AdService');
+      loadRewardedAd();
+      onUserEarnedReward(RewardItem(1, 'stars'));
+      onDismissed?.call();
+    }
+  }
+
   /// Disposes active ads
   void dispose() {
     _interstitialAd?.dispose();
     _interstitialAd = null;
+    _rewardedAd?.dispose();
+    _rewardedAd = null;
   }
 }

@@ -7,15 +7,21 @@
     <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove"/>
     <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove"/>
 
+    <!-- Internet access for in-app updates and store reviews -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Google Play In-App Purchases and Subscriptions Billing -->
+    <uses-permission android:name="com.android.vending.BILLING"/>
+
     <application
         android:label="Curio Academy"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
 
-        <!-- Google AdMob Application ID (Google official test ID) -->
+        <!-- Google AdMob Application ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-7955725236973930~4725341853"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

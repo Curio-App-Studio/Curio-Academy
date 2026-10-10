@@ -1,11 +1,14 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/audio/audio_service.dart';
+import '../../../../core/localization/hindi_curriculum_translator.dart';
 import '../../../../core/theme/grade_tier_extension.dart';
 import '../../../../data/local/local_storage_service.dart';
 import '../../../../data/models/activity_model.dart';
 import '../../../../data/models/student_attempt_model.dart';
+import '../../../../shared/components/language_switch_button.dart';
 import '../../../../shared/dialogs/reward_dialog.dart';
+import '../../activity_dispatcher.dart';
 import '../models/bubble_item.dart';
 
 class BubbleLevelData {
@@ -80,10 +83,22 @@ class _BubblePopScreenState extends State<BubblePopScreen>
       if (!mounted) return;
       _announceCurrentPrompt();
     });
+
+    LocalStorageService.instance.languageNotifier.addListener(_onLanguageChanged);
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _loadLevel(_currentLevelIndex);
+    });
+    _announceCurrentPrompt();
   }
 
   void _announceCurrentPrompt() {
-    final prompt = _levels[_currentLevelIndex].promptText;
+    final rawPrompt = _levels[_currentLevelIndex].promptText;
+    final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
+    final prompt = isHindi ? HindiCurriculumTranslator.translatePrompt(rawPrompt) : rawPrompt;
     AudioService.instance.speakPrompt(prompt);
   }
 
@@ -96,6 +111,33 @@ class _BubblePopScreenState extends State<BubblePopScreen>
   }
 
   void _buildLevels() {
+    if (widget.activity != null &&
+        widget.activity!.interactionPayload.containsKey('bubbles') &&
+        (widget.activity!.interactionPayload['bubbles'] as List).isNotEmpty) {
+      final act = widget.activity!;
+      final payload = act.interactionPayload;
+      final rawBubbles = payload['bubbles'] as List;
+      final target = payload['targetValue'];
+      final prompt = act.promptData.ttsFallback ?? act.promptData.text;
+      _levels = [
+        BubbleLevelData(
+          levelNumber: widget.initialLevelIndex + 1,
+          title: act.promptData.text,
+          targetValue: target,
+          promptText: prompt,
+          bubbles: rawBubbles.asMap().entries.map((be) {
+            return BubbleItem.fromJson(
+              be.value as Map<String, dynamic>,
+              be.key,
+              rawBubbles.length,
+            );
+          }).toList(),
+        ),
+      ];
+      _currentLevelIndex = 0;
+      return;
+    }
+
     final acts = widget.activities ??
         (widget.activity != null ? [widget.activity!] : <Activity>[]);
     final customLevels = <BubbleLevelData>[];
@@ -188,7 +230,9 @@ class _BubblePopScreenState extends State<BubblePopScreen>
     _poppedCorrectCount = 0;
     _levelMistakes = 0;
     _encouragementDetail = null;
-    _mascotMessage = 'Level ${level.levelNumber}: ${level.promptText}';
+    final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
+    final translatedPrompt = isHindi ? HindiCurriculumTranslator.translatePrompt(level.promptText) : level.promptText;
+    _mascotMessage = isHindi ? 'लेवल ${level.levelNumber}: $translatedPrompt' : 'Level ${level.levelNumber}: ${level.promptText}';
 
     // Clone bubbles for fresh interactive play
     _bubbles = level.bubbles.map((b) {
@@ -303,6 +347,7 @@ class _BubblePopScreenState extends State<BubblePopScreen>
           timestamp: DateTime.now(),
         );
         LocalStorageService.instance.saveQuestionAttempt(attempt);
+        LocalStorageService.instance.addDiscoveryPoints(points);
       }
 
       final congratMessage = starsAwarded == 3
@@ -315,6 +360,15 @@ class _BubblePopScreenState extends State<BubblePopScreen>
         totalPoints: points,
         message: congratMessage,
         onContinue: () {
+          if (widget.activities != null && widget.activities!.isNotEmpty) {
+            ActivityDispatcher.proceedToNextActivity(
+              context,
+              currentIndex: widget.initialLevelIndex,
+              activities: widget.activities,
+              currentActivity: widget.activity,
+            );
+            return;
+          }
           if (_currentLevelIndex + 1 >= _levels.length) {
             _generateAndAppendNextLevel();
           }
@@ -329,6 +383,9 @@ class _BubblePopScreenState extends State<BubblePopScreen>
             _loadLevel(_currentLevelIndex);
           });
           _announceCurrentPrompt();
+        },
+        onBackToQuestions: () {
+          Navigator.of(context).pop();
         },
       );
     });
@@ -398,6 +455,15 @@ class _BubblePopScreenState extends State<BubblePopScreen>
 
   void _skipToNextLevel() {
     AudioService.instance.playSfx(CurioSfx.click);
+    if (widget.activities != null && widget.activities!.isNotEmpty) {
+      ActivityDispatcher.proceedToNextActivity(
+        context,
+        currentIndex: widget.initialLevelIndex,
+        activities: widget.activities,
+        currentActivity: widget.activity,
+      );
+      return;
+    }
     if (_currentLevelIndex + 1 >= _levels.length) {
       _generateAndAppendNextLevel();
     }
@@ -410,6 +476,7 @@ class _BubblePopScreenState extends State<BubblePopScreen>
 
   @override
   void dispose() {
+    LocalStorageService.instance.languageNotifier.removeListener(_onLanguageChanged);
     _physicsController.dispose();
     _wobbleController.dispose();
     super.dispose();
@@ -486,132 +553,167 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                     // 2a. Top Header Row: Back Button, Level Badge, Total Stars, Next Button, Mute, Speaker
                     Positioned(
                       top: 8,
-                      left: 12,
-                      right: 12,
-                      child: Row(
-                        children: [
-                          IconButton(
-                            iconSize: 28,
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              elevation: 3,
-                            ),
-                            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0369A1)),
-                            onPressed: () => Navigator.of(context).maybePop(),
-                          ),
-                          const SizedBox(width: 8),
-                          // Level Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0284C7),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              'L${currentLevel.levelNumber}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Total Stars Pill
-                          ValueListenableBuilder<int>(
-                            valueListenable: LocalStorageService.instance.totalStarsNotifier,
-                            builder: (context, totalStars, _) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFEF3C7),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: const Color(0xFFFDE68A)),
-                                ),
-                                child: Row(
+                      left: 10,
+                      right: 10,
+                      child: SizedBox(
+                        width: max(screenWidth - 20, 1.0),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.center,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minWidth: max(screenWidth - 20, 1.0)),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Left Group: Back Button, Level Badge, Total Stars
+                                Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '$totalStars',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 13,
-                                        color: Color(0xFF92400E),
+                                    IconButton(
+                                      iconSize: 22,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        elevation: 2,
                                       ),
+                                      icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0369A1)),
+                                      onPressed: () => Navigator.of(context).maybePop(),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    // Level Badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0284C7),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        'L${currentLevel.levelNumber}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    // Total Stars Pill
+                                    ValueListenableBuilder<int>(
+                                      valueListenable: LocalStorageService.instance.totalStarsNotifier,
+                                      builder: (context, totalStars, _) {
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEF3C7),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: const Color(0xFFFDE68A)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 16),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '$totalStars',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 12.5,
+                                                  color: Color(0xFF92400E),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ],
                                 ),
-                              );
-                            },
-                          ),
-                          const Spacer(),
-                          // Skip / Next Level Button
-                          InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: _skipToNextLevel,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFF7DD3FC)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                children: [
-                                  Text(
-                                    'Next',
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF0369A1),
+
+                                const SizedBox(width: 6),
+
+                                // Right Group: Language Switch, Next Button, Mute, Speaker
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const LanguageSwitchButton(),
+                                    const SizedBox(width: 5),
+                                    // Skip / Next Level Button
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: _skipToNextLevel,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: const Color(0xFF7DD3FC)),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.04),
+                                              blurRadius: 3,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              LocalStorageService.instance.getAppLanguage() == 'hi' ? 'अगला' : 'Next',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF0369A1),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 2),
+                                            const Icon(Icons.skip_next_rounded, size: 16, color: Color(0xFF0369A1)),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 2),
-                                  Icon(Icons.skip_next_rounded, size: 18, color: Color(0xFF0369A1)),
-                                ],
-                              ),
+                                    const SizedBox(width: 5),
+                                    ValueListenableBuilder<bool>(
+                                      valueListenable: AudioService.instance.muteNotifier,
+                                      builder: (context, isMuted, _) {
+                                        return IconButton(
+                                          iconSize: 20,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: isMuted ? const Color(0xFFFEE2E2) : Colors.white,
+                                            elevation: 2,
+                                          ),
+                                          icon: Icon(
+                                            isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                                            color: isMuted ? const Color(0xFFDC2626) : const Color(0xFF0369A1),
+                                          ),
+                                          tooltip: isMuted ? 'Unmute Speaker' : 'Mute Speaker',
+                                          onPressed: () {
+                                            AudioService.instance.toggleMute();
+                                          },
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 5),
+                                    IconButton(
+                                      iconSize: 20,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: const Color(0xFFFFD54F),
+                                        elevation: 2,
+                                      ),
+                                      icon: const Icon(Icons.volume_up_rounded, color: Color(0xFF78350F)),
+                                      tooltip: 'Read Prompt Aloud',
+                                      onPressed: _announceCurrentPrompt,
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: AudioService.instance.muteNotifier,
-                            builder: (context, isMuted, _) {
-                              return IconButton(
-                                iconSize: 24,
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isMuted ? const Color(0xFFFEE2E2) : Colors.white,
-                                  elevation: 3,
-                                ),
-                                icon: Icon(
-                                  isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                                  color: isMuted ? const Color(0xFFDC2626) : const Color(0xFF0369A1),
-                                ),
-                                tooltip: isMuted ? 'Unmute Speaker' : 'Mute Speaker',
-                                onPressed: () {
-                                  AudioService.instance.toggleMute();
-                                },
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            iconSize: 26,
-                            style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFD54F),
-                              elevation: 3,
-                            ),
-                            icon: const Icon(Icons.volume_up_rounded, color: Color(0xFF78350F)),
-                            onPressed: _announceCurrentPrompt,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
 
@@ -695,6 +797,7 @@ class _BubblePopScreenState extends State<BubblePopScreen>
                         mascotMessage: _mascotMessage,
                         encouragementDetail: _encouragementDetail,
                         targetValue: _targetValue,
+                        onAnnounce: _announceCurrentPrompt,
                       ),
                     ),
                   ],
@@ -825,11 +928,13 @@ class _MascotPromptBar extends StatelessWidget {
   final String mascotMessage;
   final String? encouragementDetail;
   final dynamic targetValue;
+  final VoidCallback? onAnnounce;
 
   const _MascotPromptBar({
     required this.mascotMessage,
     this.encouragementDetail,
     required this.targetValue,
+    this.onAnnounce,
   });
 
   @override
@@ -850,17 +955,20 @@ class _MascotPromptBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFFF9800),
-            ),
-            child: const Center(
-              child: Text(
-                '🦊',
-                style: TextStyle(fontSize: 30),
+          GestureDetector(
+            onTap: onAnnounce,
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFFF9800),
+              ),
+              child: const Center(
+                child: Text(
+                  '🦊',
+                  style: TextStyle(fontSize: 30),
+                ),
               ),
             ),
           ),
@@ -892,6 +1000,21 @@ class _MascotPromptBar extends StatelessWidget {
               ],
             ),
           ),
+          if (onAnnounce != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              iconSize: 22,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFFFEF3C7),
+                elevation: 2,
+              ),
+              icon: const Icon(Icons.volume_up_rounded, color: Color(0xFFB45309)),
+              tooltip: 'Listen to Prompt',
+              onPressed: onAnnounce,
+            ),
+          ],
         ],
       ),
     );

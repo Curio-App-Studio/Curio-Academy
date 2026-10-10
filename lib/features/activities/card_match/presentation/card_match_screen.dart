@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/audio/audio_service.dart';
+import '../../../../core/localization/hindi_curriculum_translator.dart';
 import '../../../../data/local/local_storage_service.dart';
 import '../../../../data/models/activity_model.dart';
 import '../../../../data/models/student_attempt_model.dart';
 import '../../../../shared/dialogs/reward_dialog.dart';
+import '../../activity_dispatcher.dart';
 
 class MatchCardItem {
   final String id;
@@ -79,14 +81,16 @@ class _CardMatchScreenState extends State<CardMatchScreen> {
     _mistakes = 0;
 
     final generated = _generateLevelData(level);
+    final isHindi = LocalStorageService.instance.getAppLanguage() == 'hi';
+    final effectivePrompt = isHindi ? HindiCurriculumTranslator.translatePrompt(generated.prompt) : generated.prompt;
     setState(() {
-      _currentPrompt = generated.prompt;
+      _currentPrompt = effectivePrompt;
       _cards = generated.cards;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        AudioService.instance.speakPrompt(_currentPrompt);
+        AudioService.instance.speakPrompt(effectivePrompt);
       }
     });
   }
@@ -279,15 +283,26 @@ class _CardMatchScreenState extends State<CardMatchScreen> {
       timestamp: DateTime.now(),
     );
     LocalStorageService.instance.saveQuestionAttempt(attempt);
+    final totalPoints = starsEarned * 15;
+    LocalStorageService.instance.addDiscoveryPoints(totalPoints);
 
     RewardDialog.show(
       context,
       starsAwarded: starsEarned,
-      totalPoints: starsEarned * 15,
+      totalPoints: totalPoints,
       message: starsEarned == 3
           ? 'Brilliant! You matched all pairs like a superstar! 🌟'
           : 'Great job! You found all the matching pairs! ⭐',
       onContinue: () {
+        if (widget.activities != null && widget.activities!.isNotEmpty) {
+          ActivityDispatcher.proceedToNextActivity(
+            context,
+            currentIndex: widget.initialLevelIndex,
+            activities: widget.activities,
+            currentActivity: widget.activity,
+          );
+          return;
+        }
         // Seamlessly load next level!
         setState(() {
           _currentLevel++;
@@ -299,11 +314,23 @@ class _CardMatchScreenState extends State<CardMatchScreen> {
           _loadLevel(_currentLevel);
         });
       },
+      onBackToQuestions: () {
+        Navigator.of(context).pop();
+      },
     );
   }
 
   void _skipToNextLevel() {
     AudioService.instance.playSfx(CurioSfx.click);
+    if (widget.activities != null && widget.activities!.isNotEmpty) {
+      ActivityDispatcher.proceedToNextActivity(
+        context,
+        currentIndex: widget.initialLevelIndex,
+        activities: widget.activities,
+        currentActivity: widget.activity,
+      );
+      return;
+    }
     setState(() {
       _currentLevel++;
       _loadLevel(_currentLevel);
@@ -337,110 +364,133 @@ class _CardMatchScreenState extends State<CardMatchScreen> {
             children: [
               // Top Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Row(
-                  children: [
-                    IconButton(
-                      iconSize: 28,
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        elevation: 3,
-                      ),
-                      icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF15803D)),
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: 8),
-                    // Level Pill
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        'Game $_currentLevel',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Total Stars Pill
-                    ValueListenableBuilder<int>(
-                      valueListenable: LocalStorageService.instance.totalStarsNotifier,
-                      builder: (context, totalStars, _) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFFDE68A)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$totalStars',
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 340),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              iconSize: 22,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                elevation: 2,
+                              ),
+                              icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF15803D)),
+                              onPressed: () => Navigator.of(context).maybePop(),
+                            ),
+                            const SizedBox(width: 6),
+                            // Level Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16A34A),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Text(
+                                'Game $_currentLevel',
                                 style: const TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  color: Color(0xFF92400E),
+                                  fontSize: 12.5,
                                 ),
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    const Spacer(),
-                    // Skip / Next Button
-                    InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: _skipToNextLevel,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFF86EFAC)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 4,
+                            ),
+                            const SizedBox(width: 6),
+                            // Total Stars Pill
+                            ValueListenableBuilder<int>(
+                              valueListenable: LocalStorageService.instance.totalStarsNotifier,
+                              builder: (context, totalStars, _) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFFDE68A)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 16),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '$totalStars',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12.5,
+                                          color: Color(0xFF92400E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
-                        child: const Row(
+                        const SizedBox(width: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'Next',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF15803D),
+                            // Skip / Next Button
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _skipToNextLevel,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFF86EFAC)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.04),
+                                      blurRadius: 3,
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Next',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF15803D),
+                                      ),
+                                    ),
+                                    SizedBox(width: 2),
+                                    Icon(Icons.skip_next_rounded, size: 16, color: Color(0xFF15803D)),
+                                  ],
+                                ),
                               ),
                             ),
-                            SizedBox(width: 2),
-                            Icon(Icons.skip_next_rounded, size: 18, color: Color(0xFF15803D)),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              iconSize: 22,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              style: IconButton.styleFrom(
+                                backgroundColor: const Color(0xFFFEF3C7),
+                                elevation: 2,
+                              ),
+                              icon: const Icon(Icons.volume_up_rounded, color: Color(0xFFB45309)),
+                              onPressed: () => AudioService.instance.speakPrompt(_currentPrompt),
+                            ),
                           ],
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    IconButton(
-                      iconSize: 26,
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFFFEF3C7),
-                        elevation: 3,
-                      ),
-                      icon: const Icon(Icons.volume_up_rounded, color: Color(0xFFB45309)),
-                      onPressed: () => AudioService.instance.speakPrompt(_currentPrompt),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 

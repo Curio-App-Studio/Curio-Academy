@@ -59,7 +59,7 @@ void main() {
     final act = EnglishQuestionGenerator.instance.generateSingleQuestion(
       chapter,
       StudentClass.lkg,
-      questionIndex: 1,
+      questionIndex: 3,
     );
 
     expect(act.activityType, equals(ActivityType.bubblePop));
@@ -99,15 +99,17 @@ void main() {
     List<Activity> reportedActivities = List.from(initialActs);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: ConceptChallengeScreen(
-          chapter: chapter,
-          activities: initialActs,
-          initialIndex: 0,
-          studentClass: StudentClass.class1,
-          onActivitiesUpdated: (updated) {
-            reportedActivities = updated;
-          },
+      ProviderScope(
+        child: MaterialApp(
+          home: ConceptChallengeScreen(
+            chapter: chapter,
+            activities: initialActs,
+            initialIndex: 0,
+            studentClass: StudentClass.class1,
+            onActivitiesUpdated: (updated) {
+              reportedActivities = updated;
+            },
+          ),
         ),
       ),
     );
@@ -181,10 +183,12 @@ void main() {
     ];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: ConceptChallengeScreen(
-          chapter: chapter,
-          activities: acts,
+      ProviderScope(
+        child: MaterialApp(
+          home: ConceptChallengeScreen(
+            chapter: chapter,
+            activities: acts,
+          ),
         ),
       ),
     );

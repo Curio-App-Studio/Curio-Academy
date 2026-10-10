@@ -7,7 +7,7 @@ import 'dart:io';
 /// below with your real AdMob App and Ad Unit IDs.
 class AdConfig {
   /// Toggle this to false when you are ready to use real production AdMob IDs.
-  static const bool isTestMode = true;
+  static const bool isTestMode = false;
 
   // ---------------------------------------------------------------------------
   // Google Official Test IDs (Safe for testing without AdMob account)
@@ -22,14 +22,22 @@ class AdConfig {
   static const String _testIosInterstitialId =
       'ca-app-pub-3940256099942544/4411468910';
 
-  // ---------------------------------------------------------------------------
-  // Production IDs (Replace these when you create your AdMob account)
-  // ---------------------------------------------------------------------------
-  static const String _prodAndroidBannerId = 'ca-app-pub-YOUR_ADMOB_PUB_ID/BANNER_ID';
-  static const String _prodIosBannerId = 'ca-app-pub-YOUR_ADMOB_PUB_ID/BANNER_ID';
+  static const String _testAndroidRewardedId =
+      'ca-app-pub-3940256099942544/5224354917';
+  static const String _testIosRewardedId =
+      'ca-app-pub-3940256099942544/1712485313';
 
-  static const String _prodAndroidInterstitialId = 'ca-app-pub-YOUR_ADMOB_PUB_ID/INTERSTITIAL_ID';
-  static const String _prodIosInterstitialId = 'ca-app-pub-YOUR_ADMOB_PUB_ID/INTERSTITIAL_ID';
+  // ---------------------------------------------------------------------------
+  // Production IDs
+  // ---------------------------------------------------------------------------
+  static const String _prodAndroidBannerId = 'ca-app-pub-7955725236973930/4664708667';
+  static const String _prodIosBannerId = 'ca-app-pub-7955725236973930/4664708667';
+
+  static const String _prodAndroidInterstitialId = 'ca-app-pub-7955725236973930/5168019975';
+  static const String _prodIosInterstitialId = 'ca-app-pub-7955725236973930/5168019975';
+
+  static const String _prodAndroidRewardedId = 'ca-app-pub-7955725236973930/9051424669';
+  static const String _prodIosRewardedId = 'ca-app-pub-7955725236973930/9051424669';
 
   /// Returns the appropriate Banner Ad Unit ID based on platform & test mode.
   static String get bannerAdUnitId {
@@ -49,5 +57,17 @@ class AdConfig {
     return Platform.isAndroid
         ? _prodAndroidInterstitialId
         : _prodIosInterstitialId;
+  }
+
+  /// Returns the appropriate Rewarded Ad Unit ID based on platform & test mode.
+  static String get rewardedAdUnitId {
+    if (isTestMode) {
+      return Platform.isAndroid
+          ? _testAndroidRewardedId
+          : _testIosRewardedId;
+    }
+    return Platform.isAndroid
+        ? _prodAndroidRewardedId
+        : _prodIosRewardedId;
   }
 }

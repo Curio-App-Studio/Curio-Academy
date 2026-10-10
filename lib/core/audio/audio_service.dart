@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../data/local/local_storage_service.dart';
 import '../../data/models/voice_settings.dart';
+import 'math_speech_sanitizer.dart';
 
 /// Sound feedback effects available in Curio
 enum CurioSfx {
@@ -18,7 +19,7 @@ enum CurioSfx {
 
 abstract class IAudioService {
   Future<void> playSfx(CurioSfx sfx);
-  Future<void> speakPrompt(String text);
+  Future<void> speakPrompt(String text, {bool? isHindi});
   void stopAudio();
 }
 
@@ -166,7 +167,7 @@ class AudioService implements IAudioService {
   }
 
   @override
-  Future<void> speakPrompt(String text) async {
+  Future<void> speakPrompt(String text, {bool? isHindi}) async {
     if (isMuted) return;
     if (kDebugMode) {
       debugPrint('[CurioAudioTTS] Speaking prompt: "$text"');
@@ -175,7 +176,7 @@ class AudioService implements IAudioService {
     try {
       await _initTts();
       if (_flutterTts != null) {
-        final cleanText = _cleanTextForSpeech(text);
+        final cleanText = _cleanTextForSpeech(text, isHindi: isHindi);
         await _flutterTts!.stop();
         if (cleanText.trim().isNotEmpty) {
           await _flutterTts!.speak(cleanText);
@@ -197,28 +198,7 @@ class AudioService implements IAudioService {
   }
 
   /// Cleans math notation, markdown, and emojis so speech synthesizer sounds natural
-  String _cleanTextForSpeech(String input) {
-    return input
-        .replaceAll('*', '')
-        .replaceAll('#', '')
-        .replaceAll('•', ', ')
-        .replaceAll('−', ' minus ')
-        .replaceAll('-', ' minus ')
-        .replaceAll('+', ' plus ')
-        .replaceAll('×', ' multiplied by ')
-        .replaceAll('÷', ' divided by ')
-        .replaceAll('=', ' equals ')
-        .replaceAll('≠', ' does not equal ')
-        .replaceAll('²', ' squared ')
-        .replaceAll('³', ' cubed ')
-        .replaceAll('√', ' square root of ')
-        .replaceAll('π', ' pi ')
-        .replaceAll(
-          RegExp(r'[\u{1F300}-\u{1F9FF}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}]',
-              unicode: true),
-          '',
-        )
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+  String _cleanTextForSpeech(String input, {bool? isHindi}) {
+    return MathSpeechSanitizer.sanitize(input, isHindi: isHindi);
   }
 }

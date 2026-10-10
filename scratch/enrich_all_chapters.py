@@ -1,7 +1,7 @@
 import json
 
 # Load existing chapters
-with open(r'd:\AI Learning\assets\curriculum\chapters_data.json', 'r', encoding='utf-8') as f:
+with open(r'd:\AI Learning\assets\curriculum\math_chapters.json', 'r', encoding='utf-8') as f:
     chapters = json.load(f)
 
 # Comprehensive dictionary mapping (grade, title) -> rich specific pedagogical data
@@ -570,7 +570,7 @@ for ch in chapters:
 print(f"Updated {updated_count} chapters with unique formulas, rules, and worked examples!")
 
 # Write updated json
-with open(r'd:\AI Learning\assets\curriculum\chapters_data.json', 'w', encoding='utf-8') as f:
+with open(r'd:\AI Learning\assets\curriculum\math_chapters.json', 'w', encoding='utf-8') as f:
     json.dump(chapters, f, indent=2, ensure_ascii=False)
 
-print("Saved enriched chapters_data.json successfully!")
+print("Saved enriched math_chapters.json successfully!")

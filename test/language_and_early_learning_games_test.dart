@@ -7,6 +7,9 @@ import 'package:curio_math/core/theme/app_theme.dart';
 import 'package:curio_math/data/local/local_storage_service.dart';
 import 'package:curio_math/data/models/grade_tier.dart';
 import 'package:curio_math/data/models/student_attempt_model.dart';
+import 'package:curio_math/data/models/activity_model.dart';
+import 'package:curio_math/data/models/student_profile.dart';
+import 'package:curio_math/data/repositories/curriculum_repository.dart';
 import 'package:curio_math/features/activities/bubble_pop/presentation/bubble_pop_screen.dart';
 import 'package:curio_math/features/activities/card_match/presentation/card_match_screen.dart';
 import 'package:curio_math/features/home_dashboard/presentation/home_dashboard_screen.dart';
@@ -130,6 +133,30 @@ void main() {
       expect(find.text('L2'), findsOneWidget);
     });
 
+    testWidgets('BubblePopScreen top header does NOT overflow on narrow 320px screens in Hindi', (WidgetTester tester) async {
+      await LocalStorageService.instance.saveAppLanguage('hi');
+      tester.view.physicalSize = const Size(320 * 2, 640 * 2);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.buildTheme(GradeTier.earlyExplorer),
+            home: const BubblePopScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      expect(find.text('L1'), findsOneWidget);
+      expect(find.text('अगला'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('CardMatchScreen mounts, displays cards, and supports Next level progression', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -152,6 +179,81 @@ void main() {
       await tester.pump();
 
       expect(find.text('Game 2'), findsOneWidget);
+    });
+
+    test('All 5 LKG Math and English chapters have diverse interactive games (Card Match & Bubble Pop) and ZERO MCQs', () async {
+      final repo = CurriculumRepository();
+
+      for (final subject in ['math', 'english']) {
+        final chapters = await repo.getChaptersForClass(
+          StudentClass.lkg,
+          board: BoardType.cbse,
+          subjectId: subject,
+        );
+
+        expect(chapters.length, equals(5));
+
+        for (final ch in chapters) {
+          expect(ch.activities.length, greaterThanOrEqualTo(3));
+
+          final hasCardMatch = ch.activities.any((a) => a.activityType == ActivityType.cardMatch);
+          expect(hasCardMatch, isTrue, reason: 'Chapter ${ch.title} in $subject must have Card Match pair games');
+
+          final hasBubblePop = ch.activities.any((a) => a.activityType == ActivityType.bubblePop);
+          expect(hasBubblePop, isTrue, reason: 'Chapter ${ch.title} in $subject must have Bubble Pop games');
+
+          final hasMcq = ch.activities.any((a) => a.activityType == ActivityType.mcq);
+          expect(hasMcq, isFalse, reason: 'Chapter ${ch.title} in $subject must NOT have text MCQs for LKG');
+        }
+      }
+    });
+
+    test('Obsolete legacy cache with 100% bubble pop or MCQ is automatically invalidated and purged', () async {
+      final repo = CurriculumRepository();
+      final storage = LocalStorageService.instance;
+
+      // Seed obsolete legacy 100% bubble pop
+      final obsoleteBubbles = <Activity>[
+        const Activity(
+          activityId: 'dummy_b1',
+          topicId: 't1',
+          subjectId: 'math',
+          targetGrade: 'LKG',
+          gradeTier: GradeTier.earlyExplorer,
+          activityType: ActivityType.bubblePop,
+          difficultyLevel: 1,
+          pointsReward: 20,
+          promptData: PromptData(text: 'Pop 1'),
+          interactionPayload: {'bubbles': []},
+          validationRule: ValidationRule(format: 'exact', expectedAnswer: '1'),
+        ),
+        const Activity(
+          activityId: 'dummy_b2',
+          topicId: 't2',
+          subjectId: 'math',
+          targetGrade: 'LKG',
+          gradeTier: GradeTier.earlyExplorer,
+          activityType: ActivityType.bubblePop,
+          difficultyLevel: 1,
+          pointsReward: 20,
+          promptData: PromptData(text: 'Pop 2'),
+          interactionPayload: {'bubbles': []},
+          validationRule: ValidationRule(format: 'exact', expectedAnswer: '2'),
+        ),
+      ];
+
+      await storage.saveChapterActivities('lkg_ch01', obsoleteBubbles);
+
+      // getChaptersForClass must detect and replace with early learning games
+      final chapters = await repo.getChaptersForClass(
+        StudentClass.lkg,
+        board: BoardType.cbse,
+        subjectId: 'math',
+      );
+      final ch1 = chapters.firstWhere((c) => c.chapterId == 'lkg_ch01');
+      expect(ch1.activities.any((a) => a.activityType == ActivityType.cardMatch), isTrue);
+      expect(ch1.activities.any((a) => a.activityType == ActivityType.bubblePop), isTrue);
+      expect(ch1.activities.any((a) => a.activityType == ActivityType.mcq), isFalse);
     });
   });
 
@@ -190,18 +292,17 @@ void main() {
 
       // Verify Student Greeting is rendered
       expect(find.text('Hello Little Champ! 👋'), findsOneWidget);
-      expect(find.text('🦊'), findsOneWidget);
+      expect(find.text('🦁'), findsOneWidget);
 
-      // Verify Class Selection is rendered
-      expect(find.text('Choose Your Class 🎒'), findsOneWidget);
-      expect(find.text('LKG'), findsOneWidget);
-      expect(find.text('UKG'), findsOneWidget);
+      // Verify Active Class & Board badge is rendered in Student Greeting
+      expect(find.text('Class 1'), findsOneWidget);
+      expect(find.text('CBSE'), findsOneWidget);
 
       // Verify Subject Selection is rendered
       expect(find.text('Pick a Subject 🎨'), findsOneWidget);
       expect(find.text('Math'), findsWidgets);
       expect(find.text('English'), findsWidgets);
-      expect(find.text('Science'), findsWidgets);
+      expect(find.text('Science'), findsNothing);
     });
 
     testWidgets('Tapping LanguageSwitchButton dynamically updates HomeDashboardScreen language to Hindi', (WidgetTester tester) async {
@@ -224,8 +325,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Greeting and UI should now immediately update to Hindi
-      expect(find.text('नमस्ते नन्हे दोस्त! 👋'), findsOneWidget);
-      expect(find.text('अपनी कक्षा चुनें 🎒'), findsOneWidget);
+      expect(find.text('नमस्ते Little Champ! 👋'), findsOneWidget);
       expect(find.text('विषय चुनें 🎨'), findsOneWidget);
     });
 
@@ -263,6 +363,118 @@ void main() {
         FlutterError.onError = originalOnError;
       }
       expect(caughtDetails, isNull);
+    });
+
+    testWidgets('Tapping Next in BubblePopScreen transitions to CardMatchScreen and not the same game', (WidgetTester tester) async {
+      const act1 = Activity(
+        activityId: 'act_b1',
+        topicId: 't1',
+        subjectId: 'math',
+        targetGrade: 'LKG',
+        gradeTier: GradeTier.earlyExplorer,
+        activityType: ActivityType.bubblePop,
+        promptData: PromptData(text: 'Pop 5'),
+        interactionPayload: {
+          'targetValue': 5,
+          'bubbles': [
+            {'id': '1', 'label': '5', 'value': 5, 'displayType': 'number'},
+            {'id': '2', 'label': '2', 'value': 2, 'displayType': 'number'},
+          ],
+        },
+        validationRule: ValidationRule(format: 'exact', expectedAnswer: '5'),
+      );
+
+      const act2 = Activity(
+        activityId: 'act_m2',
+        topicId: 't1',
+        subjectId: 'math',
+        targetGrade: 'LKG',
+        gradeTier: GradeTier.earlyExplorer,
+        activityType: ActivityType.cardMatch,
+        promptData: PromptData(text: 'Match pairs'),
+        interactionPayload: {
+          'pairs': [
+            {'key': '1', 'itemA': '1', 'emojiA': '1️⃣', 'itemB': 'Star', 'emojiB': '⭐'},
+          ],
+        },
+        validationRule: ValidationRule(format: 'set_match', expectedAnswer: []),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: BubblePopScreen(
+            activity: act1,
+            activities: [act1, act2],
+            initialLevelIndex: 0,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final nextFinder = find.text('Next');
+      expect(nextFinder, findsOneWidget);
+      await tester.tap(nextFinder);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(find.byType(CardMatchScreen), findsOneWidget);
+      expect(find.byType(BubblePopScreen), findsNothing);
+    });
+
+    testWidgets('Tapping Next in CardMatchScreen transitions to BubblePopScreen and not the same game', (WidgetTester tester) async {
+      const act1 = Activity(
+        activityId: 'act_m1',
+        topicId: 't1',
+        subjectId: 'math',
+        targetGrade: 'LKG',
+        gradeTier: GradeTier.earlyExplorer,
+        activityType: ActivityType.cardMatch,
+        promptData: PromptData(text: 'Match pairs'),
+        interactionPayload: {
+          'pairs': [
+            {'key': '1', 'itemA': '1', 'emojiA': '1️⃣', 'itemB': 'Star', 'emojiB': '⭐'},
+          ],
+        },
+        validationRule: ValidationRule(format: 'set_match', expectedAnswer: []),
+      );
+
+      const act2 = Activity(
+        activityId: 'act_b2',
+        topicId: 't1',
+        subjectId: 'math',
+        targetGrade: 'LKG',
+        gradeTier: GradeTier.earlyExplorer,
+        activityType: ActivityType.bubblePop,
+        promptData: PromptData(text: 'Pop 5'),
+        interactionPayload: {
+          'targetValue': 5,
+          'bubbles': [
+            {'id': '1', 'label': '5', 'value': 5, 'displayType': 'number'},
+            {'id': '2', 'label': '2', 'value': 2, 'displayType': 'number'},
+          ],
+        },
+        validationRule: ValidationRule(format: 'exact', expectedAnswer: '5'),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: CardMatchScreen(
+            activity: act1,
+            activities: [act1, act2],
+            initialLevelIndex: 0,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final nextFinder = find.text('Next');
+      expect(nextFinder, findsOneWidget);
+      await tester.tap(nextFinder);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(find.byType(BubblePopScreen), findsOneWidget);
+      expect(find.byType(CardMatchScreen), findsNothing);
     });
   });
 }

@@ -61,12 +61,33 @@ class StudentProfile {
   final BoardType board;
   final StudentClass studentClass;
   final String studentName;
+  final String avatarIcon;
 
   const StudentProfile({
     this.board = BoardType.cbse,
     this.studentClass = StudentClass.class1,
-    this.studentName = 'Young Explorer',
+    this.studentName = 'Little Champ',
+    this.avatarIcon = '🦁',
   });
+
+  static const List<Map<String, String>> availableAvatars = [
+    {'emoji': '🦁', 'label': 'Lion'},
+    {'emoji': '🐼', 'label': 'Panda'},
+    {'emoji': '🐯', 'label': 'Tiger'},
+    {'emoji': '🐨', 'label': 'Koala'},
+    {'emoji': '🐰', 'label': 'Bunny'},
+    {'emoji': '🦉', 'label': 'Owl'},
+    {'emoji': '🦄', 'label': 'Unicorn'},
+    {'emoji': '🚀', 'label': 'Rocket'},
+    {'emoji': '🦖', 'label': 'Dino'},
+    {'emoji': '🐬', 'label': 'Dolphin'},
+    {'emoji': '🌟', 'label': 'Star'},
+    {'emoji': '👑', 'label': 'Crown'},
+    {'emoji': '🎨', 'label': 'Artist'},
+    {'emoji': '⚽', 'label': 'Soccer'},
+    {'emoji': '🏎️', 'label': 'Racer'},
+    {'emoji': '🦸', 'label': 'Hero'},
+  ];
 
   GradeTier get tier => studentClass.tier;
 
@@ -74,11 +95,13 @@ class StudentProfile {
     BoardType? board,
     StudentClass? studentClass,
     String? studentName,
+    String? avatarIcon,
   }) {
     return StudentProfile(
       board: board ?? this.board,
       studentClass: studentClass ?? this.studentClass,
       studentName: studentName ?? this.studentName,
+      avatarIcon: avatarIcon ?? this.avatarIcon,
     );
   }
 
@@ -86,7 +109,8 @@ class StudentProfile {
     return StudentProfile(
       board: BoardType.fromJson(json['board']),
       studentClass: StudentClass.fromJson(json['studentClass']),
-      studentName: json['studentName'] as String? ?? 'Young Explorer',
+      studentName: json['studentName'] as String? ?? 'Little Champ',
+      avatarIcon: json['avatarIcon'] as String? ?? '🦁',
     );
   }
 
@@ -94,5 +118,6 @@ class StudentProfile {
     'board': board.toJson(),
     'studentClass': studentClass.toJson(),
     'studentName': studentName,
+    'avatarIcon': avatarIcon,
   };
 }

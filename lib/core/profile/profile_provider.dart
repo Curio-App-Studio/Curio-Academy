@@ -23,15 +23,29 @@ class StudentProfileNotifier extends StateNotifier<StudentProfile> {
     required BoardType board,
     required StudentClass studentClass,
     String? name,
+    String? avatar,
   }) async {
     final updated = state.copyWith(
       board: board,
       studentClass: studentClass,
       studentName: name,
+      avatarIcon: avatar,
     );
     state = updated;
     await LocalStorageService.instance.saveStudentProfile(updated);
     ref.read(gradeTierProvider.notifier).setTier(updated.tier);
+  }
+
+  Future<void> updateAvatarAndName({
+    String? name,
+    String? avatar,
+  }) async {
+    final updated = state.copyWith(
+      studentName: name,
+      avatarIcon: avatar,
+    );
+    state = updated;
+    await LocalStorageService.instance.saveStudentProfile(updated);
   }
 }
 
