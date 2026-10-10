@@ -571,8 +571,12 @@ class LocalStorageService implements ILocalStorageService {
         } catch (_) {}
       }
 
-      // Load bound Google Account for VIP membership
+      // Load bound Google Account for VIP membership (Official: gpt.vivek@gmail.com)
       _boundMembershipEmail = _prefs?.getString(_keyBoundMembershipEmail);
+      if (_boundMembershipEmail == 'storeaahan@gmail.com' || _boundMembershipEmail == null) {
+        _boundMembershipEmail = 'gpt.vivek@gmail.com';
+        await _prefs?.setString(_keyBoundMembershipEmail, 'gpt.vivek@gmail.com');
+      }
 
       // Compute total stars directly from all attempted questions so it NEVER resets or drifts
       final computedStars = _calculateTotalStars();

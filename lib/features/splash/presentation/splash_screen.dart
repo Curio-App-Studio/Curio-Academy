@@ -65,18 +65,21 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if membership is active
     final isVip = LocalStorageService.instance.isPremiumUser ||
         LocalStorageService.instance.isClosedTester;
+    bool hasCloudBackup = false;
 
     if (isVip) {
       // 2. VIP user detected: automatically connect membership Google Account & auto-sync/restore backup
       try {
-        await CloudProgressService().autoSyncAndRestore().timeout(
+        hasCloudBackup = await CloudProgressService().autoSyncAndRestore().timeout(
           const Duration(milliseconds: 2500),
           onTimeout: () => false,
         );
       } catch (_) {}
 
-      // Automatically mark onboarded to bypass profile setup screen entirely
-      await LocalStorageService.instance.setOnboarded(true);
+      // If cloud backup existed and was restored, mark onboarded so we can skip profile setup
+      if (hasCloudBackup) {
+        await LocalStorageService.instance.setOnboarded(true);
+      }
     }
 
     // Ensure smooth minimum splash display duration for animations
@@ -88,7 +91,25 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final isOnboarded = LocalStorageService.instance.isOnboarded();
-    final Widget targetScreen = (isVip || isOnboarded)
+    final profile = await LocalStorageService.instance.getStudentProfile();
+    final hasValidLocalProfile = profile != null &&
+        profile.studentName.isNotEmpty &&
+        profile.studentName != 'Little Champ' &&
+        profile.studentName != 'Young Explorer';
+
+    if (!mounted) return;
+
+    // Requirements:
+    // 1. If cloud backup exists -> skip profile page (go to HomeDashboard)
+    // 2. If membership user but NO cloud backup exists:
+    //    - If fresh start / no custom profile yet -> user will first come on profile page
+    //    - If already created custom profile in prior session -> go to HomeDashboard
+    // 3. If regular user -> isOnboarded determines if profile page is shown
+    final bool shouldSkipProfile = hasCloudBackup ||
+        (!isVip && isOnboarded) ||
+        (isVip && isOnboarded && hasValidLocalProfile);
+
+    final Widget targetScreen = shouldSkipProfile
         ? const HomeDashboardScreen()
         : const FirstTimeOnboardingScreen();
 

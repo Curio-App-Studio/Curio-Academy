@@ -110,11 +110,18 @@ class CloudProgressService {
         _lastSyncTime = DateTime.tryParse(storedSync);
       }
       _cachedEmail = prefs.getString(_keyCachedGoogleEmail);
-      final bound = LocalStorageService.instance.boundMembershipEmail;
-      if (bound != null && bound.isNotEmpty) {
-        _cachedEmail = bound;
+      if (_cachedEmail == 'storeaahan@gmail.com') {
+        _cachedEmail = 'gpt.vivek@gmail.com';
+        await prefs.setString(_keyCachedGoogleEmail, 'gpt.vivek@gmail.com');
       }
-      userEmailNotifier.value = googleAccountEmail;
+      final bound = LocalStorageService.instance.boundMembershipEmail ?? 'gpt.vivek@gmail.com';
+      _cachedEmail = bound;
+      userEmailNotifier.value = bound;
+
+      if (currentUser?.email == 'storeaahan@gmail.com') {
+        await FirebaseAuth.instance.signOut();
+        await GoogleSignIn().signOut();
+      }
     } catch (_) {}
 
     LocalStorageService.onVipProgressChanged = () {
@@ -210,11 +217,10 @@ class CloudProgressService {
     try {
       User? user = currentUser;
 
-      // 1. Silent or primary Google Account authentication
+      // 1. Silent Google Account authentication (Never interrupt user on app start with account picker)
       if (user == null) {
         final GoogleSignIn googleSignIn = GoogleSignIn();
-        GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
-        googleUser ??= await googleSignIn.signIn();
+        final GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
 
         if (googleUser != null) {
           final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
@@ -260,21 +266,29 @@ class CloudProgressService {
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         final cloudStars = (data['stars'] as num?)?.toInt() ?? 0;
-        final localStars = LocalStorageService.instance.totalStars;
+        final studentName = data['name'] as String?;
+        final completedChapters = data['completedChapters'] as List?;
 
-        if (cloudStars > 0 || localStars == 0) {
+        final hasRealBackup = (cloudStars > 0) ||
+            (completedChapters != null && completedChapters.isNotEmpty) ||
+            (studentName != null &&
+                studentName.isNotEmpty &&
+                studentName != 'Little Champ' &&
+                studentName != 'Young Explorer');
+
+        if (hasRealBackup) {
           await LocalStorageService.instance.restoreProgressSnapshot(data);
           developer.log(
             'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore (${data["name"]}, $cloudStars stars).',
             name: 'CloudSync',
           );
-          return true;
+          return true; // Cloud backup exists and was restored!
         }
       }
 
-      // 3. If no remote backup exists yet or local has newer progress, auto-sync to Firestore
-      await syncProgressToCloud(force: force);
-      return true;
+      // No cloud backup exists in Firestore
+      developer.log('autoSyncAndRestore: No cloud backup exists in Firestore for membership user.', name: 'CloudSync');
+      return false;
     } catch (e, stack) {
       developer.log('autoSyncAndRestore note: $e', error: e, stackTrace: stack, name: 'CloudSync');
       return false;
@@ -307,7 +321,29 @@ class CloudProgressService {
       await prefs.setString(_keyLastCloudSync, _lastSyncTime!.toIso8601String());
 
       // If Firebase is available and user is authenticated, upload to Cloud Firestore
-      final user = currentUser;
+      var user = currentUser;
+      if (isFirebaseAvailable && user == null) {
+        try {
+          final googleSignIn = GoogleSignIn();
+          final googleUser = await googleSignIn.signInSilently();
+          if (googleUser != null) {
+            final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+            final selectedEmail = googleUser.email.trim().toLowerCase();
+            if (boundEmail == null || boundEmail.isEmpty || selectedEmail == boundEmail) {
+              final googleAuth = await googleUser.authentication;
+              final credential = GoogleAuthProvider.credential(
+                accessToken: googleAuth.accessToken,
+                idToken: googleAuth.idToken,
+              );
+              final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+              user = userCredential.user;
+              _cachedEmail = user?.email ?? googleUser.email;
+              userEmailNotifier.value = _cachedEmail;
+            }
+          }
+        } catch (_) {}
+      }
+
       if (isFirebaseAvailable && user != null) {
         final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
         final userEmail = user.email?.trim().toLowerCase();
