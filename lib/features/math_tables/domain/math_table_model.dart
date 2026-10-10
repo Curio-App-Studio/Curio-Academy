@@ -244,18 +244,39 @@ class TableQuestion {
 
   /// Generates 10 quiz questions for [tableNumber].
   static List<TableQuestion> generateQuiz(int tableNumber, {int count = 10, int maxMultiplier = 10}) {
-    final List<int> multipliers = List.generate(maxMultiplier, (i) => i + 1)..shuffle();
-    final List<TableQuestion> questions = [];
+    return generateMultiTableQuiz([tableNumber], count: count, maxMultiplier: maxMultiplier);
+  }
 
-    for (int i = 0; i < count && i < multipliers.length; i++) {
-      final m = multipliers[i];
-      final prod = tableNumber * m;
-      // Missing product is most frequent, sometimes missing multiplier
+  /// Generates quiz questions spanning multiple tables from [tableNumbers].
+  static List<TableQuestion> generateMultiTableQuiz(
+    List<int> tableNumbers, {
+    int count = 10,
+    int maxMultiplier = 10,
+  }) {
+    if (tableNumbers.isEmpty) {
+      tableNumbers = [2];
+    }
+
+    // Build all possible (table, multiplier) combinations
+    final List<MapEntry<int, int>> pairs = [];
+    for (final t in tableNumbers) {
+      for (int m = 1; m <= maxMultiplier; m++) {
+        pairs.add(MapEntry(t, m));
+      }
+    }
+    pairs.shuffle();
+
+    final List<TableQuestion> questions = [];
+    for (int i = 0; i < count && i < pairs.length; i++) {
+      final pair = pairs[i];
+      final t = pair.key;
+      final m = pair.value;
+      final prod = t * m;
       final missingIdx = (i % 3 == 2) ? 1 : 2;
       final correct = (missingIdx == 1) ? m : prod;
 
       final Set<int> distractors = {correct};
-      final deltas = [-3, -2, -1, 1, 2, 3, tableNumber, -tableNumber];
+      final deltas = [-3, -2, -1, 1, 2, 3, t, -t];
       deltas.shuffle();
 
       for (final d in deltas) {
@@ -274,7 +295,7 @@ class TableQuestion {
 
       questions.add(
         TableQuestion(
-          tableNumber: tableNumber,
+          tableNumber: t,
           multiplier: m,
           product: prod,
           missingIndex: missingIdx,

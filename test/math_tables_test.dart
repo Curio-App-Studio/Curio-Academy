@@ -55,6 +55,23 @@ void main() {
         expect(q.promptEquation, contains('6'));
       }
     });
+
+    test('TableQuestion generates multi-table quiz across selected tables', () {
+      final multiQuiz = TableQuestion.generateMultiTableQuiz([3, 7, 12], count: 15);
+      expect(multiQuiz.length, 15);
+
+      final tablesFound = multiQuiz.map((q) => q.tableNumber).toSet();
+      // Should include tables from the selected set
+      for (final t in tablesFound) {
+        expect([3, 7, 12].contains(t), isTrue);
+      }
+
+      for (final q in multiQuiz) {
+        expect(q.options.length, 4);
+        expect(q.options.toSet().length, 4);
+        expect(q.options.contains(q.correctAnswer), isTrue);
+      }
+    });
   });
 
   group('MathTablesScreen Widget Tests', () {
@@ -154,6 +171,33 @@ void main() {
 
       expect(find.textContaining('Find the missing number:'), findsOneWidget);
       expect(find.textContaining('🔥 0'), findsOneWidget);
+    });
+
+    testWidgets('Test tab renders multi-table selector and presets', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: MathTablesScreen(initialTable: 5),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Test tab
+      await tester.tap(find.textContaining('Test'));
+      await tester.pumpAndSettle();
+
+      // Should show Test Tables banner
+      expect(find.textContaining('Test Tables'), findsOneWidget);
+      expect(find.text('2 to 5'), findsOneWidget);
+      expect(find.text('6 to 10'), findsOneWidget);
+      expect(find.text('All (1-20)'), findsOneWidget);
+
+      // Tap preset '2 to 5'
+      await tester.tap(find.text('2 to 5'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('4 selected'), findsOneWidget);
     });
   });
 }

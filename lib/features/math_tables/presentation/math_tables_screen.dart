@@ -52,6 +52,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   int _practiceStreak = 0;
 
   // Speed Quiz State
+  Set<int> _quizSelectedTables = {2};
   List<TableQuestion> _quizQuestions = [];
   int _quizIndex = 0;
   int? _quizSelectedAnswer;
@@ -75,11 +76,13 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   void initState() {
     super.initState();
     _selectedTable = widget.initialTable;
+    _quizSelectedTables = {widget.initialTable};
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         _stopChant();
       }
+      if (mounted) setState(() {});
     });
     _loadTable(_selectedTable);
   }
@@ -100,6 +103,9 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
       _flashcardIndex = 0;
       _flashcardFlipped = false;
       _initPractice();
+      if (!_quizSelectedTables.contains(n)) {
+        _quizSelectedTables.add(n);
+      }
       _initQuiz();
     });
   }
@@ -115,7 +121,16 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
 
   void _initQuiz() {
     _quizTimer?.cancel();
-    _quizQuestions = TableQuestion.generateQuiz(_selectedTable, count: 10, maxMultiplier: _maxMultiplier);
+    if (_quizSelectedTables.isEmpty) {
+      _quizSelectedTables = {_selectedTable};
+    }
+    final sortedTables = _quizSelectedTables.toList()..sort();
+    final count = sortedTables.length > 1 ? 15 : 10;
+    _quizQuestions = TableQuestion.generateMultiTableQuiz(
+      sortedTables,
+      count: count,
+      maxMultiplier: _maxMultiplier,
+    );
     _quizIndex = 0;
     _quizSelectedAnswer = null;
     _quizAnswered = false;
@@ -125,6 +140,33 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
       if (mounted) {
         setState(() => _quizTimerSeconds++);
       }
+    });
+  }
+
+  void _toggleQuizTable(int num) {
+    setState(() {
+      if (_quizSelectedTables.contains(num)) {
+        if (_quizSelectedTables.length > 1) {
+          _quizSelectedTables.remove(num);
+        }
+      } else {
+        _quizSelectedTables.add(num);
+      }
+      _initQuiz();
+    });
+  }
+
+  void _selectQuickRange(int start, int end) {
+    setState(() {
+      _quizSelectedTables = List.generate(end - start + 1, (i) => start + i).toSet();
+      _initQuiz();
+    });
+  }
+
+  void _selectAllTables() {
+    setState(() {
+      _quizSelectedTables = List.generate(20, (i) => i + 1).toSet();
+      _initQuiz();
     });
   }
 
@@ -237,42 +279,61 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
           child: Column(
             children: [
               // Horizontal Table Number Picker (1 to 20)
-              SizedBox(
-                height: 48,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  itemCount: 20,
-                  itemBuilder: (context, index) {
-                    final num = index + 1;
-                    final isSelected = num == _selectedTable;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: ChoiceChip(
-                        label: Text(
-                          '$num',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            color: isSelected ? Colors.white : const Color(0xFF065F46),
+              // In Chart, Cards, and Fill In tabs: single select
+              // In Test tab: multi-select allowed so student can select multiple tables for testing!
+              Builder(
+                builder: (context) {
+                  final isTestTab = _tabController.index == 3;
+                  return SizedBox(
+                    height: 48,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      itemCount: 20,
+                      itemBuilder: (context, index) {
+                        final num = index + 1;
+                        final isSelected = isTestTab
+                            ? _quizSelectedTables.contains(num)
+                            : num == _selectedTable;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: FilterChip(
+                            avatar: isTestTab && isSelected
+                                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                : null,
+                            label: Text(
+                              '$num',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                color: isSelected ? Colors.white : const Color(0xFF065F46),
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: const Color(0xFF059669),
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(
+                                color: isSelected ? const Color(0xFF059669) : const Color(0xFFA7F3D0),
+                                width: 1.5,
+                              ),
+                            ),
+                            showCheckmark: false,
+                            onSelected: (_) {
+                              if (isTestTab) {
+                                _toggleQuizTable(num);
+                              } else {
+                                _onTableSelected(num);
+                              }
+                            },
                           ),
-                        ),
-                        selected: isSelected,
-                        selectedColor: const Color(0xFF059669),
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(
-                            color: isSelected ? const Color(0xFF059669) : const Color(0xFFA7F3D0),
-                            width: 1.5,
-                          ),
-                        ),
-                        showCheckmark: false,
-                        onSelected: (_) => _onTableSelected(num),
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 8),
 
@@ -981,19 +1042,179 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
     }
 
     final q = _quizQuestions[_quizIndex];
+    final sortedSelected = _quizSelectedTables.toList()..sort();
+    final tablesLabel = sortedSelected.length == 1
+        ? 'Table ${sortedSelected.first}'
+        : 'Tables ${sortedSelected.join(", ")}';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Multi-Table Selection Controls Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD1FAE5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.checklist_rounded,
+                        color: Color(0xFF047857),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isHindi
+                          ? 'टेस्ट के लिए पहाड़े (${sortedSelected.length} चुने गए)'
+                          : 'Test Tables (${sortedSelected.length} selected)',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _initQuiz,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF059669)),
+                            const SizedBox(width: 3),
+                            Text(
+                              isHindi ? 'रीसेट' : 'Restart',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF059669),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Quick Preset Pills
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildPresetPill(
+                        label: isHindi ? '2 से 5' : '2 to 5',
+                        isActive: sortedSelected.length == 4 && sortedSelected.first == 2 && sortedSelected.last == 5,
+                        onTap: () => _selectQuickRange(2, 5),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildPresetPill(
+                        label: isHindi ? '6 से 10' : '6 to 10',
+                        isActive: sortedSelected.length == 5 && sortedSelected.first == 6 && sortedSelected.last == 10,
+                        onTap: () => _selectQuickRange(6, 10),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildPresetPill(
+                        label: isHindi ? '11 से 15' : '11 to 15',
+                        isActive: sortedSelected.length == 5 && sortedSelected.first == 11 && sortedSelected.last == 15,
+                        onTap: () => _selectQuickRange(11, 15),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildPresetPill(
+                        label: isHindi ? '16 से 20' : '16 to 20',
+                        isActive: sortedSelected.length == 5 && sortedSelected.first == 16 && sortedSelected.last == 20,
+                        onTap: () => _selectQuickRange(16, 20),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildPresetPill(
+                        label: isHindi ? 'सभी (1-20)' : 'All (1-20)',
+                        isActive: sortedSelected.length == 20,
+                        onTap: _selectAllTables,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Multi-select number chips grid (1 to 20)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: List.generate(20, (index) {
+                    final num = index + 1;
+                    final isSel = _quizSelectedTables.contains(num);
+                    return InkWell(
+                      onTap: () => _toggleQuizTable(num),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSel ? const Color(0xFF059669) : const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel ? const Color(0xFF059669) : const Color(0xFFA7F3D0),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Text(
+                          '$num',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: isSel ? Colors.white : const Color(0xFF065F46),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+
           // Timer & Progress
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${isHindi ? "प्रश्न" : "Q"}: ${_quizIndex + 1}/${_quizQuestions.length}',
-                style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF047857), fontSize: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${isHindi ? "प्रश्न" : "Q"}: ${_quizIndex + 1}/${_quizQuestions.length}',
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF047857), fontSize: 14),
+                  ),
+                  Text(
+                    tablesLabel,
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade600, fontSize: 11),
+                  ),
+                ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1204,6 +1425,36 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
           ],
         );
       },
+    );
+  }
+
+  Widget _buildPresetPill({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF047857) : const Color(0xFFECFDF5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? const Color(0xFF047857) : const Color(0xFFA7F3D0),
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: isActive ? Colors.white : const Color(0xFF047857),
+          ),
+        ),
+      ),
     );
   }
 }
