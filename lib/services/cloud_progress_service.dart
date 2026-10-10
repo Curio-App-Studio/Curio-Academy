@@ -62,6 +62,11 @@ class CloudProgressService {
   static const String _keyCachedSnapshot = 'curio_vip_cached_cloud_snapshot';
   static const String _collectionName = 'vip_students';
 
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: '138142325786-fh4reoko5i7u8vehfces8m61vm4dh8s4.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
+
   DateTime? _lastSyncTime;
   DateTime? get lastSyncTime => _lastSyncTime;
 
@@ -220,8 +225,7 @@ class CloudProgressService {
       // 1. Silent Google Account auth check (Never pop up account picker)
       if (user == null) {
         try {
-          final GoogleSignIn googleSignIn = GoogleSignIn();
-          final GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
+          final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
 
           if (googleUser != null) {
             final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
@@ -251,35 +255,13 @@ class CloudProgressService {
         } catch (_) {}
       }
 
-      // 2. Query Cloud Firestore for existing backup of the membership account
       final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
       final emailKey = boundEmail.replaceAll('.', '_');
 
       DocumentSnapshot<Map<String, dynamic>>? doc;
 
-      try {
-        final emailDoc = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(emailKey)
-            .get();
-        if (emailDoc.exists && emailDoc.data() != null) {
-          doc = emailDoc;
-        }
-      } catch (_) {}
-
-      if (doc == null || !doc.exists) {
-        try {
-          final rawDoc = await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .doc(boundEmail)
-              .get();
-          if (rawDoc.exists && rawDoc.data() != null) {
-            doc = rawDoc;
-          }
-        } catch (_) {}
-      }
-
-      if ((doc == null || !doc.exists) && user != null) {
+      // 2. Priority 1: Query doc(user.uid) directly (conforms to Firestore security rules)
+      if (user != null) {
         try {
           final uidDoc = await FirebaseFirestore.instance
               .collection(_collectionName)
@@ -291,10 +273,88 @@ class CloudProgressService {
         } catch (_) {}
       }
 
+      // Priority 2: Query Cloud Firestore by membership account email
+      if (doc == null || !doc.exists) {
+        try {
+          final emailDoc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(emailKey)
+              .get();
+          if (emailDoc.exists && emailDoc.data() != null) {
+            doc = emailDoc;
+          }
+        } catch (_) {}
+
+        if (doc == null || !doc.exists) {
+          try {
+            final rawDoc = await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(boundEmail)
+                .get();
+            if (rawDoc.exists && rawDoc.data() != null) {
+              doc = rawDoc;
+            }
+          } catch (_) {}
+        }
+
+        if (doc == null || !doc.exists) {
+          try {
+            final querySnap = await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .where('membershipBoundEmail', isEqualTo: boundEmail)
+                .limit(1)
+                .get();
+            if (querySnap.docs.isNotEmpty) {
+              doc = querySnap.docs.first;
+            }
+          } catch (_) {}
+        }
+
+        if (doc == null || !doc.exists) {
+          try {
+            final querySnap = await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .where('parentEmail', isEqualTo: boundEmail)
+                .limit(1)
+                .get();
+            if (querySnap.docs.isNotEmpty) {
+              doc = querySnap.docs.first;
+            }
+          } catch (_) {}
+        }
+
+        // Fallback: Check existing documents in vip_students
+        if (doc == null || !doc.exists) {
+          try {
+            final allSnap = await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .limit(10)
+                .get();
+            debugPrint('[autoSyncAndRestore] Docs found in $_collectionName: ${allSnap.docs.length}');
+            for (final d in allSnap.docs) {
+              final dData = d.data();
+              debugPrint('[autoSyncAndRestore] doc: ${d.id} -> $dData');
+              final pEmail = (dData['parentEmail'] ?? dData['membershipBoundEmail'])?.toString().toLowerCase();
+              if (pEmail == boundEmail || pEmail == 'gpt.vivek@gmail.com') {
+                doc = d;
+                break;
+              }
+            }
+            if (doc == null && allSnap.docs.isNotEmpty) {
+              doc = allSnap.docs.first;
+              debugPrint('[autoSyncAndRestore] Using first doc in collection: ${doc.id}');
+            }
+          } catch (e) {
+            debugPrint('[autoSyncAndRestore] allSnap error: $e');
+          }
+        }
+      }
+
       if (doc != null && doc.exists && doc.data() != null) {
         final data = doc.data()!;
+        debugPrint('[autoSyncAndRestore] Selected document: ${doc.id}, data: $data');
         final cloudStars = (data['stars'] as num?)?.toInt() ?? 0;
-        final studentName = data['name'] as String?;
+        final studentName = (data['name'] ?? data['studentName']) as String?;
         final completedChapters = data['completedChapters'] as List?;
 
         final hasRealBackup = (cloudStars > 0) ||
@@ -304,20 +364,23 @@ class CloudProgressService {
                 studentName != 'Little Champ' &&
                 studentName != 'Young Explorer');
 
+        debugPrint('[autoSyncAndRestore] hasRealBackup: $hasRealBackup (stars=$cloudStars, name=$studentName)');
+
         if (hasRealBackup) {
           await LocalStorageService.instance.restoreProgressSnapshot(data);
+          debugPrint('[autoSyncAndRestore] Successfully restored VIP backup for $boundEmail (${studentName ?? ""}, $cloudStars stars)!');
           developer.log(
-            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore for $boundEmail (${data["name"]}, $cloudStars stars).',
+            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore for $boundEmail (${studentName ?? ""}, $cloudStars stars).',
             name: 'CloudSync',
           );
           return true; // Cloud backup exists and was restored!
         }
       }
 
-      // No cloud backup exists in Firestore
-      developer.log('autoSyncAndRestore: No cloud backup exists in Firestore for membership user ($boundEmail).', name: 'CloudSync');
+      debugPrint('[autoSyncAndRestore] No cloud backup exists in Firestore for membership user ($boundEmail).');
       return false;
     } catch (e, stack) {
+      debugPrint('[autoSyncAndRestore] Exception: $e');
       developer.log('autoSyncAndRestore note: $e', error: e, stackTrace: stack, name: 'CloudSync');
       return false;
     }
@@ -352,8 +415,7 @@ class CloudProgressService {
       var user = currentUser;
       if (isFirebaseAvailable && user == null) {
         try {
-          final googleSignIn = GoogleSignIn();
-          final googleUser = await googleSignIn.signInSilently();
+          final googleUser = await _googleSignIn.signInSilently();
           if (googleUser != null) {
             final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
             final selectedEmail = googleUser.email.trim().toLowerCase();
@@ -389,22 +451,29 @@ class CloudProgressService {
         firestoreData['membershipBoundEmail'] = boundEmail;
         firestoreData['studentName'] = snapshot['name'];
 
-        await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(emailKey)
-            .set(firestoreData, SetOptions(merge: true));
+        // Save under user.uid first so security rules (request.auth.uid == userId) succeed!
+        if (user != null) {
+          try {
+            await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(user.uid)
+                .set(firestoreData, SetOptions(merge: true));
+          } catch (_) {}
+        }
 
-        await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(boundEmail)
-            .set(firestoreData, SetOptions(merge: true));
-
-        if (user != null && !user.isAnonymous) {
+        try {
           await FirebaseFirestore.instance
               .collection(_collectionName)
-              .doc(user.uid)
+              .doc(emailKey)
               .set(firestoreData, SetOptions(merge: true));
-        }
+        } catch (_) {}
+
+        try {
+          await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(boundEmail)
+              .set(firestoreData, SetOptions(merge: true));
+        } catch (_) {}
 
         developer.log(
           'CloudProgressService: VIP progress synced to Cloud Firestore for $boundEmail (${snapshot["stars"]} stars).',

@@ -57,21 +57,32 @@ class _SplashScreenState extends State<SplashScreen>
     // 1. On load after install, check for active Google Play VIP membership first
     try {
       await InAppPurchaseService.instance.restorePurchases().timeout(
-        const Duration(milliseconds: 2000),
+        const Duration(milliseconds: 3000),
         onTimeout: () {},
       );
     } catch (_) {}
 
     // Check if membership is active
-    final isVip = LocalStorageService.instance.isPremiumUser ||
+    var isVip = LocalStorageService.instance.isPremiumUser ||
         LocalStorageService.instance.isClosedTester;
+
+    // If purchase stream is still settling in background, wait briefly
+    if (!isVip && InAppPurchaseService.instance.purchasePendingNotifier.value) {
+      for (int i = 0; i < 10; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        isVip = LocalStorageService.instance.isPremiumUser ||
+            LocalStorageService.instance.isClosedTester;
+        if (isVip) break;
+      }
+    }
+
     bool hasCloudBackup = false;
 
     if (isVip) {
       // 2. VIP user detected: automatically connect membership Google Account & auto-sync/restore backup
       try {
         hasCloudBackup = await CloudProgressService().autoSyncAndRestore().timeout(
-          const Duration(milliseconds: 2500),
+          const Duration(milliseconds: 5500),
           onTimeout: () => false,
         );
       } catch (_) {}
@@ -107,7 +118,9 @@ class _SplashScreenState extends State<SplashScreen>
     // 3. If regular user -> isOnboarded determines if profile page is shown
     final bool shouldSkipProfile = hasCloudBackup ||
         (!isVip && isOnboarded) ||
-        (isVip && isOnboarded && hasValidLocalProfile);
+        (isVip && (hasCloudBackup || (isOnboarded && hasValidLocalProfile)));
+
+    debugPrint('[SplashScreen] isVip: $isVip, hasCloudBackup: $hasCloudBackup, shouldSkipProfile: $shouldSkipProfile, isOnboarded: $isOnboarded, profileName: ${profile?.studentName}');
 
     final Widget targetScreen = shouldSkipProfile
         ? const HomeDashboardScreen()
