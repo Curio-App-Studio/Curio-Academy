@@ -23,6 +23,9 @@ import '../../adventure_map/presentation/adventure_island_screen.dart';
 import '../../spell_bee/presentation/spell_bee_hub_screen.dart';
 import '../../math_tables/presentation/math_tables_screen.dart';
 import '../../phonics_abc/presentation/phonics_abc_screen.dart';
+import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
+import '../../activities/card_match/presentation/card_match_screen.dart';
+import '../../rhymes_stories/presentation/rhymes_stories_screen.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -306,139 +309,23 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
 
         const SizedBox(height: 16),
 
-        // 3. Featured Hero: A for Apple Phonics World Banner
+        // 3. Interactive Mini-Games Front & Center: Direct 1-tap entry into fun games
+        _buildKidsInteractiveMiniGamesSection(context, activeProfile, isHindi),
+
+        const SizedBox(height: 18),
+
+        // 4. Featured Hero: A for Apple Phonics World Banner
         _buildKidsPhonicsHeroBanner(context, isHindi),
 
         const SizedBox(height: 18),
 
-        // 4. Playful Big Subject Stations
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                isHindi ? 'विषय चुनें 🎨' : 'Pick a Subject 🎨',
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1E293B),
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '${activeProfile.studentClass.label} 🌟',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFB45309),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
+        // 5. Picture/Emoji-Rich Discovery Cards (Numbers & Shapes, ABC & Phonics, Rhymes & Stories, Nature & Animals, Akshar Varnamala)
+        _buildKidsDiscoveryCardsSection(context, activeProfile, strings, isHindi),
 
-        // 2x2 Big Chunky Subject Cards
-        Row(
-          children: [
-            // Math Numbers & Shapes
-            Expanded(
-              child: _buildKidsSubjectChunkyCard(
-                title: strings.math,
-                subtitle: isHindi ? '1 2 3 और आकार 🎈' : '1 2 3 & Shapes 🎈',
-                emoji: '🔢',
-                badgeText: '1 2 3',
-                gradient: const [Color(0xFFFEF2F2), Color(0xFFFEE2E2)],
-                borderColor: const Color(0xFFFECACA),
-                accentColor: const Color(0xFFEF4444),
-                onTap: () => _openSubject(
-                  context,
-                  subjectId: 'math',
-                  subjectName: strings.math,
-                  emoji: '🔢',
-                  primaryColor: const Color(0xFFEF4444),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // English Phonics & ABC
-            Expanded(
-              child: _buildKidsSubjectChunkyCard(
-                title: strings.english,
-                subtitle: isHindi ? 'A B C और कहानियाँ 📚' : 'A B C & Stories 📚',
-                emoji: '🔤',
-                badgeText: 'A B C',
-                gradient: const [Color(0xFFEEF2FF), Color(0xFFE0E7FF)],
-                borderColor: const Color(0xFFC7D2FE),
-                accentColor: const Color(0xFF6366F1),
-                onTap: () => _openSubject(
-                  context,
-                  subjectId: 'english',
-                  subjectName: strings.english,
-                  emoji: '🔤',
-                  primaryColor: const Color(0xFF6366F1),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            // Hindi Varnamala
-            Expanded(
-              child: _buildKidsSubjectChunkyCard(
-                title: strings.hindiShort,
-                subtitle: isHindi ? 'अ आ इ और कविताएं 🥭' : 'Varnamala & Rhymes 🥭',
-                emoji: '🇮🇳',
-                badgeText: 'अ आ इ',
-                gradient: const [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
-                borderColor: const Color(0xFFFED7AA),
-                accentColor: const Color(0xFFEA580C),
-                onTap: () => _openSubject(
-                  context,
-                  subjectId: 'hindi',
-                  subjectName: strings.hindi,
-                  emoji: '🇮🇳',
-                  primaryColor: const Color(0xFFEA580C),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // EVS Nature & Animals
-            Expanded(
-              child: _buildKidsSubjectChunkyCard(
-                title: strings.evsShort,
-                subtitle: isHindi ? 'जानवर और पौधे 🌿' : 'Animals & Nature 🌿',
-                emoji: '🐾',
-                badgeText: '🐾 🌿',
-                gradient: const [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
-                borderColor: const Color(0xFFA7F3D0),
-                accentColor: const Color(0xFF059669),
-                onTap: () => _openSubject(
-                  context,
-                  subjectId: 'evs',
-                  subjectName: strings.evs,
-                  emoji: '🐾',
-                  primaryColor: const Color(0xFF059669),
-                ),
-              ),
-            ),
-          ],
-        ),
+        const SizedBox(height: 18),
 
-        const SizedBox(height: 20),
-
-        // 5. Fun Games Zone for Early Learners (Bubble Pop, Card Match, Island Map)
-        _buildKidsGamesSection(context, activeProfile, isHindi),
+        // 6. Spell Bee Voice Adventure Bonus
+        _buildKidsSpellBeeBanner(context, isHindi),
 
         const SizedBox(height: 24),
       ],
@@ -855,7 +742,479 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
+  Widget _buildKidsInteractiveMiniGamesSection(
+    BuildContext context,
+    StudentProfile activeProfile,
+    bool isHindi,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                isHindi ? '🎮 मजेदार मिनी गेम्स' : '🎮 Interactive Mini-Games',
+                style: const TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E293B),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                '1-TAP PLAY ⚡',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF047857),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          isHindi
+              ? 'सीधे खेलें: बबल्स फोड़ें, कार्ड मिलाएँ और खजाना खोजें!'
+              : 'Direct 1-tap play: Pop bubbles, match cards & find treasure!',
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 3 Games Front & Center: Bubble Pop 🫧, Card Match 🃏, Treasure Island Map 🏝️
+        Row(
+          children: [
+            // Balloon / Bubble Pop 🫧
+            Expanded(
+              child: _buildKidsMiniGameCard(
+                title: isHindi ? 'बबल पॉप 🫧' : 'Bubble Pop 🫧',
+                subtitle: isHindi ? 'गुब्बारे फोड़ें' : 'Balloon Pop 🎈',
+                badgeText: isHindi ? 'खेलें ▶' : 'PLAY ▶',
+                emoji: '🫧',
+                gradient: const [Color(0xFF06B6D4), Color(0xFF0284C7)],
+                shadowColor: const Color(0xFF0284C7),
+                onTap: () {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const BubblePopScreen()),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Magic Card Match 🃏
+            Expanded(
+              child: _buildKidsMiniGameCard(
+                title: isHindi ? 'कार्ड मैच 🃏' : 'Card Match 🃏',
+                subtitle: isHindi ? 'जादुई जोड़े' : 'Magic Match 🎴',
+                badgeText: isHindi ? 'खेलें ▶' : 'PLAY ▶',
+                emoji: '🃏',
+                gradient: const [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+                shadowColor: const Color(0xFF6366F1),
+                onTap: () {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CardMatchScreen()),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Treasure Island Map 🏝️
+            Expanded(
+              child: _buildKidsMiniGameCard(
+                title: isHindi ? 'द्वीप नक्शा 🏝️' : 'Island Map 🏝️',
+                subtitle: isHindi ? 'खजाने की खोज' : 'Treasure Quest',
+                badgeText: isHindi ? 'नक्शा 🗺️' : 'MAP 🗺️',
+                emoji: '🏝️',
+                gradient: const [Color(0xFF10B981), Color(0xFF0D9488)],
+                shadowColor: const Color(0xFF0D9488),
+                onTap: () {
+                  AudioService.instance.playSfx(CurioSfx.click);
+                  _openAdventureIslandFromDashboard(context, activeProfile);
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKidsMiniGameCard({
+    required String title,
+    required String subtitle,
+    required String badgeText,
+    required String emoji,
+    required List<Color> gradient,
+    required Color shadowColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 11),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor.withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.24),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(emoji, style: const TextStyle(fontSize: 20)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                badgeText,
+                style: TextStyle(
+                  color: shadowColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 9,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKidsDiscoveryCardsSection(
+    BuildContext context,
+    StudentProfile activeProfile,
+    AppLocalizations strings,
+    bool isHindi,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                isHindi ? 'विषय चुनें 🎨' : 'Pick a Subject 🎨',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E293B),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${activeProfile.studentClass.label} 🌟',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFB45309),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          isHindi
+              ? 'तस्वीरों वाले खोज कार्ड: संख्याएं, अक्षर, कहानियां और प्रकृति!'
+              : 'Picture Discovery Cards: Numbers, phonics, stories & nature!',
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 1. Numbers & Shapes 🎈 + 2. ABC & Phonics 🔤
+        Row(
+          children: [
+            Expanded(
+              child: _buildKidsSubjectChunkyCard(
+                categoryTag: 'Math',
+                title: isHindi ? 'संख्याएं व आकार 🎈' : 'Numbers & Shapes 🎈',
+                subtitle: isHindi ? '1 2 3 और आकृतियां 🎈' : '1 2 3 & Shapes 🎈',
+                emoji: '🎈',
+                badgeText: '1 2 3 🔢',
+                gradient: const [Color(0xFFFEF2F2), Color(0xFFFEE2E2)],
+                borderColor: const Color(0xFFFECACA),
+                accentColor: const Color(0xFFEF4444),
+                onTap: () => _openSubject(
+                  context,
+                  subjectId: 'math',
+                  subjectName: isHindi ? 'संख्याएं और आकार' : 'Numbers & Shapes',
+                  emoji: '🎈',
+                  primaryColor: const Color(0xFFEF4444),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildKidsSubjectChunkyCard(
+                categoryTag: 'English',
+                title: isHindi ? 'ABC व फोनिक्स 🔤' : 'ABC & Phonics 🔤',
+                subtitle: isHindi ? 'A फॉर ऍपल, A-Z आवाजें 🎵' : 'A for Apple, Phonics 🎵',
+                emoji: '🔤',
+                badgeText: 'A-Z 🎵',
+                gradient: const [Color(0xFFEEF2FF), Color(0xFFE0E7FF)],
+                borderColor: const Color(0xFFC7D2FE),
+                accentColor: const Color(0xFF6366F1),
+                onTap: () {
+                  PhonicsAbcScreen.push(context);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // 3. Rhymes & Stories 📖 + 4. Nature & Animals 🐾
+        Row(
+          children: [
+            Expanded(
+              child: _buildKidsSubjectChunkyCard(
+                title: isHindi ? 'कविताएं व कथाएं 📖' : 'Rhymes & Stories 📖',
+                subtitle: isHindi ? 'बालगीत और कहानियां 🎶' : 'Songs & Fun Tales 🎶',
+                emoji: '📖',
+                badgeText: 'STORIES 📚',
+                gradient: const [Color(0xFFF5F3FF), Color(0xFFEDE9FE)],
+                borderColor: const Color(0xFFDDD6FE),
+                accentColor: const Color(0xFF7C3AED),
+                onTap: () {
+                  RhymesStoriesScreen.push(context);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildKidsSubjectChunkyCard(
+                title: isHindi ? 'प्रकृति व जानवर 🐾' : 'Nature & Animals 🐾',
+                subtitle: isHindi ? 'पशु, पक्षी और पौधे 🌿' : 'Animals & Nature 🌿',
+                emoji: '🐾',
+                badgeText: 'ANIMALS 🌿',
+                gradient: const [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+                borderColor: const Color(0xFFA7F3D0),
+                accentColor: const Color(0xFF059669),
+                onTap: () => _openSubject(
+                  context,
+                  subjectId: 'evs',
+                  subjectName: isHindi ? 'प्रकृति और जानवर' : 'Nature & Animals',
+                  emoji: '🐾',
+                  primaryColor: const Color(0xFF059669),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // 5. Akshar Varnamala 🇮🇳 (Wide Discovery Banner)
+        _buildKidsVarnamalaBannerCard(context, strings, isHindi),
+      ],
+    );
+  }
+
+  Widget _buildKidsVarnamalaBannerCard(
+    BuildContext context,
+    AppLocalizations strings,
+    bool isHindi,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () {
+        AudioService.instance.playSfx(CurioSfx.click);
+        _openSubject(
+          context,
+          subjectId: 'hindi',
+          subjectName: isHindi ? 'अक्षर वर्णमाला' : 'Akshar Varnamala',
+          emoji: '🇮🇳',
+          primaryColor: const Color(0xFFEA580C),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFFED7AA), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFEA580C).withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFED7AA)),
+              ),
+              child: const Center(
+                child: Text('🇮🇳', style: TextStyle(fontSize: 26)),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          isHindi ? 'अक्षर वर्णमाला 🇮🇳' : 'Akshar Varnamala 🇮🇳',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFEA580C),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFED7AA)),
+                        ),
+                        child: const Text(
+                          'अ आ इ 🥭',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFEA580C),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isHindi
+                        ? 'अ आ इ ई, स्वर, व्यंजन व सुंदर कविताएं 🥭'
+                        : 'अ आ इ ई, Varnamala, Rhymes & Letters 🥭',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFED7AA)),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: Color(0xFFEA580C),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildKidsSubjectChunkyCard({
+    String? categoryTag,
     required String title,
     required String subtitle,
     required String emoji,
@@ -872,7 +1231,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: gradient,
@@ -897,41 +1256,65 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               children: [
                 Text(emoji, style: const TextStyle(fontSize: 28)),
                 Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Text(
-                      badgeText,
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w900,
-                        color: accentColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (categoryTag != null) ...[
+                          Text(
+                            categoryTag,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: accentColor.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              color: accentColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: accentColor,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w900,
+                  color: accentColor,
+                ),
               ),
             ),
             const SizedBox(height: 3),
             Text(
               subtitle,
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey.shade700,
               ),
@@ -944,154 +1327,70 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildKidsGamesSection(
-    BuildContext context,
-    StudentProfile activeProfile,
-    bool isHindi,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildKidsSpellBeeBanner(BuildContext context, bool isHindi) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        AudioService.instance.playSfx(CurioSfx.click);
+        SpellBeeHubScreen.push(context);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFFCD34D), width: 1.5),
+        ),
+        child: Row(
           children: [
-            Flexible(
-              child: Text(
-                isHindi ? '🎮 बच्चों के खेल' : '🎮 Fun Play Zone',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1E293B),
-                ),
-                overflow: TextOverflow.ellipsis,
+            const Text('🐝', style: TextStyle(fontSize: 26)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isHindi ? 'स्पेल बी वॉइस एडवेंचर 🐝' : 'Spell Bee Voice Adventure 🐝',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      color: Color(0xFF92400E),
+                    ),
+                  ),
+                  Text(
+                    isHindi ? 'आवाज से स्पेलिंग बोलना सीखें 🌟' : 'Speak letters & learn spelling with voice 🌟',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFFD1FAE5),
+                color: const Color(0xFFF59E0B),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                'GAMES 🎈',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF047857)),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        Row(
-          children: [
-            // Spell Bee Kids Adventure
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  AudioService.instance.playSfx(CurioSfx.click);
-                  SpellBeeHubScreen.push(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('🐝', style: TextStyle(fontSize: 28)),
-                      const SizedBox(height: 8),
-                      Text(
-                        isHindi ? 'स्पेल बी' : 'Spell Bee',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isHindi ? 'आवाज से स्पेलिंग 🌟' : 'Voice Spelling 🌟',
-                        style: const TextStyle(
-                          color: Color(0xFFFEF3C7),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Adventure Island Quest Map
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  AudioService.instance.playSfx(CurioSfx.click);
-                  _openAdventureIslandFromDashboard(context, activeProfile);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF0D9488).withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('🏝️', style: TextStyle(fontSize: 28)),
-                      const SizedBox(height: 8),
-                      Text(
-                        isHindi ? 'द्वीप यात्रा' : 'Island Map',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isHindi ? 'खजाना और सितारे 🗺️' : 'Star Quest 🗺️',
-                        style: const TextStyle(
-                          color: Color(0xFFCCFBF1),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                'PLAY ▶',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 9.5,
                 ),
               ),
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 

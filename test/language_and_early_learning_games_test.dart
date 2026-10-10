@@ -13,6 +13,9 @@ import 'package:curio_math/data/repositories/curriculum_repository.dart';
 import 'package:curio_math/features/activities/bubble_pop/presentation/bubble_pop_screen.dart';
 import 'package:curio_math/features/activities/card_match/presentation/card_match_screen.dart';
 import 'package:curio_math/features/home_dashboard/presentation/home_dashboard_screen.dart';
+import 'package:curio_math/core/profile/profile_provider.dart';
+import 'package:curio_math/features/phonics_abc/presentation/phonics_abc_screen.dart';
+import 'package:curio_math/features/rhymes_stories/presentation/rhymes_stories_screen.dart';
 import 'package:curio_math/shared/components/language_switch_button.dart';
 
 void main() {
@@ -475,6 +478,190 @@ void main() {
 
       expect(find.byType(BubblePopScreen), findsOneWidget);
       expect(find.byType(CardMatchScreen), findsNothing);
+    });
+
+    testWidgets('Early Explorer Dashboard renders Interactive Mini-Games and Discovery Cards', (WidgetTester tester) async {
+      final lkgProfile = StudentProfile(
+        studentName: 'Aahan',
+        avatarIcon: '🦁',
+        board: BoardType.cbse,
+        studentClass: StudentClass.lkg,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            studentProfileProvider.overrideWith((ref) => StudentProfileNotifier(ref)
+              ..updateProfile(
+                name: lkgProfile.studentName,
+                avatar: lkgProfile.avatarIcon,
+                board: lkgProfile.board,
+                studentClass: lkgProfile.studentClass,
+              )),
+          ],
+          child: const MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Mini-Games Front & Center
+      expect(find.text('🎮 Interactive Mini-Games'), findsOneWidget);
+      expect(find.text('Bubble Pop 🫧'), findsOneWidget);
+      expect(find.text('Card Match 🃏'), findsOneWidget);
+      expect(find.text('Island Map 🏝️'), findsOneWidget);
+
+      // Discovery Cards
+      expect(find.text('Pick a Subject 🎨'), findsOneWidget);
+      expect(find.textContaining('Picture Discovery Cards'), findsOneWidget);
+      expect(find.text('Numbers & Shapes 🎈'), findsOneWidget);
+      expect(find.text('ABC & Phonics 🔤'), findsOneWidget);
+      expect(find.text('Rhymes & Stories 📖'), findsOneWidget);
+      expect(find.text('Nature & Animals 🐾'), findsOneWidget);
+      expect(find.text('Akshar Varnamala 🇮🇳'), findsOneWidget);
+    });
+
+    testWidgets('Tapping Bubble Pop mini-game opens BubblePopScreen directly', (WidgetTester tester) async {
+      final lkgProfile = StudentProfile(
+        studentName: 'Aahan',
+        avatarIcon: '🦁',
+        board: BoardType.cbse,
+        studentClass: StudentClass.lkg,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            studentProfileProvider.overrideWith((ref) => StudentProfileNotifier(ref)
+              ..updateProfile(
+                name: lkgProfile.studentName,
+                avatar: lkgProfile.avatarIcon,
+                board: lkgProfile.board,
+                studentClass: lkgProfile.studentClass,
+              )),
+          ],
+          child: const MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Bubble Pop 🫧'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(BubblePopScreen), findsOneWidget);
+    });
+
+    testWidgets('Tapping Card Match mini-game opens CardMatchScreen directly', (WidgetTester tester) async {
+      final lkgProfile = StudentProfile(
+        studentName: 'Aahan',
+        avatarIcon: '🦁',
+        board: BoardType.cbse,
+        studentClass: StudentClass.lkg,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            studentProfileProvider.overrideWith((ref) => StudentProfileNotifier(ref)
+              ..updateProfile(
+                name: lkgProfile.studentName,
+                avatar: lkgProfile.avatarIcon,
+                board: lkgProfile.board,
+                studentClass: lkgProfile.studentClass,
+              )),
+          ],
+          child: const MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Card Match 🃏'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(CardMatchScreen), findsOneWidget);
+    });
+
+    testWidgets('Tapping ABC & Phonics discovery card opens PhonicsAbcScreen', (WidgetTester tester) async {
+      final lkgProfile = StudentProfile(
+        studentName: 'Aahan',
+        avatarIcon: '🦁',
+        board: BoardType.cbse,
+        studentClass: StudentClass.lkg,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            studentProfileProvider.overrideWith((ref) => StudentProfileNotifier(ref)
+              ..updateProfile(
+                name: lkgProfile.studentName,
+                avatar: lkgProfile.avatarIcon,
+                board: lkgProfile.board,
+                studentClass: lkgProfile.studentClass,
+              )),
+          ],
+          child: const MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('ABC & Phonics 🔤'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(PhonicsAbcScreen), findsOneWidget);
+    });
+
+    testWidgets('Tapping Rhymes & Stories discovery card opens RhymesStoriesScreen directly', (WidgetTester tester) async {
+      final lkgProfile = StudentProfile(
+        studentName: 'Aahan',
+        avatarIcon: '🦁',
+        board: BoardType.cbse,
+        studentClass: StudentClass.lkg,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            studentProfileProvider.overrideWith((ref) => StudentProfileNotifier(ref)
+              ..updateProfile(
+                name: lkgProfile.studentName,
+                avatar: lkgProfile.avatarIcon,
+                board: lkgProfile.board,
+                studentClass: lkgProfile.studentClass,
+              )),
+          ],
+          child: const MaterialApp(
+            home: HomeDashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Rhymes & Stories 📖'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(RhymesStoriesScreen), findsOneWidget);
     });
   });
 }
