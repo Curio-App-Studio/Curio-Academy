@@ -102,7 +102,7 @@ void main() {
       expect(find.textContaining('10 Nov 2026'), findsOneWidget);
 
       // Verify Cancel or Manage Subscription button
-      expect(find.text('Cancel or Manage Subscription'), findsOneWidget);
+      expect(find.text('Cancel/Manage'), findsOneWidget);
 
       // Verify Current Plan is disabled/marked with Active
       expect(find.text('YOUR CURRENT PLAN ✓'), findsOneWidget);
@@ -127,7 +127,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap Cancel or Manage Subscription
-      final cancelBtn = find.text('Cancel or Manage Subscription');
+      final cancelBtn = find.text('Cancel/Manage');
       expect(cancelBtn, findsOneWidget);
       await tester.tap(cancelBtn);
       await tester.pumpAndSettle();

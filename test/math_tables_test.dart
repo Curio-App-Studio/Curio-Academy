@@ -199,5 +199,32 @@ void main() {
 
       expect(find.textContaining('4 selected'), findsOneWidget);
     });
+
+    testWidgets('Table chant defaults to traditional (2 ones are 2) and can toggle to times', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: MathTablesScreen(initialTable: 2),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check default chant style button in appBar
+      expect(find.text('2 ones are 2'), findsOneWidget);
+
+      // Verify row chant text in MathTableData
+      final table2 = MathTableData.generate(2);
+      expect(table2.rows[0].chantTraditional, '2 ones are 2');
+      expect(table2.rows[1].chantTraditional, '2 twos are 4');
+      expect(table2.rows[0].chantTimes, '2 times 1 is 2');
+      expect(table2.rows[0].chantEn, '2 ones are 2'); // Defaults to traditional
+
+      // Tap toggle button to switch to '2 times 1'
+      await tester.tap(find.text('2 ones are 2'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 times 1'), findsOneWidget);
+    });
   });
 }

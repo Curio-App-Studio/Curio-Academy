@@ -61,6 +61,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   int _quizTimerSeconds = 0;
   Timer? _quizTimer;
   int _tableSwitchCount = 0;
+  TableChantStyle _chantStyle = TableChantStyle.traditional;
 
   void _onTableSelected(int num) {
     if (num == _selectedTable) return;
@@ -77,6 +78,8 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
     super.initState();
     _selectedTable = widget.initialTable;
     _quizSelectedTables = {widget.initialTable};
+    final savedStyle = LocalStorageService.instance.getTableChantStyle();
+    _chantStyle = savedStyle == 'times' ? TableChantStyle.times : TableChantStyle.traditional;
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -90,6 +93,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   @override
   void dispose() {
     _stopChant();
+    AudioService.instance.stopAudio();
     _quizTimer?.cancel();
     _tabController.dispose();
     super.dispose();
@@ -173,12 +177,31 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   void _stopChant() {
     _chantTimer?.cancel();
     _chantTimer = null;
+    AudioService.instance.stopAudio();
     if (_isChanting) {
       setState(() {
         _isChanting = false;
         _activeChantRowIndex = -1;
       });
     }
+  }
+
+  void _toggleChantStyle() {
+    setState(() {
+      _chantStyle = _chantStyle == TableChantStyle.traditional
+          ? TableChantStyle.times
+          : TableChantStyle.traditional;
+      LocalStorageService.instance.saveTableChantStyle(
+        _chantStyle == TableChantStyle.traditional ? 'traditional' : 'times',
+      );
+    });
+    final sample = _chantStyle == TableChantStyle.traditional ? '2 ones are 2' : '2 times 1 is 2';
+    AudioService.instance.speakPrompt(sample);
+  }
+
+  String _getRowSpeechText(MathTableRow row, bool isHindi) {
+    if (isHindi) return row.chantHi;
+    return row.getChantEn(_chantStyle);
   }
 
   void _startChant() {
@@ -213,8 +236,8 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   void _speakCurrentChantRow(bool isHindi) {
     if (_activeChantRowIndex < 0 || _activeChantRowIndex >= _currentTableData.rows.length) return;
     final row = _currentTableData.rows[_activeChantRowIndex];
-    final text = isHindi ? row.chantHi : row.chantEn;
-    AudioService.instance.speakPrompt(text);
+    final text = _getRowSpeechText(row, isHindi);
+    AudioService.instance.speakPrompt(text, isHindi: isHindi);
   }
 
   @override
@@ -228,13 +251,40 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF065F46)),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            _stopChant();
+            AudioService.instance.stopAudio();
+            Navigator.of(context).pop();
+          },
         ),
         title: Text(
           isHindi ? 'पहाड़े सीखें (Tables 1-20)' : 'Learn Tables (1 to 20)',
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF065F46)),
         ),
         actions: [
+          // Phonics style toggle: "2 ones are 2" vs "2 times 1" (English)
+          if (!isHindi)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF10B981)),
+              ),
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.record_voice_over_rounded, size: 14, color: Color(0xFF065F46)),
+                label: Text(
+                  _chantStyle == TableChantStyle.traditional ? '2 ones are 2' : '2 times 1',
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF065F46), fontSize: 11),
+                ),
+                onPressed: _toggleChantStyle,
+              ),
+            ),
           // Range toggle (up to 10 or 12)
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -469,9 +519,30 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
                             : (isHindi ? 'बोलकर सीखें (Auto-Recite)' : 'Sing & Chant Along (Auto-Recite)'),
                         style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5, color: Color(0xFF065F46)),
                       ),
-                      Text(
-                        isHindi ? 'किसी भी लाइन पर टैप करके अर्थ समझें' : 'Tap any row below for visual dots',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                      InkWell(
+                        onTap: isHindi ? null : _toggleChantStyle,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isHindi
+                                  ? 'किसी भी लाइन पर टैप करके अर्थ समझें'
+                                  : (_chantStyle == TableChantStyle.traditional
+                                      ? '🗣️ 2 ones are 2 (Tap to switch)'
+                                      : '🗣️ 2 times 1 is 2 (Tap to switch)'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isHindi ? FontWeight.normal : FontWeight.w800,
+                                color: isHindi ? const Color(0xFF6B7280) : const Color(0xFF047857),
+                              ),
+                            ),
+                            if (!isHindi) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.swap_horiz_rounded, size: 13, color: Color(0xFF047857)),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -560,8 +631,8 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
                       IconButton(
                         icon: const Icon(Icons.volume_up_rounded, color: Color(0xFF059669), size: 22),
                         onPressed: () {
-                          final text = isHindi ? row.chantHi : row.chantEn;
-                          AudioService.instance.speakPrompt(text);
+                          final text = _getRowSpeechText(row, isHindi);
+                          AudioService.instance.speakPrompt(text, isHindi: isHindi);
                         },
                       ),
 
@@ -582,8 +653,8 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
   // Visual Concept Bottom Sheet (Repeated Addition + Dot Grid)
   void _showRowConceptModal(MathTableRow row, bool isHindi) {
     AudioService.instance.playSfx(CurioSfx.click);
-    final speakText = isHindi ? row.chantHi : row.chantEn;
-    AudioService.instance.speakPrompt(speakText);
+    final speakText = _getRowSpeechText(row, isHindi);
+    AudioService.instance.speakPrompt(speakText, isHindi: isHindi);
 
     showModalBottomSheet(
       context: context,
@@ -734,7 +805,12 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
               if (_flashcardFlipped) {
                 AudioService.instance.speakPrompt('${row.product}');
               } else {
-                AudioService.instance.speakPrompt('${row.tableNumber} times ${row.multiplier}');
+                final qText = isHindi
+                    ? '${row.tableNumber} ${MathTableData.getHindiSuffix(row.multiplier)}?'
+                    : (_chantStyle == TableChantStyle.traditional
+                        ? '${row.tableNumber} ${MathTableData.getEnglishTraditionalSuffix(row.multiplier)}?'
+                        : '${row.tableNumber} times ${row.multiplier}?');
+                AudioService.instance.speakPrompt(qText, isHindi: isHindi);
               }
             },
             child: AnimatedContainer(
@@ -783,7 +859,7 @@ class _MathTablesScreenState extends ConsumerState<MathTablesScreen> with Single
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _flashcardFlipped ? (isHindi ? row.chantHi : row.chantEn) : (isHindi ? 'टैप करके उत्तर देखें 🔄' : 'Tap to reveal answer 🔄'),
+                    _flashcardFlipped ? _getRowSpeechText(row, isHindi) : (isHindi ? 'टैप करके उत्तर देखें 🔄' : 'Tap to reveal answer 🔄'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,

@@ -1,22 +1,38 @@
+/// Style of phonics recitation for multiplication tables
+enum TableChantStyle {
+  /// Traditional school chant: "2 ones are 2, 2 twos are 4" (Default)
+  traditional,
+  /// Standard times chant: "2 times 1 is 2, 2 times 2 is 4"
+  times,
+}
+
 /// Represents a single multiplication equation line (e.g. 7 × 8 = 56).
 class MathTableRow {
   final int tableNumber;
   final int multiplier;
   final int product;
   final String repeatedAddition;
-  final String chantEn;
+  final String chantTraditional;
+  final String chantTimes;
   final String chantHi;
+  final String chantEn;
 
   const MathTableRow({
     required this.tableNumber,
     required this.multiplier,
     required this.product,
     required this.repeatedAddition,
-    required this.chantEn,
+    required this.chantTraditional,
+    required this.chantTimes,
     required this.chantHi,
-  });
+    String? chantEn,
+  }) : chantEn = chantEn ?? chantTraditional;
 
   String get formula => '$tableNumber × $multiplier = $product';
+
+  String getChantEn(TableChantStyle style) {
+    return style == TableChantStyle.traditional ? chantTraditional : chantTimes;
+  }
 }
 
 /// Represents a full multiplication table with tricks and mnemonic aids.
@@ -46,8 +62,10 @@ class MathTableData {
       final product = tableNumber * i;
       final repeated = List.filled(i, '$tableNumber').join(' + ');
 
-      // Traditional & rhythm chants
-      final chantEn = '$tableNumber times $i is $product';
+      // Traditional & rhythm chants (Default: "2 ones are 2, 2 twos are 4")
+      final tradSuffix = getEnglishTraditionalSuffix(i);
+      final chantTraditional = '$tableNumber $tradSuffix $product';
+      final chantTimes = '$tableNumber times $i is $product';
       final chantHi = _getHindiChant(tableNumber, i, product);
 
       rows.add(
@@ -56,7 +74,9 @@ class MathTableData {
           multiplier: i,
           product: product,
           repeatedAddition: repeated,
-          chantEn: chantEn,
+          chantTraditional: chantTraditional,
+          chantTimes: chantTimes,
+          chantEn: chantTraditional,
           chantHi: chantHi,
         ),
       );
@@ -73,6 +93,11 @@ class MathTableData {
   }
 
   static String _getHindiChant(int n, int m, int prod) {
+    final suffix = getHindiSuffix(m);
+    return '$n $suffix $prod';
+  }
+
+  static String getHindiSuffix(int m) {
     const hindiSuffixes = [
       '',
       'एकम',    // 1
@@ -88,9 +113,54 @@ class MathTableData {
       'ग्यारह', // 11
       'बारह',   // 12
     ];
+    return m < hindiSuffixes.length ? hindiSuffixes[m] : 'गुणा $m';
+  }
 
-    final suffix = m < hindiSuffixes.length ? hindiSuffixes[m] : 'गुणा $m';
-    return '$n $suffix $prod';
+  static String getEnglishTraditionalSuffix(int m) {
+    switch (m) {
+      case 1:
+        return 'ones are';
+      case 2:
+        return 'twos are';
+      case 3:
+        return 'threes are';
+      case 4:
+        return 'fours are';
+      case 5:
+        return 'fives are';
+      case 6:
+        return 'sixes are';
+      case 7:
+        return 'sevens are';
+      case 8:
+        return 'eights are';
+      case 9:
+        return 'nines are';
+      case 10:
+        return 'tens are';
+      case 11:
+        return 'elevens are';
+      case 12:
+        return 'twelves are';
+      case 13:
+        return 'thirteens are';
+      case 14:
+        return 'fourteens are';
+      case 15:
+        return 'fifteens are';
+      case 16:
+        return 'sixteens are';
+      case 17:
+        return 'seventeens are';
+      case 18:
+        return 'eighteens are';
+      case 19:
+        return 'nineteens are';
+      case 20:
+        return 'twenties are';
+      default:
+        return 'into $m are';
+    }
   }
 
   static _TableTrick _getTrickForNumber(int n) {

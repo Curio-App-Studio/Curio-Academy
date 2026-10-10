@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/audio/audio_navigator_observer.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/tier_theme_provider.dart';
 import 'features/splash/presentation/splash_screen.dart';
@@ -17,6 +18,9 @@ class CurioApp extends ConsumerWidget {
       title: 'Curio Academy',
       debugShowCheckedModeBanner: false,
       theme: themeData,
+      navigatorObservers: [
+        AudioNavigatorObserver.instance,
+      ],
       home: const SplashScreen(),
     );
   }

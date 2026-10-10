@@ -42,6 +42,10 @@ abstract class ILocalStorageService {
   String getAppLanguage();
   Future<void> saveAppLanguage(String langCode);
 
+  // Table chant style persistence (default: traditional '2 ones are 2')
+  String getTableChantStyle();
+  Future<void> saveTableChantStyle(String style);
+
   // Streak & Mistake Vault
   int get streakCount;
   Future<void> recordDailyActivity();
@@ -109,12 +113,14 @@ class LocalStorageService implements ILocalStorageService {
   static const String _keyClaimedChests = 'curio_claimed_island_chests';
   static const String _keyCompletedChapters = 'curio_completed_chapters';
   static const String _prefixChapterActivities = 'curio_chapter_act_';
+  static const String _keyTableChantStyle = 'curio_table_chant_style';
 
   SharedPreferences? _prefs;
   StudentProfile? _cachedProfile;
   VoiceSettings? _cachedVoiceSettings;
   bool _cachedAudioMuted = false;
   String _cachedLanguage = 'en';
+  String _cachedTableChantStyle = 'traditional';
   bool _isClosedTester = false;
   bool _isPremiumUser = false;
   String? _premiumSubType;
@@ -576,6 +582,7 @@ class LocalStorageService implements ILocalStorageService {
         } catch (_) {}
       }
       _cachedAudioMuted = _prefs?.getBool(_keyAudioMuted) ?? false;
+      _cachedTableChantStyle = _prefs?.getString(_keyTableChantStyle) ?? 'traditional';
 
       // Purge any legacy kindergarten chapter activities that only have Bubble Pop OR contain MCQs
       final keys = _prefs?.getKeys() ?? {};
@@ -937,6 +944,18 @@ class LocalStorageService implements ILocalStorageService {
     try {
       _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setString(_keyLanguage, langCode);
+    } catch (_) {}
+  }
+
+  @override
+  String getTableChantStyle() => _cachedTableChantStyle;
+
+  @override
+  Future<void> saveTableChantStyle(String style) async {
+    _cachedTableChantStyle = style;
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.setString(_keyTableChantStyle, style);
     } catch (_) {}
   }
 

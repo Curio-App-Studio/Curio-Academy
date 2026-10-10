@@ -127,6 +127,9 @@ class MathSpeechSanitizer {
   }
 
   static String _sanitizeFractions(String text, bool isHindi) {
+    // Strip phonetics IPA slashes (e.g. /æ/, /b/) so they are never treated as division
+    text = text.replaceAll(RegExp(r'/([a-zA-Zæʌɒɪʊeəɛɔ]+)/'), r'$1');
+
     final fractionsMap = isHindi ? _commonFractionsHi : _commonFractionsEn;
 
     // Handle mixed numbers first: e.g. "2 1/2" -> "2 and one half"
