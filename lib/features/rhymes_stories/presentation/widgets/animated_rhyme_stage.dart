@@ -272,7 +272,10 @@ class _AnimatedRhymeStageState extends State<AnimatedRhymeStage>
           children: [
             Transform.translate(
               offset: Offset(0, floatOffset),
-              child: const Text('🐑', style: TextStyle(fontSize: 56)),
+              child: Transform.flip(
+                flipX: true,
+                child: const Text('🐑', style: TextStyle(fontSize: 56)),
+              ),
             ),
             const SizedBox(width: 16),
             const Text('🧶', style: TextStyle(fontSize: 38)),
@@ -301,7 +304,10 @@ class _AnimatedRhymeStageState extends State<AnimatedRhymeStage>
           children: [
             Transform.translate(
               offset: Offset(floatOffset * 1.2, 0),
-              child: const Text('🚌', style: TextStyle(fontSize: 62)),
+              child: Transform.flip(
+                flipX: true,
+                child: const Text('🚌', style: TextStyle(fontSize: 62)),
+              ),
             ),
             const SizedBox(width: 12),
             Transform.rotate(
@@ -363,7 +369,10 @@ class _AnimatedRhymeStageState extends State<AnimatedRhymeStage>
           children: [
             Transform.translate(
               offset: Offset(0, floatOffset),
-              child: const Text('🚣', style: TextStyle(fontSize: 52)),
+              child: Transform.flip(
+                flipX: true,
+                child: const Text('🚣', style: TextStyle(fontSize: 52)),
+              ),
             ),
             const SizedBox(width: 14),
             const Text('🌊', style: TextStyle(fontSize: 38)),
@@ -377,7 +386,10 @@ class _AnimatedRhymeStageState extends State<AnimatedRhymeStage>
           children: [
             Transform.translate(
               offset: Offset(0, floatOffset * 1.5),
-              child: const Text('🐒', style: TextStyle(fontSize: 52)),
+              child: Transform.flip(
+                flipX: true,
+                child: const Text('🐒', style: TextStyle(fontSize: 52)),
+              ),
             ),
             const SizedBox(width: 14),
             const Text('🛏️', style: TextStyle(fontSize: 38)),

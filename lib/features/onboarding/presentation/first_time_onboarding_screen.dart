@@ -5,7 +5,6 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/profile/profile_provider.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../../../data/models/student_profile.dart';
-import '../../../shared/components/language_switch_button.dart';
 import '../../../shared/components/student_profile_form.dart';
 import '../../home_dashboard/presentation/home_dashboard_screen.dart';
 
@@ -94,15 +93,6 @@ class _FirstTimeOnboardingScreenState
 
     return Scaffold(
       backgroundColor: const Color(0xFFFBFBFA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: const [
-          LanguageSwitchButton(),
-          SizedBox(width: 12),
-        ],
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),

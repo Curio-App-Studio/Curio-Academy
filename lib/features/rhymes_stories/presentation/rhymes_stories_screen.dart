@@ -37,6 +37,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
   bool _isPlayingRhyme = false;
   bool _isPlayingMelody = false;
   int? _speakingRhymeLineIndex;
+  Timer? _melodySyncTimer;
 
   // Active Story Reader State
   int _selectedStoryIndex = 0;
@@ -68,6 +69,8 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
   }
 
   void _stopAllAudio({bool notify = true}) {
+    _melodySyncTimer?.cancel();
+    _melodySyncTimer = null;
     _isPlayingRhyme = false;
     _isPlayingMelody = false;
     _speakingRhymeLineIndex = null;
@@ -81,7 +84,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
   }
 
   void _playSingleRhymeLine(RhymeItem rhyme, int lineIndex, bool isHindi) {
-    AudioService.instance.stopAudio();
+    _stopAllAudio();
     final lines = (isHindi && rhyme.hindiLines != null) ? rhyme.hindiLines! : rhyme.lines;
     if (lineIndex < 0 || lineIndex >= lines.length) return;
 
@@ -109,49 +112,73 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
     );
   }
 
-  void _playRhymeMelodyOnly(RhymeItem rhyme) {
-    AudioService.instance.stopAudio();
+  /// Plays the authentic nursery rhyme melody on its own, advancing line highlights in sync with the musical phrasing
+  void _playRhymeMelody(RhymeItem rhyme, bool isHindi) {
+    _stopAllAudio();
     setState(() {
       _isPlayingMelody = true;
       _isPlayingRhyme = false;
-      _speakingRhymeLineIndex = null;
+      _speakingRhymeLineIndex = 0;
+    });
+
+    final lines = (isHindi && rhyme.hindiLines != null) ? rhyme.hindiLines! : rhyme.lines;
+    const melodyDurationsMs = <String, int>{
+      'twinkle_star': 20200,
+      'baa_baa_black_sheep': 16800,
+      'humpty_dumpty': 13400,
+      'wheels_on_the_bus': 12600,
+      'johny_johny': 14300,
+      'jack_and_jill': 11800,
+      'incy_wincy_spider': 13400,
+      'row_row_boat': 10100,
+      'five_little_monkeys': 12600,
+      'hickory_dickory': 11800,
+    };
+
+    final totalMs = melodyDurationsMs[rhyme.id] ?? 14000;
+    final lineDurationMs = (totalMs / lines.length).round();
+
+    int currentLine = 0;
+    _melodySyncTimer?.cancel();
+    _melodySyncTimer = Timer.periodic(Duration(milliseconds: lineDurationMs), (timer) {
+      if (!mounted || !_isPlayingMelody) {
+        timer.cancel();
+        return;
+      }
+      currentLine++;
+      if (currentLine < lines.length) {
+        setState(() {
+          _speakingRhymeLineIndex = currentLine;
+        });
+      } else {
+        timer.cancel();
+      }
     });
 
     AudioService.instance.playMelody(
       'assets/audio/rhymes/${rhyme.id}.wav',
       volume: 0.85,
       onComplete: () {
+        _melodySyncTimer?.cancel();
         if (mounted) {
           setState(() {
             _isPlayingMelody = false;
+            _speakingRhymeLineIndex = null;
           });
         }
       },
     );
   }
 
-  void _playRhymeSingAlong(RhymeItem rhyme, bool isHindi) {
-    AudioService.instance.stopAudio();
+  /// Clean voice-only recitation: speaks line-by-line with poetic rhythm without clashing background music
+  void _playRhymeVoice(RhymeItem rhyme, bool isHindi) {
+    _stopAllAudio();
     setState(() {
       _isPlayingRhyme = true;
-      _isPlayingMelody = true;
+      _isPlayingMelody = false;
       _speakingRhymeLineIndex = 0;
     });
 
-    // 1. Play authentic music-box melody in background
-    AudioService.instance.playMelody(
-      'assets/audio/rhymes/${rhyme.id}.wav',
-      volume: 0.40,
-      onComplete: () {
-        if (mounted) {
-          setState(() {
-            _isPlayingMelody = false;
-          });
-        }
-      },
-    );
-
-    // 2. Concurrently recite lines with poetic rhythm and active line highlight
     _readRhymeLineSequentially(rhyme, 0, isHindi);
   }
 
@@ -483,7 +510,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                   setState(() {
                     _selectedRhymeIndex = index;
                   });
-                  _playRhymeSingAlong(rhyme, isHindi);
+                  _playRhymeMelody(rhyme, isHindi);
                 },
                 child: Container(
                   padding: const EdgeInsets.all(12),
@@ -647,7 +674,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                     if (_isPlayingRhyme || _isPlayingMelody) {
                       _stopAllAudio();
                     } else {
-                      _playRhymeSingAlong(rhyme, isHindi);
+                      _playRhymeMelody(rhyme, isHindi);
                     }
                   },
                   child: Padding(
@@ -749,9 +776,9 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                                 color: rhyme.themeColor,
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                '🎶 SINGING',
-                                style: TextStyle(
+                              child: Text(
+                                _isPlayingMelody ? '🎵 MELODY' : '🗣️ SPEAKING',
+                                style: const TextStyle(
                                   fontSize: 8.5,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
@@ -768,11 +795,10 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
             ),
           ),
           const SizedBox(height: 12),
-          // Dual Action Controls: Full Sing-Along (Music + Voice) & Music Box Melody Tune
+          // Dual Action Controls: 1) Play Melody (with synced karaoke highlights) & 2) Read Rhyme (Voice-only recitation)
           Row(
             children: [
               Expanded(
-                flex: 3,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: rhyme.themeColor,
@@ -782,29 +808,26 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                     elevation: 0,
                   ),
                   icon: Icon(
-                    (_isPlayingRhyme || _isPlayingMelody)
-                        ? Icons.stop_rounded
-                        : Icons.record_voice_over_rounded,
+                    _isPlayingMelody ? Icons.stop_rounded : Icons.music_note_rounded,
                     size: 18,
                   ),
                   label: Text(
-                    (_isPlayingRhyme || _isPlayingMelody)
-                        ? (isHindi ? 'गायन रोकें ⏹' : 'Stop Playing ⏹')
-                        : (isHindi ? 'गाकर सुनाएं 🎶' : 'Sing-Along 🎶'),
+                    _isPlayingMelody
+                        ? (isHindi ? 'धुन रोकें ⏹' : 'Stop Melody ⏹')
+                        : (isHindi ? 'धुन बजाएं (गाएं) 🎵' : 'Play Melody 🎵'),
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                   onPressed: () {
-                    if (_isPlayingRhyme || _isPlayingMelody) {
+                    if (_isPlayingMelody) {
                       _stopAllAudio();
                     } else {
-                      _playRhymeSingAlong(rhyme, isHindi);
+                      _playRhymeMelody(rhyme, isHindi);
                     }
                   },
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                flex: 2,
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: rhyme.themeColor,
@@ -812,18 +835,21 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  icon: const Icon(Icons.music_note_rounded, size: 18),
+                  icon: Icon(
+                    _isPlayingRhyme ? Icons.stop_rounded : Icons.record_voice_over_rounded,
+                    size: 18,
+                  ),
                   label: Text(
-                    _isPlayingMelody
-                        ? (isHindi ? 'रोकें ⏹' : 'Stop ⏹')
-                        : (isHindi ? 'धुन 🎵' : 'Melody 🎵'),
+                    _isPlayingRhyme
+                        ? (isHindi ? 'पढ़ना रोकें ⏹' : 'Stop Reading ⏹')
+                        : (isHindi ? 'कविता सुनें 🗣️' : 'Read Rhyme 🗣️'),
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                   onPressed: () {
-                    if (_isPlayingMelody) {
+                    if (_isPlayingRhyme) {
                       _stopAllAudio();
                     } else {
-                      _playRhymeMelodyOnly(rhyme);
+                      _playRhymeVoice(rhyme, isHindi);
                     }
                   },
                 ),
@@ -927,7 +953,12 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Center(
-                          child: Text(story.emoji, style: const TextStyle(fontSize: 24)),
+                          child: story.id == 'thirsty_crow'
+                              ? Transform.flip(
+                                  flipX: true,
+                                  child: Text(story.emoji, style: const TextStyle(fontSize: 24)),
+                                )
+                              : Text(story.emoji, style: const TextStyle(fontSize: 24)),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -1023,7 +1054,12 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                   border: Border.all(color: story.themeColor.withValues(alpha: 0.3)),
                 ),
                 child: Center(
-                  child: Text(story.emoji, style: const TextStyle(fontSize: 26)),
+                  child: story.id == 'thirsty_crow'
+                      ? Transform.flip(
+                          flipX: true,
+                          child: Text(story.emoji, style: const TextStyle(fontSize: 26)),
+                        )
+                      : Text(story.emoji, style: const TextStyle(fontSize: 26)),
                 ),
               ),
               const SizedBox(width: 12),

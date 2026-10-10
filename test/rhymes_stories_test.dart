@@ -60,9 +60,8 @@ void main() {
       expect(find.textContaining('Moral Stories'), findsOneWidget);
 
       // Verify Rhyme is shown in the player
-      expect(find.text('Twinkle, Twinkle, Little Star'), findsWidgets);
-      expect(find.text('Sing-Along 🎶'), findsOneWidget);
-      expect(find.text('Melody 🎵'), findsOneWidget);
+      expect(find.text('Play Melody 🎵'), findsOneWidget);
+      expect(find.text('Read Rhyme 🗣️'), findsOneWidget);
 
       // Verify Animated Musical Stage is rendered
       expect(find.byType(AnimatedRhymeStage), findsOneWidget);
@@ -149,8 +148,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Should show singing badge
-      expect(find.text('🎶 SINGING'), findsOneWidget);
+      // Should show speaking badge
+      expect(find.text('🗣️ SPEAKING'), findsOneWidget);
     });
   });
 }
