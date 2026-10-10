@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../data/local/local_storage_service.dart';
+import '../../../services/cloud_progress_service.dart';
+import '../../../services/in_app_purchase_service.dart';
 import '../../home_dashboard/presentation/home_dashboard_screen.dart';
 import '../../onboarding/presentation/first_time_onboarding_screen.dart';
 
@@ -46,27 +48,59 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
-    _startNavigationTimer();
+    _bootstrapAndNavigate();
   }
 
-  void _startNavigationTimer() {
-    _navTimer = Timer(const Duration(milliseconds: 2400), () {
-      if (!mounted) return;
-      final isOnboarded = LocalStorageService.instance.isOnboarded();
-      final Widget targetScreen = isOnboarded
-          ? const HomeDashboardScreen()
-          : const FirstTimeOnboardingScreen();
+  Future<void> _bootstrapAndNavigate() async {
+    final stopwatch = Stopwatch()..start();
 
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
+    // 1. On load after install, check for active Google Play VIP membership first
+    try {
+      await InAppPurchaseService.instance.restorePurchases().timeout(
+        const Duration(milliseconds: 2000),
+        onTimeout: () {},
       );
-    });
+    } catch (_) {}
+
+    // Check if membership is active
+    final isVip = LocalStorageService.instance.isPremiumUser ||
+        LocalStorageService.instance.isClosedTester;
+
+    if (isVip) {
+      // 2. VIP user detected: automatically connect membership Google Account & auto-sync/restore backup
+      try {
+        await CloudProgressService().autoSyncAndRestore().timeout(
+          const Duration(milliseconds: 2500),
+          onTimeout: () => false,
+        );
+      } catch (_) {}
+
+      // Automatically mark onboarded to bypass profile setup screen entirely
+      await LocalStorageService.instance.setOnboarded(true);
+    }
+
+    // Ensure smooth minimum splash display duration for animations
+    final elapsed = stopwatch.elapsedMilliseconds;
+    if (elapsed < 2400) {
+      await Future.delayed(Duration(milliseconds: 2400 - elapsed));
+    }
+
+    if (!mounted) return;
+
+    final isOnboarded = LocalStorageService.instance.isOnboarded();
+    final Widget targetScreen = (isVip || isOnboarded)
+        ? const HomeDashboardScreen()
+        : const FirstTimeOnboardingScreen();
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
   }
 
   @override

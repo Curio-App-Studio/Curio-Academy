@@ -52,6 +52,10 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
     InAppPurchaseService.instance.purchasePendingNotifier.addListener(_onIapStateChanged);
     LocalStorageService.instance.premiumUserNotifier.addListener(_onIapStateChanged);
     LocalStorageService.instance.subscriptionUpdateNotifier.addListener(_onIapStateChanged);
+    if (LocalStorageService.instance.isPremiumUser &&
+        CloudProgressService().userEmailNotifier.value == null) {
+      CloudProgressService().autoSyncAndRestore();
+    }
   }
 
   void _onIapStateChanged() {
@@ -950,10 +954,10 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                             Flexible(
                               child: Text(
                                 isConnected
-                                    ? 'Cloud Sync: $email'
+                                    ? 'Cloud Sync: $email (Membership Account)'
                                     : (boundEmail != null && boundEmail.isNotEmpty
-                                        ? (isHindi ? 'Google खाता ($boundEmail) जोड़ें' : 'Connect $boundEmail for Cloud Sync')
-                                        : (isHindi ? 'Google खाता जोड़ें (क्लाउड बैकअप)' : 'Connect Google Account for Cloud Sync')),
+                                        ? (isHindi ? 'सदस्यता Google खाता सिंक करें ($boundEmail)' : 'Sync Membership Google Account ($boundEmail)')
+                                        : (isHindi ? 'सदस्यता Google खाता सिंक करें' : 'Sync Membership Google Account')),
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,

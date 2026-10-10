@@ -200,6 +200,87 @@ class CloudProgressService {
     }
   }
 
+  /// Automatically connects to the membership Google Account in the background
+  /// without requiring manual account connection steps, restores cloud backup if present,
+  /// or auto-syncs current VIP progress to Cloud Firestore.
+  Future<bool> autoSyncAndRestore({bool force = false}) async {
+    if (!isVipEligible && !force) return false;
+    if (!isFirebaseAvailable) return false;
+
+    try {
+      User? user = currentUser;
+
+      // 1. Silent or primary Google Account authentication
+      if (user == null) {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
+        GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
+        googleUser ??= await googleSignIn.signIn();
+
+        if (googleUser != null) {
+          final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+          final selectedEmail = googleUser.email.trim().toLowerCase();
+
+          if (boundEmail != null && boundEmail.isNotEmpty && selectedEmail != boundEmail) {
+            developer.log(
+              'autoSyncAndRestore: Rejected account $selectedEmail (expected membership account $boundEmail)',
+              name: 'CloudSync',
+            );
+            await googleSignIn.signOut();
+            return false;
+          }
+
+          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          final AuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+          user = userCredential.user;
+          final email = (user?.email ?? googleUser.email).trim().toLowerCase();
+          _cachedEmail = email;
+          userEmailNotifier.value = email;
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_keyCachedGoogleEmail, email);
+
+          if (boundEmail == null || boundEmail.isEmpty) {
+            await LocalStorageService.instance.setBoundMembershipEmail(email);
+          }
+        }
+      }
+
+      if (user == null) return false;
+
+      // 2. Query Cloud Firestore for existing backup
+      final doc = await FirebaseFirestore.instance
+          .collection(_collectionName)
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final cloudStars = (data['stars'] as num?)?.toInt() ?? 0;
+        final localStars = LocalStorageService.instance.totalStars;
+
+        if (cloudStars > 0 || localStars == 0) {
+          await LocalStorageService.instance.restoreProgressSnapshot(data);
+          developer.log(
+            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore (${data["name"]}, $cloudStars stars).',
+            name: 'CloudSync',
+          );
+          return true;
+        }
+      }
+
+      // 3. If no remote backup exists yet or local has newer progress, auto-sync to Firestore
+      await syncProgressToCloud(force: force);
+      return true;
+    } catch (e, stack) {
+      developer.log('autoSyncAndRestore note: $e', error: e, stackTrace: stack, name: 'CloudSync');
+      return false;
+    }
+  }
+
   /// Syncs current student progress to Cloud Firestore for VIP / Paid members.
   /// Free users are bypassed automatically to maintain ₹0 server & storage overhead.
   Future<bool> syncProgressToCloud({bool force = false}) async {
