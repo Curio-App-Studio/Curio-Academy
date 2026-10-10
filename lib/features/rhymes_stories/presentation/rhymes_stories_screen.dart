@@ -4,6 +4,8 @@ import '../../../core/audio/audio_service.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../../../presentation/widgets/ad_banner_widget.dart';
 import '../domain/rhyme_story_model.dart';
+import 'widgets/animated_story_scene.dart';
+import 'widgets/animated_rhyme_stage.dart';
 
 /// Interactive Rhymes & Stories Screen for LKG, UKG and Early Learners
 class RhymesStoriesScreen extends StatefulWidget {
@@ -33,11 +35,15 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
   // Active Rhyme Player State
   int _selectedRhymeIndex = 0;
   bool _isPlayingRhyme = false;
+  bool _isPlayingMelody = false;
+  int? _speakingRhymeLineIndex;
 
   // Active Story Reader State
   int _selectedStoryIndex = 0;
   int _currentStorySceneIndex = 0;
   bool _isPlayingStory = false;
+  int? _speakingSectionIndex;
+  bool _isAutoReadingStory = false;
 
   @override
   void initState() {
@@ -63,24 +69,125 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
 
   void _stopAllAudio({bool notify = true}) {
     _isPlayingRhyme = false;
+    _isPlayingMelody = false;
+    _speakingRhymeLineIndex = null;
     _isPlayingStory = false;
+    _isAutoReadingStory = false;
+    _speakingSectionIndex = null;
     if (notify && mounted) {
       setState(() {});
     }
     AudioService.instance.stopAudio();
   }
 
-  void _playRhyme(RhymeItem rhyme, bool isHindi) {
+  void _playSingleRhymeLine(RhymeItem rhyme, int lineIndex, bool isHindi) {
+    AudioService.instance.stopAudio();
+    final lines = (isHindi && rhyme.hindiLines != null) ? rhyme.hindiLines! : rhyme.lines;
+    if (lineIndex < 0 || lineIndex >= lines.length) return;
+
+    setState(() {
+      _isPlayingRhyme = true;
+      _isPlayingMelody = false;
+      _speakingRhymeLineIndex = lineIndex;
+    });
+
+    AudioService.instance.playSfx(CurioSfx.click);
+    final text = lines[lineIndex];
+    AudioService.instance.speakKidStorytelling(
+      text,
+      isHindi: isHindi,
+      pitch: 1.05,
+      speechRate: 0.46,
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _speakingRhymeLineIndex = null;
+            _isPlayingRhyme = false;
+          });
+        }
+      },
+    );
+  }
+
+  void _playRhymeMelodyOnly(RhymeItem rhyme) {
+    AudioService.instance.stopAudio();
+    setState(() {
+      _isPlayingMelody = true;
+      _isPlayingRhyme = false;
+      _speakingRhymeLineIndex = null;
+    });
+
+    AudioService.instance.playMelody(
+      'assets/audio/rhymes/${rhyme.id}.wav',
+      volume: 0.85,
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _isPlayingMelody = false;
+          });
+        }
+      },
+    );
+  }
+
+  void _playRhymeSingAlong(RhymeItem rhyme, bool isHindi) {
     AudioService.instance.stopAudio();
     setState(() {
       _isPlayingRhyme = true;
+      _isPlayingMelody = true;
+      _speakingRhymeLineIndex = 0;
     });
 
-    final prompt = isHindi && rhyme.hindiLines != null
-        ? '${rhyme.titleHi}! ${rhyme.hindiLines!.join('. ')}'
-        : '${rhyme.title}! ${rhyme.speechText}';
+    // 1. Play authentic music-box melody in background
+    AudioService.instance.playMelody(
+      'assets/audio/rhymes/${rhyme.id}.wav',
+      volume: 0.40,
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _isPlayingMelody = false;
+          });
+        }
+      },
+    );
 
-    AudioService.instance.speakPrompt(prompt, isHindi: isHindi);
+    // 2. Concurrently recite lines with poetic rhythm and active line highlight
+    _readRhymeLineSequentially(rhyme, 0, isHindi);
+  }
+
+  void _readRhymeLineSequentially(RhymeItem rhyme, int index, bool isHindi) {
+    if (!mounted || !_isPlayingRhyme) return;
+    final lines = (isHindi && rhyme.hindiLines != null) ? rhyme.hindiLines! : rhyme.lines;
+    if (index >= lines.length) {
+      if (mounted) {
+        setState(() {
+          _isPlayingRhyme = false;
+          _speakingRhymeLineIndex = null;
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _speakingRhymeLineIndex = index;
+    });
+
+    final lineText = lines[index];
+    AudioService.instance.speakKidStorytelling(
+      lineText,
+      isHindi: isHindi,
+      pitch: 1.05,
+      speechRate: 0.46,
+      onComplete: () {
+        if (mounted && _isPlayingRhyme) {
+          Future.delayed(const Duration(milliseconds: 320), () {
+            if (mounted && _isPlayingRhyme) {
+              _readRhymeLineSequentially(rhyme, index + 1, isHindi);
+            }
+          });
+        }
+      },
+    );
   }
 
   void _playStoryScene(StoryItem story, int sceneIndex, bool isHindi) {
@@ -88,26 +195,112 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
     AudioService.instance.stopAudio();
     setState(() {
       _currentStorySceneIndex = sceneIndex;
+      _speakingSectionIndex = sceneIndex;
       _isPlayingStory = true;
+      _isAutoReadingStory = false;
     });
 
+    AudioService.instance.playSfx(CurioSfx.click);
     final scene = story.scenes[sceneIndex];
     final text = (isHindi && scene.textHi != null) ? scene.textHi! : scene.text;
-    AudioService.instance.speakPrompt(text, isHindi: isHindi);
+    final speechText = text;
+
+    AudioService.instance.speakKidStorytelling(
+      speechText,
+      isHindi: isHindi,
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _speakingSectionIndex = null;
+            _isPlayingStory = false;
+          });
+        }
+      },
+    );
   }
 
   void _playFullStory(StoryItem story, bool isHindi) {
     AudioService.instance.stopAudio();
     setState(() {
       _isPlayingStory = true;
+      _isAutoReadingStory = true;
       _currentStorySceneIndex = 0;
+      _speakingSectionIndex = 0;
     });
 
-    final fullStoryText = isHindi
-        ? '${story.titleHi}. ${story.scenes.map((s) => s.textHi ?? s.text).join(' ')}. सीख: ${story.moralHi}'
-        : '${story.title}. ${story.fullSpeechText}. Moral: ${story.moral}';
+    AudioService.instance.playSfx(CurioSfx.starAward);
+    final introText = isHindi
+        ? 'सुनो मजेदार कहानी: ${story.titleHi}!'
+        : 'Story time! ... ${story.title}!';
 
-    AudioService.instance.speakPrompt(fullStoryText, isHindi: isHindi);
+    AudioService.instance.speakKidStorytelling(
+      introText,
+      isHindi: isHindi,
+      onComplete: () {
+        if (mounted && _isAutoReadingStory) {
+          _readSectionSequentially(story, 0, isHindi);
+        }
+      },
+    );
+  }
+
+  void _readSectionSequentially(StoryItem story, int index, bool isHindi) {
+    if (!mounted || !_isAutoReadingStory) return;
+
+    if (index >= story.scenes.length) {
+      _readMoralSection(story, isHindi);
+      return;
+    }
+
+    setState(() {
+      _currentStorySceneIndex = index;
+      _speakingSectionIndex = index;
+    });
+
+    final scene = story.scenes[index];
+    final text = (isHindi && scene.textHi != null) ? scene.textHi! : scene.text;
+    final speechText = text;
+
+    AudioService.instance.speakKidStorytelling(
+      speechText,
+      isHindi: isHindi,
+      onComplete: () {
+        if (mounted && _isAutoReadingStory) {
+          Future.delayed(const Duration(milliseconds: 700), () {
+            if (mounted && _isAutoReadingStory) {
+              _readSectionSequentially(story, index + 1, isHindi);
+            }
+          });
+        }
+      },
+    );
+  }
+
+  void _readMoralSection(StoryItem story, bool isHindi) {
+    if (!mounted || !_isAutoReadingStory) return;
+
+    setState(() {
+      _speakingSectionIndex = story.scenes.length; // Moral is active
+    });
+
+    AudioService.instance.playSfx(CurioSfx.correctCheer);
+    final moralSpeech = isHindi
+        ? 'कहानी की सीख: ${story.moralHi}! बहुत बढ़िया!'
+        : 'And the moral of the story is: ${story.moral}! Great job listening!';
+
+    AudioService.instance.speakKidStorytelling(
+      moralSpeech,
+      isHindi: isHindi,
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _speakingSectionIndex = null;
+            _isPlayingStory = false;
+            _isAutoReadingStory = false;
+          });
+        }
+      },
+    );
   }
 
   @override
@@ -290,7 +483,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                   setState(() {
                     _selectedRhymeIndex = index;
                   });
-                  _playRhyme(rhyme, isHindi);
+                  _playRhymeSingAlong(rhyme, isHindi);
                 },
                 child: Container(
                   padding: const EdgeInsets.all(12),
@@ -451,16 +644,18 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                 child: InkWell(
                   customBorder: const CircleBorder(),
                   onTap: () {
-                    if (_isPlayingRhyme) {
+                    if (_isPlayingRhyme || _isPlayingMelody) {
                       _stopAllAudio();
                     } else {
-                      _playRhyme(rhyme, isHindi);
+                      _playRhymeSingAlong(rhyme, isHindi);
                     }
                   },
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Icon(
-                      _isPlayingRhyme ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                      (_isPlayingRhyme || _isPlayingMelody)
+                          ? Icons.stop_rounded
+                          : Icons.play_arrow_rounded,
                       color: Colors.white,
                       size: 26,
                     ),
@@ -469,67 +664,171 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          // Interactive Animated Musical Stage for Kids
+          AnimatedRhymeStage(
+            rhyme: rhyme,
+            isPlaying: _isPlayingRhyme || _isPlayingMelody,
+            isHindi: isHindi,
+          ),
+          const SizedBox(height: 14),
+          // Interactive Karaoke / Line-by-Line Lyrics Display
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: (_isPlayingRhyme && _speakingRhymeLineIndex != null)
+                    ? rhyme.themeColor
+                    : const Color(0xFFE2E8F0),
+                width: (_isPlayingRhyme && _speakingRhymeLineIndex != null) ? 2 : 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: rhyme.lines.map((line) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      Icon(Icons.music_note_rounded, size: 16, color: rhyme.themeColor),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          line,
-                          style: const TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E293B),
-                            height: 1.3,
-                          ),
-                        ),
+              children: [
+                ...((isHindi && rhyme.hindiLines != null) ? rhyme.hindiLines! : rhyme.lines)
+                    .asMap()
+                    .entries
+                    .map((entry) {
+                  final lineIndex = entry.key;
+                  final line = entry.value;
+                  final isThisLineActive = _speakingRhymeLineIndex == lineIndex;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
+                      _playSingleRhymeLine(rhyme, lineIndex, isHindi);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isThisLineActive
+                            ? rhyme.themeColor.withValues(alpha: 0.14)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: isThisLineActive
+                            ? Border.all(color: rhyme.themeColor, width: 1.5)
+                            : null,
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isThisLineActive
+                                ? Icons.volume_up_rounded
+                                : Icons.music_note_rounded,
+                            size: 16,
+                            color: isThisLineActive
+                                ? rhyme.themeColor
+                                : const Color(0xFF94A3B8),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              line,
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: isThisLineActive
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
+                                color: isThisLineActive
+                                    ? rhyme.themeColor
+                                    : const Color(0xFF1E293B),
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          if (isThisLineActive)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: rhyme.themeColor,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                '🎶 SINGING',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: rhyme.themeColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
+          // Dual Action Controls: Full Sing-Along (Music + Voice) & Music Box Melody Tune
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: rhyme.themeColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  icon: Icon(
+                    (_isPlayingRhyme || _isPlayingMelody)
+                        ? Icons.stop_rounded
+                        : Icons.record_voice_over_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    (_isPlayingRhyme || _isPlayingMelody)
+                        ? (isHindi ? 'गायन रोकें ⏹' : 'Stop Playing ⏹')
+                        : (isHindi ? 'गाकर सुनाएं 🎶' : 'Sing-Along 🎶'),
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                  ),
+                  onPressed: () {
+                    if (_isPlayingRhyme || _isPlayingMelody) {
+                      _stopAllAudio();
+                    } else {
+                      _playRhymeSingAlong(rhyme, isHindi);
+                    }
+                  },
+                ),
               ),
-              icon: Icon(_isPlayingRhyme ? Icons.stop_rounded : Icons.record_voice_over_rounded),
-              label: Text(
-                _isPlayingRhyme
-                    ? (isHindi ? 'कविता रोकें ⏹' : 'Stop Recitation ⏹')
-                    : (isHindi ? 'पूरी कविता गाएं 🎵' : 'Sing Rhyme Along 🎵'),
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: rhyme.themeColor,
+                    side: BorderSide(color: rhyme.themeColor, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: const Icon(Icons.music_note_rounded, size: 18),
+                  label: Text(
+                    _isPlayingMelody
+                        ? (isHindi ? 'रोकें ⏹' : 'Stop ⏹')
+                        : (isHindi ? 'धुन 🎵' : 'Melody 🎵'),
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                  ),
+                  onPressed: () {
+                    if (_isPlayingMelody) {
+                      _stopAllAudio();
+                    } else {
+                      _playRhymeMelodyOnly(rhyme);
+                    }
+                  },
+                ),
               ),
-              onPressed: () {
-                if (_isPlayingRhyme) {
-                  _stopAllAudio();
-                } else {
-                  _playRhyme(rhyme, isHindi);
-                }
-              },
-            ),
+            ],
           ),
         ],
       ),
@@ -685,6 +984,8 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
 
   Widget _buildActiveStoryReaderCard(StoryItem story, bool isHindi) {
     final activeScene = story.scenes[_currentStorySceneIndex.clamp(0, story.scenes.length - 1)];
+    final isCurrentSceneSpeaking = _speakingSectionIndex == _currentStorySceneIndex;
+    final isMoralSpeaking = _speakingSectionIndex == story.scenes.length;
 
     return Container(
       width: double.infinity,
@@ -768,29 +1069,79 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
           ),
           const SizedBox(height: 14),
 
-          // Illustrated Scene Picture & Text Container
-          Container(
+          // 1. Dynamic Animated Picture-Book Canvas (Kid Illustrated & Touch-Interactive)
+          AnimatedStorySceneIllustration(
+            story: story,
+            currentSceneIndex: _currentStorySceneIndex,
+            isSpeaking: isCurrentSceneSpeaking,
+            isHindi: isHindi,
+          ),
+          const SizedBox(height: 12),
+
+          // 2. Interactive Section-by-Section Step Tracker (Timeline)
+          _buildStorySectionTimeline(story, isHindi),
+          const SizedBox(height: 12),
+
+          // 3. Illustrated Scene Text Container (Visually Highlights Currently Speaking Section)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isCurrentSceneSpeaking
+                  ? story.themeColor.withValues(alpha: 0.08)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(
+                color: isCurrentSceneSpeaking
+                    ? story.themeColor
+                    : const Color(0xFFE2E8F0),
+                width: isCurrentSceneSpeaking ? 2.5 : 1.5,
+              ),
+              boxShadow: isCurrentSceneSpeaking
+                  ? [
+                      BoxShadow(
+                        color: story.themeColor.withValues(alpha: 0.22),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 6,
+                      ),
+                    ],
             ),
             child: Column(
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: story.themeColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                if (isCurrentSceneSpeaking)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: story.themeColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.volume_up_rounded, size: 14, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(
+                          isHindi
+                              ? 'अब पढ़ा जा रहा है: पृष्ठ ${_currentStorySceneIndex + 1}/${story.scenes.length} 🗣️'
+                              : 'NOW READING: PAGE ${_currentStorySceneIndex + 1} OF ${story.scenes.length} 🗣️',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Center(
-                    child: Text(activeScene.emoji, style: const TextStyle(fontSize: 40)),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Text(
                   (isHindi && activeScene.textHi != null) ? activeScene.textHi! : activeScene.text,
                   textAlign: TextAlign.center,
@@ -798,7 +1149,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                     fontSize: 15.5,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF1E293B),
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
               ],
@@ -806,27 +1157,64 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
           ),
           const SizedBox(height: 12),
 
-          // Moral Box
-          Container(
+          // 4. Moral Box (Highlights when speaking moral)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              color: isMoralSpeaking
+                  ? const Color(0xFFFEF3C7)
+                  : const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isMoralSpeaking
+                    ? const Color(0xFFF59E0B)
+                    : const Color(0xFFFDE68A),
+                width: isMoralSpeaking ? 2.5 : 1.5,
+              ),
+              boxShadow: isMoralSpeaking
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               children: [
-                const Text('💡', style: TextStyle(fontSize: 16)),
+                Text(
+                  isMoralSpeaking ? '🌟' : '💡',
+                  style: const TextStyle(fontSize: 18),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    isHindi ? 'सीख: ${story.moralHi}' : 'Moral: ${story.moral}',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF92400E),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isMoralSpeaking)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            isHindi ? 'कहानी की सीख बोली जा रही है 🔊' : 'READING MORAL LESSON 🔊',
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                        ),
+                      Text(
+                        isHindi ? 'सीख: ${story.moralHi}' : 'Moral: ${story.moral}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -834,7 +1222,7 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
           ),
           const SizedBox(height: 14),
 
-          // Scene Navigation & Audio Buttons
+          // 5. Scene Navigation & Audio Buttons
           Row(
             children: [
               OutlinedButton.icon(
@@ -862,13 +1250,19 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     elevation: 0,
                   ),
-                  icon: const Icon(Icons.record_voice_over_rounded, size: 18),
+                  icon: Icon(_isPlayingStory ? Icons.stop_rounded : Icons.record_voice_over_rounded, size: 18),
                   label: Text(
-                    isHindi ? 'कहानी सुनें 🗣️' : 'Read Story 🗣️',
+                    _isPlayingStory
+                        ? (isHindi ? 'कहानी रोकें ⏹' : 'Stop Story ⏹')
+                        : (isHindi ? 'कहानी सुनें 🗣️' : 'Read Story 🗣️'),
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                   onPressed: () {
-                    _playFullStory(story, isHindi);
+                    if (_isPlayingStory) {
+                      _stopAllAudio();
+                    } else {
+                      _playFullStory(story, isHindi);
+                    }
                   },
                 ),
               ),
@@ -891,6 +1285,106 @@ class _RhymesStoriesScreenState extends State<RhymesStoriesScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStorySectionTimeline(StoryItem story, bool isHindi) {
+    final totalScenes = story.scenes.length;
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: totalScenes + 1, // scenes + moral
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, i) {
+          final isMoral = i == totalScenes;
+          final isSpeakingThis = _speakingSectionIndex == i;
+          final isSelectedThis = !isMoral && _currentStorySceneIndex == i;
+          final isCompleted = !isMoral && i < _currentStorySceneIndex;
+
+          Color bg;
+          Color textCol;
+          Border? border;
+
+          if (isSpeakingThis) {
+            bg = isMoral ? const Color(0xFFF59E0B) : story.themeColor;
+            textCol = Colors.white;
+            border = Border.all(color: Colors.white, width: 2);
+          } else if (isSelectedThis) {
+            bg = story.themeColor.withValues(alpha: 0.15);
+            textCol = story.themeColor;
+            border = Border.all(color: story.themeColor, width: 2);
+          } else if (isCompleted) {
+            bg = const Color(0xFFE2E8F0);
+            textCol = const Color(0xFF475569);
+          } else if (isMoral) {
+            bg = const Color(0xFFFEF3C7);
+            textCol = const Color(0xFFB45309);
+          } else {
+            bg = Colors.white;
+            textCol = const Color(0xFF64748B);
+            border = Border.all(color: const Color(0xFFE2E8F0));
+          }
+
+          final label = isMoral
+              ? (isHindi ? 'सीख 💡' : 'Moral 💡')
+              : (isCompleted ? '✓ ${i + 1}' : '${i + 1}');
+
+          return InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              if (isMoral) {
+                _readMoralSection(story, isHindi);
+              } else {
+                setState(() {
+                  _currentStorySceneIndex = i;
+                });
+                _playStoryScene(story, i, isHindi);
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(12),
+                border: border,
+                boxShadow: isSpeakingThis
+                    ? [
+                        BoxShadow(
+                          color: (isMoral ? const Color(0xFFF59E0B) : story.themeColor).withValues(alpha: 0.4),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSpeakingThis) ...[
+                    const Icon(Icons.volume_up_rounded, color: Colors.white, size: 14),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    isSpeakingThis
+                        ? (isMoral
+                            ? (isHindi ? 'सीख 💡' : 'Moral 💡')
+                            : (isHindi ? 'भाग ${i + 1}' : 'Page ${i + 1}'))
+                        : label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: textCol,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

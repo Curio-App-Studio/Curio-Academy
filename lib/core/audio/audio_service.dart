@@ -19,7 +19,13 @@ enum CurioSfx {
 
 abstract class IAudioService {
   Future<void> playSfx(CurioSfx sfx);
-  Future<void> speakPrompt(String text, {bool? isHindi});
+  Future<void> speakPrompt(
+    String text, {
+    bool? isHindi,
+    double? overridePitch,
+    double? overrideSpeechRate,
+    VoidCallback? onComplete,
+  });
   void stopAudio();
 }
 
@@ -38,11 +44,26 @@ class AudioService implements IAudioService {
   bool get isMuted => muteNotifier.value;
   VoiceSettings get currentVoiceSettings => _currentVoiceSettings;
 
+  VoidCallback? _activeCompleteCallback;
+
   Future<void> _initTts() async {
     muteNotifier.value = LocalStorageService.instance.isAudioMuted();
     if (_isTtsInitialized) return;
     try {
       _flutterTts = FlutterTts();
+      _flutterTts!.setCompletionHandler(() {
+        final cb = _activeCompleteCallback;
+        _activeCompleteCallback = null;
+        cb?.call();
+      });
+      _flutterTts!.setCancelHandler(() {
+        _activeCompleteCallback = null;
+      });
+      _flutterTts!.setErrorHandler((msg) {
+        final cb = _activeCompleteCallback;
+        _activeCompleteCallback = null;
+        cb?.call();
+      });
       _currentVoiceSettings = LocalStorageService.instance.getVoiceSettings();
       await _applyVoiceSettings(_currentVoiceSettings);
       _isTtsInitialized = true;
@@ -167,8 +188,17 @@ class AudioService implements IAudioService {
   }
 
   @override
-  Future<void> speakPrompt(String text, {bool? isHindi}) async {
-    if (isMuted) return;
+  Future<void> speakPrompt(
+    String text, {
+    bool? isHindi,
+    double? overridePitch,
+    double? overrideSpeechRate,
+    VoidCallback? onComplete,
+  }) async {
+    if (isMuted) {
+      onComplete?.call();
+      return;
+    }
     if (kDebugMode) {
       debugPrint('[CurioAudioTTS] Speaking prompt: "$text"');
     }
@@ -177,21 +207,89 @@ class AudioService implements IAudioService {
       await _initTts();
       if (_flutterTts != null) {
         final cleanText = _cleanTextForSpeech(text, isHindi: isHindi);
+        _activeCompleteCallback = onComplete;
         await _flutterTts!.stop();
+
+        // Apply pitch and rate (using overrides for cheerful storytelling if provided)
+        final effectivePitch = overridePitch ?? _currentVoiceSettings.pitch;
+        final effectiveRate = overrideSpeechRate ?? _currentVoiceSettings.speechRate;
+        await _flutterTts!.setPitch(effectivePitch);
+        await _flutterTts!.setSpeechRate(effectiveRate);
+
         if (cleanText.trim().isNotEmpty) {
           await _flutterTts!.speak(cleanText);
+        } else {
+          _activeCompleteCallback = null;
+          onComplete?.call();
         }
+      } else {
+        onComplete?.call();
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[CurioAudioTTS] Speech error: $e');
       }
+      _activeCompleteCallback = null;
+      onComplete?.call();
     }
+  }
+
+  /// Natural, warm, friendly kid-appropriate voice with rhythmic tempo
+  Future<void> speakKidStorytelling(
+    String text, {
+    bool? isHindi,
+    double pitch = 1.05,
+    double speechRate = 0.48,
+    VoidCallback? onComplete,
+  }) async {
+    await speakPrompt(
+      text,
+      isHindi: isHindi,
+      overridePitch: pitch,
+      overrideSpeechRate: speechRate,
+      onComplete: onComplete,
+    );
+  }
+
+  /// Plays authentic nursery rhyme / background musical melody track
+  Future<void> playMelody(
+    String assetPath, {
+    VoidCallback? onComplete,
+    double volume = 0.75,
+  }) async {
+    if (isMuted) {
+      onComplete?.call();
+      return;
+    }
+    try {
+      _audioPlayer ??= AudioPlayer();
+      await _audioPlayer!.stop();
+      await _audioPlayer!.setVolume(volume);
+      final relativePath = assetPath.startsWith('assets/')
+          ? assetPath.substring(7)
+          : assetPath;
+      await _audioPlayer!.play(AssetSource(relativePath));
+      _audioPlayer!.onPlayerComplete.first.then((_) {
+        onComplete?.call();
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[CurioAudioMelody] Error playing melody $assetPath: $e');
+      }
+      onComplete?.call();
+    }
+  }
+
+  Future<void> stopMelody() async {
+    try {
+      await _audioPlayer?.stop();
+    } catch (_) {}
   }
 
   @override
   void stopAudio() {
     try {
+      _activeCompleteCallback = null;
       _flutterTts?.stop();
       _audioPlayer?.stop();
     } catch (_) {}
