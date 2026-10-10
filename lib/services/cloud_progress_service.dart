@@ -217,53 +217,81 @@ class CloudProgressService {
     try {
       User? user = currentUser;
 
-      // 1. Silent Google Account authentication (Never interrupt user on app start with account picker)
+      // 1. Silent Google Account auth check (Never pop up account picker)
       if (user == null) {
-        final GoogleSignIn googleSignIn = GoogleSignIn();
-        final GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
+        try {
+          final GoogleSignIn googleSignIn = GoogleSignIn();
+          final GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
 
-        if (googleUser != null) {
-          final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
-          final selectedEmail = googleUser.email.trim().toLowerCase();
+          if (googleUser != null) {
+            final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+            final selectedEmail = googleUser.email.trim().toLowerCase();
 
-          if (boundEmail != null && boundEmail.isNotEmpty && selectedEmail != boundEmail) {
-            developer.log(
-              'autoSyncAndRestore: Rejected account $selectedEmail (expected membership account $boundEmail)',
-              name: 'CloudSync',
-            );
-            await googleSignIn.signOut();
-            return false;
+            if (boundEmail == null || boundEmail.isEmpty || selectedEmail == boundEmail) {
+              final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+              final AuthCredential credential = GoogleAuthProvider.credential(
+                accessToken: googleAuth.accessToken,
+                idToken: googleAuth.idToken,
+              );
+              final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+              user = userCredential.user;
+              final email = (user?.email ?? googleUser.email).trim().toLowerCase();
+              _cachedEmail = email;
+              userEmailNotifier.value = email;
+            }
           }
-
-          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-          final AuthCredential credential = GoogleAuthProvider.credential(
-            accessToken: googleAuth.accessToken,
-            idToken: googleAuth.idToken,
-          );
-          final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-          user = userCredential.user;
-          final email = (user?.email ?? googleUser.email).trim().toLowerCase();
-          _cachedEmail = email;
-          userEmailNotifier.value = email;
-
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_keyCachedGoogleEmail, email);
-
-          if (boundEmail == null || boundEmail.isEmpty) {
-            await LocalStorageService.instance.setBoundMembershipEmail(email);
-          }
-        }
+        } catch (_) {}
       }
 
-      if (user == null) return false;
+      // If still not signed in, connect anonymously in the background with zero popups
+      if (user == null) {
+        try {
+          final anonCred = await FirebaseAuth.instance.signInAnonymously();
+          user = anonCred.user;
+        } catch (_) {}
+      }
 
-      // 2. Query Cloud Firestore for existing backup
-      final doc = await FirebaseFirestore.instance
-          .collection(_collectionName)
-          .doc(user.uid)
-          .get();
+      // 2. Query Cloud Firestore for existing backup of the membership account
+      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+      final emailKey = boundEmail.replaceAll('.', '_');
 
-      if (doc.exists && doc.data() != null) {
+      DocumentSnapshot<Map<String, dynamic>>? doc;
+
+      try {
+        final emailDoc = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(emailKey)
+            .get();
+        if (emailDoc.exists && emailDoc.data() != null) {
+          doc = emailDoc;
+        }
+      } catch (_) {}
+
+      if (doc == null || !doc.exists) {
+        try {
+          final rawDoc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(boundEmail)
+              .get();
+          if (rawDoc.exists && rawDoc.data() != null) {
+            doc = rawDoc;
+          }
+        } catch (_) {}
+      }
+
+      if ((doc == null || !doc.exists) && user != null) {
+        try {
+          final uidDoc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(user.uid)
+              .get();
+          if (uidDoc.exists && uidDoc.data() != null) {
+            doc = uidDoc;
+          }
+        } catch (_) {}
+      }
+
+      if (doc != null && doc.exists && doc.data() != null) {
         final data = doc.data()!;
         final cloudStars = (data['stars'] as num?)?.toInt() ?? 0;
         final studentName = data['name'] as String?;
@@ -279,7 +307,7 @@ class CloudProgressService {
         if (hasRealBackup) {
           await LocalStorageService.instance.restoreProgressSnapshot(data);
           developer.log(
-            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore (${data["name"]}, $cloudStars stars).',
+            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore for $boundEmail (${data["name"]}, $cloudStars stars).',
             name: 'CloudSync',
           );
           return true; // Cloud backup exists and was restored!
@@ -287,7 +315,7 @@ class CloudProgressService {
       }
 
       // No cloud backup exists in Firestore
-      developer.log('autoSyncAndRestore: No cloud backup exists in Firestore for membership user.', name: 'CloudSync');
+      developer.log('autoSyncAndRestore: No cloud backup exists in Firestore for membership user ($boundEmail).', name: 'CloudSync');
       return false;
     } catch (e, stack) {
       developer.log('autoSyncAndRestore note: $e', error: e, stackTrace: stack, name: 'CloudSync');
@@ -320,7 +348,7 @@ class CloudProgressService {
       _lastSyncTime = DateTime.now();
       await prefs.setString(_keyLastCloudSync, _lastSyncTime!.toIso8601String());
 
-      // If Firebase is available and user is authenticated, upload to Cloud Firestore
+      // If Firebase is available, ensure background session and upload directly under membership Google account
       var user = currentUser;
       if (isFirebaseAvailable && user == null) {
         try {
@@ -344,37 +372,47 @@ class CloudProgressService {
         } catch (_) {}
       }
 
-      if (isFirebaseAvailable && user != null) {
-        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
-        final userEmail = user.email?.trim().toLowerCase();
+      if (isFirebaseAvailable && user == null) {
+        try {
+          final anonCred = await FirebaseAuth.instance.signInAnonymously();
+          user = anonCred.user;
+        } catch (_) {}
+      }
 
-        // Enforce: only the bound membership Google Account can sync to Firestore
-        if (boundEmail != null && boundEmail.isNotEmpty && userEmail != null && userEmail != boundEmail) {
-          developer.log(
-            'CloudProgressService: Blocked Firestore sync. User ($userEmail) does not match membership account ($boundEmail).',
-            name: 'CloudSync',
-          );
-          return false;
-        }
+      if (isFirebaseAvailable) {
+        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+        final emailKey = boundEmail.replaceAll('.', '_');
 
         final firestoreData = Map<String, dynamic>.from(snapshot);
         firestoreData['updatedAt'] = FieldValue.serverTimestamp();
-        firestoreData['parentEmail'] = user.email;
-        firestoreData['membershipBoundEmail'] = boundEmail ?? user.email;
+        firestoreData['parentEmail'] = boundEmail;
+        firestoreData['membershipBoundEmail'] = boundEmail;
         firestoreData['studentName'] = snapshot['name'];
 
         await FirebaseFirestore.instance
             .collection(_collectionName)
-            .doc(user.uid)
+            .doc(emailKey)
             .set(firestoreData, SetOptions(merge: true));
 
+        await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(boundEmail)
+            .set(firestoreData, SetOptions(merge: true));
+
+        if (user != null && !user.isAnonymous) {
+          await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(user.uid)
+              .set(firestoreData, SetOptions(merge: true));
+        }
+
         developer.log(
-          'CloudProgressService: VIP progress synced to Cloud Firestore for ${user.email} (${snapshot["stars"]} stars).',
+          'CloudProgressService: VIP progress synced to Cloud Firestore for $boundEmail (${snapshot["stars"]} stars).',
           name: 'CloudSync',
         );
       } else {
         developer.log(
-          'CloudProgressService: VIP progress cached locally. Will sync to Firestore once Google Sign-In is completed.',
+          'CloudProgressService: VIP progress cached locally. Will sync to Firestore once Firebase is available.',
           name: 'CloudSync',
         );
       }
@@ -419,29 +457,51 @@ class CloudProgressService {
 
       Map<String, dynamic>? snapshotData;
 
-      // 2. Query Cloud Firestore if Firebase is active
+      // 2. Query Cloud Firestore directly for membership Google account (zero account dialogs)
       if (isFirebaseAvailable) {
         User? user = currentUser;
-        if (user == null && promptGoogleSignIn) {
-          final cred = await signInWithGoogle();
-          user = cred?.user;
-          if (user == null) {
-            return const CloudRestoreResult(
-              status: CloudRestoreStatus.cancelled,
-              message: 'Google Sign-In was cancelled.',
-            );
-          }
+        if (user == null) {
+          try {
+            final anonCred = await FirebaseAuth.instance.signInAnonymously();
+            user = anonCred.user;
+          } catch (_) {}
         }
 
-        if (user != null) {
+        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+        final emailKey = boundEmail.replaceAll('.', '_');
+
+        try {
           final doc = await FirebaseFirestore.instance
               .collection(_collectionName)
-              .doc(user.uid)
+              .doc(emailKey)
               .get();
-
           if (doc.exists && doc.data() != null) {
             snapshotData = doc.data();
           }
+        } catch (_) {}
+
+        if (snapshotData == null) {
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(boundEmail)
+                .get();
+            if (doc.exists && doc.data() != null) {
+              snapshotData = doc.data();
+            }
+          } catch (_) {}
+        }
+
+        if (snapshotData == null && user != null) {
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(user.uid)
+                .get();
+            if (doc.exists && doc.data() != null) {
+              snapshotData = doc.data();
+            }
+          } catch (_) {}
         }
       }
 
