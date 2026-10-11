@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import '../../../core/audio/audio_service.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../domain/tracing_character.dart';
+import '../domain/tracing_evaluator.dart';
 import '../domain/tracing_repository.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
@@ -62,6 +64,15 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   late Animation<double> _celebrationScale;
   bool _showCelebration = false;
 
+  // Real-time tracking accuracy & auto-check state
+  double _liveAccuracy = 0.0;
+  int _liveStars = 0;
+  Size _canvasSize = const Size(360, 400);
+  bool _isEvaluating = false;
+  int _panPointCounter = 0;
+  TracingEvaluationResult? _lastResult;
+  Timer? _celebrationAutoAdvanceTimer;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +96,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
 
   @override
   void dispose() {
+    _celebrationAutoAdvanceTimer?.cancel();
     _celebrationController.dispose();
     super.dispose();
   }
@@ -94,6 +106,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   void _onCategorySelected(TracingCategory category) {
     if (_currentCategory == category) return;
     AudioService.instance.playSfx(CurioSfx.click);
+    TracingEvaluator.clearCache();
     setState(() {
       _currentCategory = category;
       _characterList = TracingRepository.instance.getCharactersByCategory(category);
@@ -104,12 +117,16 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   }
 
   void _clearCanvas() {
+    _celebrationAutoAdvanceTimer?.cancel();
     setState(() {
       _strokes.clear();
       _strokeColors.clear();
       _currentStroke = [];
       _particles.clear();
       _showCelebration = false;
+      _liveAccuracy = 0.0;
+      _liveStars = 0;
+      _lastResult = null;
     });
   }
 
@@ -122,6 +139,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   void _goToPrevious() {
     if (_currentIndex > 0) {
       AudioService.instance.playSfx(CurioSfx.click);
+      TracingEvaluator.clearCache();
       setState(() {
         _currentIndex--;
         _clearCanvas();
@@ -133,6 +151,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   void _goToNext() {
     if (_currentIndex < _characterList.length - 1) {
       AudioService.instance.playSfx(CurioSfx.click);
+      TracingEvaluator.clearCache();
       setState(() {
         _currentIndex++;
         _clearCanvas();
@@ -161,10 +180,15 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _currentStroke.add(details.localPosition);
       _addSparkle(details.localPosition, _strokeColors.isNotEmpty ? _strokeColors.last : _selectedColor);
     });
+    _panPointCounter++;
+    if (_panPointCounter % 5 == 0) {
+      _evaluateLiveTracking(autoCheck: false);
+    }
   }
 
   void _onPanEnd(DragEndDetails details) {
     _currentStroke = [];
+    _evaluateLiveTracking(autoCheck: true);
   }
 
   void _addSparkle(Offset position, Color color) {
@@ -181,7 +205,60 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
     );
   }
 
+  Future<void> _evaluateLiveTracking({bool autoCheck = false}) async {
+    if (_isEvaluating || _strokes.isEmpty) return;
+    _isEvaluating = true;
+    try {
+      final result = await TracingEvaluator.evaluate(
+        character: _currentChar.character,
+        strokes: _strokes,
+        canvasSize: _canvasSize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _liveAccuracy = result.accuracy;
+        _liveStars = result.stars;
+      });
+
+      if (autoCheck && result.isCompleted && !_showCelebration) {
+        _celebrateSuccess(result);
+      }
+    } catch (e) {
+      debugPrint('Live tracking eval error: $e');
+    } finally {
+      _isEvaluating = false;
+    }
+  }
+
+  Future<void> _celebrateSuccess(TracingEvaluationResult result) async {
+    if (_showCelebration) return;
+    await LocalStorageService.instance.markCharacterTraced(_currentChar.id);
+
+    AudioService.instance.playSfx(CurioSfx.starAward);
+    AudioService.instance.playSfx(CurioSfx.applause);
+
+    setState(() {
+      _showCelebration = true;
+      _lastResult = result;
+      _liveAccuracy = result.accuracy;
+      _liveStars = result.stars;
+    });
+    _celebrationController.forward(from: 0.0);
+
+    final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
+    final cheerText = isHindi ? result.feedbackHi : result.feedbackEn;
+    AudioService.instance.speakPrompt(cheerText, isHindi: isHindi);
+
+    _celebrationAutoAdvanceTimer?.cancel();
+    _celebrationAutoAdvanceTimer = Timer(const Duration(milliseconds: 3200), () {
+      if (mounted && _showCelebration && _currentIndex < _characterList.length - 1) {
+        _goToNext();
+      }
+    });
+  }
+
   Future<void> _checkAndCelebrate() async {
+    if (_showCelebration) return;
     if (_strokes.isEmpty) {
       AudioService.instance.playSfx(CurioSfx.gentleWobble);
       final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
@@ -198,27 +275,35 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       return;
     }
 
-    // Mark completed in LocalStorage
-    await LocalStorageService.instance.markCharacterTraced(_currentChar.id);
+    final result = await TracingEvaluator.evaluate(
+      character: _currentChar.character,
+      strokes: _strokes,
+      canvasSize: _canvasSize,
+    );
 
-    AudioService.instance.playSfx(CurioSfx.applause);
+    if (!mounted) return;
+
     setState(() {
-      _showCelebration = true;
+      _liveAccuracy = result.accuracy;
+      _liveStars = result.stars;
     });
-    _celebrationController.forward(from: 0.0);
 
-    final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
-    final cheerText = isHindi
-        ? 'शाबाश! आपने ${_currentChar.titleHi} बहुत सुंदर लिखा! 🌟'
-        : 'Awesome! You traced ${_currentChar.titleEn}! 🌟';
-    AudioService.instance.speakPrompt(cheerText, isHindi: isHindi);
-
-    // Auto advance after short celebration
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (mounted && _currentIndex < _characterList.length - 1) {
-        _goToNext();
-      }
-    });
+    if (result.isCompleted) {
+      _celebrateSuccess(result);
+    } else {
+      AudioService.instance.playSfx(CurioSfx.gentleWobble);
+      final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isHindi ? result.feedbackHi : result.feedbackEn,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: const Color(0xFFEA580C),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _showCharacterSelectionSheet() {
@@ -365,7 +450,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: _buildTracingCanvasArea(),
+                    child: _buildTracingCanvasArea(isHindi),
                   ),
                 ),
 
@@ -602,80 +687,155 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
     );
   }
 
-  Widget _buildTracingCanvasArea() {
+  Widget _buildTracingCanvasArea(bool isHindi) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.indigo.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(25),
+            child: Stack(
+              children: [
+                // Notebook Guided Ruled Lines
+                CustomPaint(
+                  size: Size.infinite,
+                  painter: _NotebookLinesPainter(),
+                ),
+
+                // Large Dotted Outline of Target Character
+                Center(
+                  child: Text(
+                    _currentChar.character,
+                    style: TextStyle(
+                      fontSize: 220,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFFE2E8F0).withValues(alpha: 0.75),
+                      fontFamily: 'Roboto',
+                    ),
+                  ),
+                ),
+
+                // Guided Start Hint Star ⭐
+                Align(
+                  alignment: Alignment(
+                    (_currentChar.startHint.dx * 2) - 1,
+                    (_currentChar.startHint.dy * 2) - 1,
+                  ),
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF08A).withValues(alpha: 0.8),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.yellow.withValues(alpha: 0.5), blurRadius: 8),
+                        ],
+                      ),
+                      child: const Text('⭐', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ),
+
+                // Interactive Finger Drawing Gesture Area
+                GestureDetector(
+                  onPanStart: _onPanStart,
+                  onPanUpdate: _onPanUpdate,
+                  onPanEnd: _onPanEnd,
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: _TracingStrokesPainter(
+                      strokes: _strokes,
+                      colors: _strokeColors,
+                      particles: _particles,
+                    ),
+                  ),
+                ),
+
+                // Floating Real-Time Tracking Accuracy HUD 🎯
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: _buildTrackingAccuracyBadge(isHindi),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTrackingAccuracyBadge(bool isHindi) {
+    final percent = (_liveAccuracy * 100).toInt();
+
+    Color bgColor = const Color(0xFFF1F5F9);
+    Color borderColor = const Color(0xFFCBD5E1);
+    Color textColor = const Color(0xFF475569);
+
+    if (percent >= 65) {
+      bgColor = const Color(0xFFECFDF5);
+      borderColor = const Color(0xFF10B981);
+      textColor = const Color(0xFF047857);
+    } else if (percent >= 35) {
+      bgColor = const Color(0xFFFEF3C7);
+      borderColor = const Color(0xFFF59E0B);
+      textColor = const Color(0xFFB45309);
+    }
+
+    String starsDisplay = '☆☆☆';
+    if (_liveStars == 3) {
+      starsDisplay = '⭐⭐⭐';
+    } else if (_liveStars == 2) {
+      starsDisplay = '⭐⭐☆';
+    } else if (_liveStars == 1) {
+      starsDisplay = '⭐☆☆';
+    }
+
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 3),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.indigo.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: Stack(
-          children: [
-            // Notebook Guided Ruled Lines
-            CustomPaint(
-              size: Size.infinite,
-              painter: _NotebookLinesPainter(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🎯', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 5),
+          Text(
+            isHindi ? 'सटीकता: $percent%' : 'Accuracy: $percent%',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: textColor,
             ),
-
-            // Large Dotted Outline of Target Character
-            Center(
-              child: Text(
-                _currentChar.character,
-                style: TextStyle(
-                  fontSize: 220,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFFE2E8F0).withValues(alpha: 0.75),
-                  fontFamily: 'Roboto',
-                ),
-              ),
-            ),
-
-            // Guided Start Hint Star ⭐
-            Align(
-              alignment: Alignment(
-                (_currentChar.startHint.dx * 2) - 1,
-                (_currentChar.startHint.dy * 2) - 1,
-              ),
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF08A).withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.yellow.withValues(alpha: 0.5), blurRadius: 8),
-                    ],
-                  ),
-                  child: const Text('⭐', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-            ),
-
-            // Interactive Finger Drawing Gesture Area
-            GestureDetector(
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: _TracingStrokesPainter(
-                  strokes: _strokes,
-                  colors: _strokeColors,
-                  particles: _particles,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            starsDisplay,
+            style: const TextStyle(fontSize: 11),
+          ),
+        ],
       ),
     );
   }
@@ -813,13 +973,17 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   }
 
   Widget _buildCelebrationOverlay(bool isHindi) {
+    final accuracyPercent = ((_lastResult?.accuracy ?? _liveAccuracy) * 100).toInt();
+    final stars = _lastResult?.stars ?? _liveStars;
+
     return Positioned.fill(
-      child: IgnorePointer(
-        child: ScaleTransition(
-          scale: _celebrationScale,
-          child: Center(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.35),
+        child: Center(
+          child: ScaleTransition(
+            scale: _celebrationScale,
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 30),
+              margin: const EdgeInsets.symmetric(horizontal: 26),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -832,19 +996,74 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('🌟 🏆 🌟', style: TextStyle(fontSize: 48)),
-                  const SizedBox(height: 10),
+                  Text(
+                    stars >= 3 ? '🌟 🏆 🌟' : (stars == 2 ? '⭐⭐' : '⭐'),
+                    style: const TextStyle(fontSize: 44),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     isHindi ? 'अद्भुत काम!' : 'Super Tracing!',
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
+                  // Accuracy Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: Text(
+                      isHindi ? 'सटीकता: $accuracyPercent% • +10 अंक' : 'Accuracy: $accuracyPercent% • +10 Points',
+                      style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF047857), fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Text(
                     isHindi
-                        ? 'आपने ${_currentChar.titleHi} सीख लिया! (+10 अंक)'
-                        : 'You mastered ${_currentChar.titleEn}! (+10 Points)',
+                        ? 'आपने ${_currentChar.titleHi} बहुत सुंदर लिखा!'
+                        : 'You mastered ${_currentChar.titleEn}!',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            AudioService.instance.playSfx(CurioSfx.click);
+                            _clearCanvas();
+                          },
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(isHindi ? 'पुनः अभ्यास' : 'Practice Again'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF64748B),
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            AudioService.instance.playSfx(CurioSfx.click);
+                            _goToNext();
+                          },
+                          icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                          label: Text(isHindi ? 'अगला अक्षर' : 'Next Letter'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
