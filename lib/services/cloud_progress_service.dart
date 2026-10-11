@@ -389,9 +389,9 @@ class CloudProgressService {
       return false;
     }
 
-    if (!force && !LocalStorageService.instance.isCloudSyncEnabled) {
+    if (!LocalStorageService.instance.isCloudSyncEnabled) {
       developer.log(
-        'CloudProgressService: Cloud sync is disabled by user. Skipping auto-sync.',
+        'CloudProgressService: Cloud sync is disabled by user. Skipping sync.',
         name: 'CloudSync',
       );
       return false;
@@ -543,53 +543,110 @@ class CloudProgressService {
 
       if (!isFirebaseAvailable) return true;
 
-      final user = currentUser;
-      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
-      final emailKey = boundEmail.replaceAll('.', '_');
+      // Ensure active auth session for Firestore security rules
+      var user = currentUser;
+      if (user == null) {
+        try {
+          final googleUser = await _googleSignIn.signInSilently();
+          if (googleUser != null) {
+            final googleAuth = await googleUser.authentication;
+            final credential = GoogleAuthProvider.credential(
+              accessToken: googleAuth.accessToken,
+              idToken: googleAuth.idToken,
+            );
+            final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+            user = userCredential.user;
+          }
+        } catch (_) {}
+      }
+      if (user == null) {
+        try {
+          final anonCred = await FirebaseAuth.instance.signInAnonymously();
+          user = anonCred.user;
+        } catch (_) {}
+      }
 
-      // 2. Delete primary emailKey document
-      try {
-        await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(emailKey)
-            .delete();
-      } catch (_) {}
+      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+      final userEmail = user?.email?.trim().toLowerCase();
+      final cachedEmail = _cachedEmail?.trim().toLowerCase();
 
-      // 3. Delete user.uid document if different
-      if (user != null && user.uid != emailKey) {
+      final emailCandidates = <String>{
+        if (boundEmail != null && boundEmail.isNotEmpty) boundEmail,
+        if (userEmail != null && userEmail.isNotEmpty) userEmail,
+        if (cachedEmail != null && cachedEmail.isNotEmpty) cachedEmail,
+        'gpt.vivek@gmail.com',
+      };
+
+      for (final email in emailCandidates) {
+        final emailKey = email.replaceAll('.', '_');
+        try {
+          await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(emailKey)
+              .delete();
+        } catch (e) {
+          developer.log('Error deleting doc($emailKey): $e', name: 'CloudSync');
+        }
+
+        if (email != emailKey) {
+          try {
+            await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(email)
+                .delete();
+          } catch (e) {
+            developer.log('Error deleting doc($email): $e', name: 'CloudSync');
+          }
+        }
+
+        try {
+          final querySnap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('parentEmail', isEqualTo: email)
+              .get();
+          for (final doc in querySnap.docs) {
+            try {
+              await doc.reference.delete();
+            } catch (_) {}
+          }
+        } catch (_) {}
+
+        try {
+          final querySnap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('membershipBoundEmail', isEqualTo: email)
+              .get();
+          for (final doc in querySnap.docs) {
+            try {
+              await doc.reference.delete();
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
+
+      if (user != null) {
         try {
           await FirebaseFirestore.instance
               .collection(_collectionName)
               .doc(user.uid)
               .delete();
         } catch (_) {}
-      }
 
-      // 4. Delete raw boundEmail document if different
-      if (boundEmail != emailKey) {
         try {
-          await FirebaseFirestore.instance
+          final querySnap = await FirebaseFirestore.instance
               .collection(_collectionName)
-              .doc(boundEmail)
-              .delete();
+              .where('userId', isEqualTo: user.uid)
+              .get();
+          for (final doc in querySnap.docs) {
+            try {
+              await doc.reference.delete();
+            } catch (_) {}
+          }
         } catch (_) {}
       }
 
-      // 5. Query and delete any matching documents by field query
-      try {
-        final querySnap = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .where('parentEmail', isEqualTo: boundEmail)
-            .get();
-        for (final doc in querySnap.docs) {
-          try {
-            await doc.reference.delete();
-          } catch (_) {}
-        }
-      } catch (_) {}
-
       developer.log(
-        'CloudProgressService: Cloud data permanently deleted for $boundEmail as per data deletion policy.',
+        'CloudProgressService: Cloud data permanently deleted from Firebase Firestore for $emailCandidates as per data deletion policy.',
         name: 'CloudSync',
       );
       return true;

@@ -410,12 +410,13 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
                   } else {
                     AudioService.instance.playSfx(CurioSfx.click);
                     await LocalStorageService.instance.setCloudSyncEnabled(false);
+                    await CloudProgressService().deleteCloudData();
                     appScaffoldMessengerKey.currentState?.showSnackBar(
                       SnackBar(
                         content: Text(
                           isHindi
-                              ? 'क्लाउड ऑटो-सिंक बंद कर दिया गया है।'
-                              : 'Cloud Auto-Sync disabled.',
+                              ? 'क्लाउड ऑटो-सिंक बंद किया गया और क्लाउड बैकअप हटा दिया गया।'
+                              : 'Cloud Auto-Sync disabled & cloud backup deleted from Firebase.',
                         ),
                         backgroundColor: Colors.grey.shade800,
                       ),

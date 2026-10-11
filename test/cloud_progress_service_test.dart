@@ -33,8 +33,8 @@ void main() {
       expect(CloudProgressService().isVipEligible, isTrue);
       expect(storage.isCloudSyncEnabled, isFalse);
 
-      // Auto-sync does NOT execute when disabled
-      final synced = await CloudProgressService().syncProgressToCloud();
+      // Auto-sync does NOT execute when disabled, even if force: true is passed
+      final synced = await CloudProgressService().syncProgressToCloud(force: true);
       expect(synced, isFalse);
       expect(CloudProgressService().lastSyncTime, isNull);
     });

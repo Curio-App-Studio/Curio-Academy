@@ -75,9 +75,9 @@ class _FirstTimeOnboardingScreenState
 
     await LocalStorageService.instance.setOnboarded(true);
 
-    // If VIP membership is active, immediately sync newly created student profile to Cloud Firestore
-    if (CloudProgressService().isVipEligible) {
-      CloudProgressService().syncProgressToCloud(force: true);
+    // If VIP membership is active and cloud sync is explicitly enabled, sync newly created student profile
+    if (CloudProgressService().isVipEligible && LocalStorageService.instance.isCloudSyncEnabled) {
+      CloudProgressService().syncProgressToCloud();
     }
 
     if (!mounted) return;
