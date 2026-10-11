@@ -8,6 +8,7 @@ import '../../../presentation/widgets/ad_banner_widget.dart';
 import '../../../services/ad_service.dart';
 import '../domain/spell_bee_repository.dart';
 import '../domain/spell_bee_word.dart';
+import 'voice_spelling_sheet.dart';
 
 /// Level Adventure Mode for Curio Spell Bee
 /// Features 10 progressive stages per class with audio pronunciation, sentence clues, and tile builder.
@@ -355,6 +356,40 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
         _tileUsed[i] = false;
       }
     });
+  }
+
+  void _openVoiceSpelling() {
+    if (_isChecking || _stageWords.isEmpty || _currentWordIndex >= _stageWords.length) return;
+    final word = _stageWords[_currentWordIndex];
+    VoiceSpellingSheet.show(
+      context,
+      targetWord: word.word,
+      wordPrompt: word.definition,
+      onSpellingComplete: (letters) {
+        if (!mounted || _isChecking) return;
+        setState(() {
+          for (int i = 0; i < _userSlots.length; i++) {
+            _userSlots[i] = i < letters.length ? letters[i] : null;
+          }
+          for (int i = 0; i < _tileUsed.length; i++) {
+            _tileUsed[i] = false;
+          }
+          for (final char in _userSlots) {
+            if (char != null) {
+              for (int t = 0; t < _letterTiles.length; t++) {
+                if (_letterTiles[t] == char && !_tileUsed[t]) {
+                  _tileUsed[t] = true;
+                  break;
+                }
+              }
+            }
+          }
+        });
+        if (!_userSlots.contains(null)) {
+          _verifyWord();
+        }
+      },
+    );
   }
 
   void _verifyWord() async {
@@ -869,7 +904,7 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
           ),
           const SizedBox(height: 12),
 
-          // Action Bar: Backspace & Clear
+          // Action Bar: Backspace, Speak Voice, Clear
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -883,7 +918,19 @@ class _SpellBeeAdventureScreenState extends ConsumerState<SpellBeeAdventureScree
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _openVoiceSpelling,
+                icon: const Icon(Icons.mic_rounded, size: 18),
+                label: Text(LocalStorageService.instance.getAppLanguage() == 'hi' ? 'बोलें 🎙️' : 'Speak 🎙️'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF59E0B),
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: _onClearAll,
                 icon: const Icon(Icons.clear_all_rounded, size: 20),

@@ -9,6 +9,7 @@ import '../../../services/ad_service.dart';
 import '../domain/spell_bee_repository.dart';
 import '../domain/spell_bee_word.dart';
 import 'spell_bee_mistakes_screen.dart';
+import 'voice_spelling_sheet.dart';
 
 /// Official Competition Mock Exam Simulation
 /// Mimics real National Spelling Bee rounds: pronouncer, origin, definition, sentence clues,
@@ -131,6 +132,24 @@ class _SpellBeeMockExamScreenState extends ConsumerState<SpellBeeMockExamScreen>
         _currentInput.clear();
       });
     }
+  }
+
+  void _openVoiceSpelling() {
+    if (_currentIndex >= _examWords.length) return;
+    final word = _examWords[_currentIndex];
+    VoiceSpellingSheet.show(
+      context,
+      targetWord: word.word,
+      wordPrompt: word.definition,
+      onSpellingComplete: (letters) {
+        if (!mounted) return;
+        setState(() {
+          _currentInput.clear();
+          _currentInput.addAll(letters.take(word.word.length));
+        });
+        _submitCurrentWord();
+      },
+    );
   }
 
   void _submitCurrentWord({bool isTimeout = false}) {
@@ -462,7 +481,28 @@ class _SpellBeeMockExamScreenState extends ConsumerState<SpellBeeMockExamScreen>
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+
+              // Speak Spelling Button (Voice Stage Experience)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 2,
+                  ),
+                  onPressed: _openVoiceSpelling,
+                  icon: const Icon(Icons.mic_rounded, size: 20),
+                  label: Text(
+                    isHindi ? 'बोलकर हिज्जे बताएं (Speak Spelling) 🎙️' : 'Speak Spelling 🎙️',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
 
               // Action Buttons: Clear, Backspace, Submit
               Row(

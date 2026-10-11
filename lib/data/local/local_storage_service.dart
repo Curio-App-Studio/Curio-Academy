@@ -80,6 +80,10 @@ abstract class ILocalStorageService {
 
   // Bonus stars (rewarded activities)
   Future<void> addBonusStars(int count);
+
+  // Traced Handwriting Characters
+  Set<String> getTracedCharacters();
+  Future<bool> markCharacterTraced(String charId);
 }
 
 /// Robust offline storage implementation using SharedPreferences
@@ -133,6 +137,7 @@ class LocalStorageService implements ILocalStorageService {
   static const String _prefixChapterActivities = 'curio_chapter_act_';
   static const String _keyTableChantStyle = 'curio_table_chant_style';
   static const String _keyCloudSyncEnabled = 'curio_cloud_sync_enabled';
+  static const String _keyTracedCharacters = 'curio_traced_characters';
 
   SharedPreferences? _prefs;
   StudentProfile? _cachedProfile;
@@ -176,6 +181,7 @@ class LocalStorageService implements ILocalStorageService {
   final ValueNotifier<int> spellBeeMockBestScoreNotifier = ValueNotifier<int>(0);
   bool _isCloudSyncEnabled = false;
   final ValueNotifier<bool> cloudSyncEnabledNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<Set<String>> tracedCharactersNotifier = ValueNotifier<Set<String>>({});
 
   @override
   bool get isCloudSyncEnabled => _isCloudSyncEnabled;
@@ -781,7 +787,9 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.remove(_keySpellBeeExamsCount);
       await _prefs?.remove(_keyClaimedChests);
       await _prefs?.remove(_keyCompletedChapters);
+      await _prefs?.remove(_keyTracedCharacters);
     } catch (_) {}
+    tracedCharactersNotifier.value = {};
 
     notifyProgressChanged();
   }
@@ -1222,6 +1230,27 @@ class LocalStorageService implements ILocalStorageService {
 
   Future<void> savePreferredPublisher(String subjectId, String publisher) async {
     await _prefs?.setString('curio_publisher_${subjectId.toLowerCase()}', publisher);
+  }
+
+  @override
+  Set<String> getTracedCharacters() {
+    final list = _prefs?.getStringList(_keyTracedCharacters) ?? [];
+    return list.toSet();
+  }
+
+  @override
+  Future<bool> markCharacterTraced(String charId) async {
+    final current = getTracedCharacters();
+    final isNew = current.add(charId);
+    if (isNew) {
+      try {
+        _prefs ??= await SharedPreferences.getInstance();
+        await _prefs?.setStringList(_keyTracedCharacters, current.toList());
+      } catch (_) {}
+      tracedCharactersNotifier.value = Set.from(current);
+      await addDiscoveryPoints(10);
+    }
+    return isNew;
   }
 
   /// Exports a complete snapshot of user progress for Cloud Sync (VIP Members)

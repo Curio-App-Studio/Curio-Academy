@@ -13,6 +13,9 @@
     <!-- Google Play In-App Purchases and Subscriptions Billing -->
     <uses-permission android:name="com.android.vending.BILLING"/>
 
+    <!-- Microphone permission for National Spell Bee voice spelling mode -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <application
         android:label="Curio Academy"
         android:name="${applicationName}"
@@ -65,6 +68,9 @@
         </intent>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

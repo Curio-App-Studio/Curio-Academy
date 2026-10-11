@@ -27,6 +27,8 @@ import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
 import '../../activities/card_match/presentation/card_match_screen.dart';
 import '../../rhymes_stories/presentation/rhymes_stories_screen.dart';
 import '../../../shared/dialogs/data_management_sheet.dart';
+import '../../tracing/presentation/tracing_screen.dart';
+import '../../smart_revision/presentation/smart_revision_screen.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -177,12 +179,50 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               } else if (value == 'membership') {
                 AudioService.instance.playSfx(CurioSfx.click);
                 MembershipPaywallSheet.show(context);
+              } else if (value == 'tracing') {
+                AudioService.instance.playSfx(CurioSfx.click);
+                TracingScreen.push(context);
+              } else if (value == 'revision') {
+                AudioService.instance.playSfx(CurioSfx.click);
+                SmartRevisionScreen.push(context);
               } else if (value == 'data_settings') {
                 AudioService.instance.playSfx(CurioSfx.click);
                 DataManagementSheet.show(context);
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'revision',
+                child: Row(
+                  children: [
+                    const Icon(Icons.psychology_rounded, color: Color(0xFF6366F1), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        (ref.strings.isHindi ? 'स्मार्ट रिवीजन और फ्लैशकार्ड 🧠' : 'Smart Study & Revision 🧠'),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'tracing',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_note_rounded, color: Color(0xFF3B82F6), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        (ref.strings.isHindi ? 'सुलेख और ट्रेसिंग ✏️' : 'Handwriting & Tracing ✏️'),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'membership',
                 child: Row(
@@ -1106,6 +1146,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
 
         // 5. Akshar Varnamala 🇮🇳 (Wide Discovery Banner)
         _buildKidsVarnamalaBannerCard(context, strings, isHindi),
+
+        const SizedBox(height: 12),
+
+        // 6. Handwriting & Tracing Canvas ✏️ (Wide Discovery Banner)
+        _buildKidsTracingBannerCard(context, strings, isHindi),
       ],
     );
   }
@@ -1225,6 +1270,121 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 Icons.arrow_forward_ios_rounded,
                 size: 14,
                 color: Color(0xFFEA580C),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKidsTracingBannerCard(
+    BuildContext context,
+    AppLocalizations strings,
+    bool isHindi,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () {
+        AudioService.instance.playSfx(CurioSfx.click);
+        TracingScreen.push(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFEEF2FF), Color(0xFFE0E7FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFC7D2FE), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFC7D2FE)),
+              ),
+              child: const Center(
+                child: Text('✏️', style: TextStyle(fontSize: 26)),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        isHindi ? 'सुलेख और ट्रेसिंग ✏️' : 'Letter & Number Tracing ✏️',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF4338CA),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFC7D2FE)),
+                        ),
+                        child: Text(
+                          isHindi ? 'A-Z • 1-20 • क-ह' : 'ABC • 1 2 3 • क ख ग',
+                          style: const TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF4338CA),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isHindi
+                        ? 'उंगली से अक्षर और अंक लिखना सीखें • चमकीले क्रेयॉन 🌈'
+                        : 'Practice writing letters & numbers with finger tracing 🌈',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFC7D2FE)),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: Color(0xFF4338CA),
               ),
             ),
           ],
@@ -1727,7 +1887,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           ),
           const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: () => _showMistakeVaultSheet(context, ref),
+            onPressed: () {
+              AudioService.instance.playSfx(CurioSfx.click);
+              SmartRevisionScreen.push(context, initialTabIndex: 0);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEA580C),
               foregroundColor: Colors.white,
@@ -2350,137 +2513,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
-  void _showMistakeVaultSheet(BuildContext context, WidgetRef ref) {
-    final strings = ref.strings;
-    final mistakes = LocalStorageService.instance.getMistakes();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Row(
-                  children: [
-                    const Text('🎯', style: TextStyle(fontSize: 26)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            strings.mistakeVault,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                          ),
-                          Text(
-                            strings.mistakeVaultSubtitle,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: mistakes.isEmpty
-                    ? Center(
-                        child: Text(
-                          strings.noMistakes,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        itemCount: mistakes.length,
-                        itemBuilder: (c, idx) {
-                          final m = mistakes[idx];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF7ED),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFFED7AA)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFDBA74).withValues(alpha: 0.3),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFC2410C))),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        m.chapterId.isNotEmpty ? m.chapterId.replaceAll('_', ' ').toUpperCase() : 'PRACTICE QUESTION',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEA580C)),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        m.selectedOptionText.isNotEmpty
-                                            ? 'Selected: "${m.selectedOptionText}"'
-                                            : 'Incorrect attempt',
-                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton.icon(
-                                  icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFFEA580C)),
-                                  label: Text(
-                                    strings.isHindi ? 'हटाएं' : 'Clear',
-                                    style: const TextStyle(color: Color(0xFFEA580C), fontWeight: FontWeight.w800, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    await LocalStorageService.instance.clearQuestionAttempt(m.activityId);
-                                    if (ctx.mounted) Navigator.pop(ctx);
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildStudentGreetingCard(
     BuildContext context,

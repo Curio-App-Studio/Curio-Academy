@@ -8,6 +8,7 @@ import '../../../presentation/widgets/ad_banner_widget.dart';
 import '../../../services/ad_service.dart';
 import '../domain/spell_bee_repository.dart';
 import '../domain/spell_bee_word.dart';
+import 'voice_spelling_sheet.dart';
 
 /// 60-Second Speed Spell Bee Sprint Screen
 /// Rapid-fire spelling challenge with combos, timer countdown, and high score tracking.
@@ -239,6 +240,40 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
       isCorrect: false,
     ));
     _nextWord();
+  }
+
+  void _openVoiceSpelling() {
+    if (!_isPlaying || _currentWord == null) return;
+    VoiceSpellingSheet.show(
+      context,
+      targetWord: _currentWord!.word,
+      wordPrompt: _currentWord!.definition,
+      onSpellingComplete: (letters) {
+        if (!mounted || !_isPlaying || _currentWord == null) return;
+        setState(() {
+          for (int i = 0; i < _userSlots.length; i++) {
+            _userSlots[i] = i < letters.length ? letters[i] : null;
+          }
+          // Mark used tiles where letters match
+          for (int i = 0; i < _tileUsed.length; i++) {
+            _tileUsed[i] = false;
+          }
+          for (final char in _userSlots) {
+            if (char != null) {
+              for (int t = 0; t < _letterTiles.length; t++) {
+                if (_letterTiles[t] == char && !_tileUsed[t]) {
+                  _tileUsed[t] = true;
+                  break;
+                }
+              }
+            }
+          }
+        });
+        if (!_userSlots.contains(null)) {
+          _verifyWord();
+        }
+      },
+    );
   }
 
   void _endSprint() async {
@@ -537,6 +572,17 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFB45309),
                       side: const BorderSide(color: Color(0xFFFDE68A)),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _openVoiceSpelling,
+                    icon: const Icon(Icons.mic_rounded, size: 18),
+                    label: Text(isHindi ? 'बोलें 🎙️' : 'Speak 🎙️'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   OutlinedButton.icon(
