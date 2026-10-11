@@ -876,120 +876,257 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
             ),
           ],
 
-          ValueListenableBuilder<String?>(
-            valueListenable: CloudProgressService().userEmailNotifier,
-            builder: (context, email, _) {
-              final isConnected = email != null && email.isNotEmpty;
-              final boundEmail = CloudProgressService().boundMembershipEmail;
+          ValueListenableBuilder<bool>(
+            valueListenable: LocalStorageService.instance.cloudSyncEnabledNotifier,
+            builder: (context, isSyncEnabled, _) {
+              return ValueListenableBuilder<String?>(
+                valueListenable: CloudProgressService().userEmailNotifier,
+                builder: (context, email, _) {
+                  final isConnected = email != null && email.isNotEmpty;
+                  final boundEmail = CloudProgressService().boundMembershipEmail;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: InkWell(
-                      onTap: () async {
-                        AudioService.instance.playSfx(CurioSfx.click);
-                        if (!isConnected) {
-                          try {
-                            final cred = await CloudProgressService().signInWithGoogle();
-                            if (cred != null) {
-                              await LocalStorageService.instance.setCloudSyncEnabled(true);
-                              await CloudProgressService().syncProgressToCloud(force: true);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(isHindi
-                                        ? 'Google खाता जुड़ा! प्रोग्रेस क्लाउड पर सुरक्षित है।'
-                                        : 'Google Account connected! Progress saved to Cloud.'),
-                                    backgroundColor: const Color(0xFF059669),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: InkWell(
+                          onTap: () async {
+                            AudioService.instance.playSfx(CurioSfx.click);
+                            if (!isSyncEnabled) {
+                              // Cloud sync is currently disabled - prompt to enable
+                              final shouldEnable = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  title: Text(
+                                    isHindi ? 'क्लाउड सिंक चालू करें?' : 'Enable Cloud Sync?',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),
-                                );
-                              }
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              final msg = e is DifferentGoogleAccountException
-                                  ? (isHindi
-                                      ? 'क्लाउड सिंक केवल उसी Google खाते से काम करेगा जिस पर सदस्यता सक्रिय है (${e.boundEmail})।'
-                                      : e.message)
-                                  : 'Sync note: $e';
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(msg),
-                                  backgroundColor: Colors.redAccent,
-                                  duration: const Duration(seconds: 4),
+                                  content: Text(
+                                    isHindi
+                                        ? 'क्लाउड सिंक सक्षम करने से आपकी सीखने की प्रगति आपके सदस्यता Google खाते पर सुरक्षित रूप से बैकअप हो जाएगी।'
+                                        : 'Enabling Cloud Sync will back up your child\'s learning progress to your membership Google Account.',
+                                    style: const TextStyle(fontSize: 13.5, height: 1.4),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(false),
+                                      child: Text(isHindi ? 'रद्द करें' : 'Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.of(ctx).pop(true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF16A34A),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: Text(isHindi ? 'हाँ, चालू करें' : 'Enable Sync'),
+                                    ),
+                                  ],
                                 ),
                               );
+                              if (shouldEnable != true) return;
+
+                              await LocalStorageService.instance.setCloudSyncEnabled(true);
+                              if (!isConnected) {
+                                try {
+                                  final cred = await CloudProgressService().signInWithGoogle();
+                                  if (cred != null) {
+                                    await CloudProgressService().syncProgressToCloud(force: true);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(isHindi
+                                              ? 'Google खाता जुड़ा! प्रोग्रेस क्लाउड पर सुरक्षित है।'
+                                              : 'Google Account connected! Progress saved to Cloud.'),
+                                          backgroundColor: const Color(0xFF059669),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    final msg = e is DifferentGoogleAccountException
+                                        ? (isHindi
+                                            ? 'क्लाउड सिंक केवल उसी Google खाते से काम करेगा जिस पर सदस्यता सक्रिय है (${e.boundEmail})।'
+                                            : e.message)
+                                        : 'Sync note: $e';
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(msg),
+                                        backgroundColor: Colors.redAccent,
+                                        duration: const Duration(seconds: 4),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } else {
+                                await CloudProgressService().syncProgressToCloud(force: true);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(isHindi
+                                          ? 'क्लाउड सिंक चालू हुआ और प्रोग्रेस बैकअप हो गई!'
+                                          : 'Cloud Sync enabled and progress backed up!'),
+                                      backgroundColor: const Color(0xFF059669),
+                                    ),
+                                  );
+                                }
+                              }
+                            } else {
+                              // Cloud sync is enabled - perform manual sync refresh
+                              if (!isConnected) {
+                                try {
+                                  final cred = await CloudProgressService().signInWithGoogle();
+                                  if (cred != null) {
+                                    await CloudProgressService().syncProgressToCloud(force: true);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(isHindi
+                                              ? 'Google खाता जुड़ा! प्रोग्रेस क्लाउड पर सुरक्षित है।'
+                                              : 'Google Account connected! Progress saved to Cloud.'),
+                                          backgroundColor: const Color(0xFF059669),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    final msg = e is DifferentGoogleAccountException
+                                        ? (isHindi
+                                            ? 'क्लाउड सिंक केवल उसी Google खाते से काम करेगा जिस पर सदस्यता सक्रिय है (${e.boundEmail})।'
+                                            : e.message)
+                                        : 'Sync note: $e';
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(msg),
+                                        backgroundColor: Colors.redAccent,
+                                        duration: const Duration(seconds: 4),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } else {
+                                await CloudProgressService().syncProgressToCloud(force: true);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(isHindi
+                                          ? 'प्रोग्रेस क्लाउड पर सिंक हो गई है।'
+                                          : 'Progress synced to Cloud Firestore!'),
+                                      backgroundColor: const Color(0xFF059669),
+                                    ),
+                                  );
+                                }
+                              }
                             }
-                          }
-                        } else {
-                          await LocalStorageService.instance.setCloudSyncEnabled(true);
-                          await CloudProgressService().syncProgressToCloud(force: true);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(isHindi ? 'प्रोग्रेस क्लाउड पर सिंक हो गई है।' : 'Progress synced to Cloud Firestore!'),
-                                backgroundColor: const Color(0xFF059669),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isConnected ? const Color(0xFFF0FDFA) : const Color(0xFFEFF6FF),
+                          },
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isConnected ? const Color(0xFFCCFBF1) : const Color(0xFFBFDBFE)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isConnected ? Icons.cloud_done_rounded : Icons.cloud_upload_outlined,
-                              size: 16,
-                              color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB),
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                isConnected
-                                    ? 'Cloud Sync: $email (Membership Account)'
-                                    : (boundEmail != null && boundEmail.isNotEmpty
-                                        ? (isHindi ? 'सदस्यता Google खाता सिंक करें ($boundEmail)' : 'Sync Membership Google Account ($boundEmail)')
-                                        : (isHindi ? 'सदस्यता Google खाता सिंक करें' : 'Sync Membership Google Account')),
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB),
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSyncEnabled
+                                  ? (isConnected ? const Color(0xFFF0FDFA) : const Color(0xFFEFF6FF))
+                                  : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSyncEnabled
+                                    ? (isConnected ? const Color(0xFFCCFBF1) : const Color(0xFFBFDBFE))
+                                    : Colors.grey.shade300,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Icon(
-                              isConnected ? Icons.refresh_rounded : Icons.arrow_forward_ios_rounded,
-                              size: 13,
-                              color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isSyncEnabled
+                                      ? (isConnected ? Icons.cloud_done_rounded : Icons.cloud_upload_outlined)
+                                      : Icons.cloud_off_rounded,
+                                  size: 16,
+                                  color: isSyncEnabled
+                                      ? (isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB))
+                                      : Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    isSyncEnabled
+                                        ? (isConnected
+                                            ? 'Cloud Sync: $email (Active)'
+                                            : (boundEmail != null && boundEmail.isNotEmpty
+                                                ? (isHindi ? 'Google खाता सिंक करें ($boundEmail)' : 'Sync Membership Account ($boundEmail)')
+                                                : (isHindi ? 'सदस्यता Google खाता सिंक करें' : 'Sync Membership Google Account')))
+                                        : (isHindi ? 'क्लाउड सिंक: बंद (केवल डिवाइस पर)' : 'Cloud Sync: Disabled (Local Only)'),
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSyncEnabled
+                                          ? (isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB))
+                                          : Colors.grey.shade700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: isSyncEnabled ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(
+                                      color: isSyncEnabled ? const Color(0xFF86EFAC) : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isSyncEnabled
+                                        ? (isHindi ? 'चालू' : 'ON')
+                                        : (isHindi ? 'बंद' : 'OFF'),
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: isSyncEnabled ? const Color(0xFF15803D) : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  isSyncEnabled
+                                      ? (isConnected ? Icons.refresh_rounded : Icons.arrow_forward_ios_rounded)
+                                      : Icons.arrow_forward_ios_rounded,
+                                  size: 13,
+                                  color: isSyncEnabled
+                                      ? (isConnected ? const Color(0xFF0D9488) : const Color(0xFF2563EB))
+                                      : Colors.grey.shade600,
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  if (boundEmail != null && boundEmail.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, left: 4),
-                      child: Text(
-                        isHindi
-                            ? '🔒 क्लाउड सिंक केवल सदस्यता वाले Google खाते ($boundEmail) पर ही काम करेगा।'
-                            : '🔒 Cloud Sync works only with your membership Google Account ($boundEmail).',
-                        style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
-                      ),
-                    ),
-                ],
+                      if (isSyncEnabled && boundEmail != null && boundEmail.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          child: Text(
+                            isHindi
+                                ? '🔒 क्लाउड सिंक सदस्यता वाले Google खाते ($boundEmail) पर सक्रिय है।'
+                                : '🔒 Cloud Sync active with your membership Google Account ($boundEmail).',
+                            style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                          ),
+                        )
+                      else if (!isSyncEnabled)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          child: Text(
+                            isHindi
+                                ? '⚠️ क्लाउड सिंक बंद है। प्रगति केवल इस डिवाइस पर है। चालू करने के लिए टैप करें।'
+                                : '⚠️ Cloud Sync is disabled. Progress is only stored on this device. Tap to enable.',
+                            style: TextStyle(fontSize: 10.5, color: Colors.amber.shade900, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               );
             },
           ),

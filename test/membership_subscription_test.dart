@@ -164,5 +164,31 @@ void main() {
       expect(find.text('Choose Your Plan'), findsNothing);
       expect(find.text('Switch or Upgrade Plan'), findsNothing);
     });
+
+    testWidgets('Membership page accurately reflects Cloud Sync Disabled vs Enabled', (tester) async {
+      final storage = LocalStorageService.instance;
+      await storage.setPremiumUser(true);
+      await storage.setPremiumSubscriptionType(InAppProductIds.annualSubscription);
+      await storage.setCloudSyncEnabled(false);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: MembershipPaywallSheet(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // When cloud sync is disabled, shows Disabled / Local Only with OFF badge
+      expect(find.text('Cloud Sync: Disabled (Local Only)'), findsOneWidget);
+      expect(find.text('OFF'), findsOneWidget);
+
+      // Now enable cloud sync
+      await storage.setCloudSyncEnabled(true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ON'), findsOneWidget);
+    });
   });
 }
