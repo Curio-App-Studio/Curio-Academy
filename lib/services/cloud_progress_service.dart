@@ -265,8 +265,32 @@ class CloudProgressService {
 
       final List<Map<String, dynamic>> candidates = [];
 
-      // Query doc(user.uid) directly
-      if (user != null) {
+      // 1. Primary: Query doc(emailKey) where emailKey has dots replaced by underscores
+      try {
+        final emailDoc = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(emailKey)
+            .get();
+        if (emailDoc.exists && emailDoc.data() != null) {
+          candidates.add(emailDoc.data()!);
+        }
+      } catch (_) {}
+
+      // 2. Query doc(boundEmail) (legacy key)
+      if (candidates.isEmpty && boundEmail != emailKey) {
+        try {
+          final rawDoc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(boundEmail)
+              .get();
+          if (rawDoc.exists && rawDoc.data() != null) {
+            candidates.add(rawDoc.data()!);
+          }
+        } catch (_) {}
+      }
+
+      // 3. Query doc(user.uid)
+      if (candidates.isEmpty && user != null && user.uid != emailKey) {
         try {
           final uidDoc = await FirebaseFirestore.instance
               .collection(_collectionName)
@@ -278,68 +302,16 @@ class CloudProgressService {
         } catch (_) {}
       }
 
-      // Query doc(emailKey)
-      try {
-        final emailDoc = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(emailKey)
-            .get();
-        if (emailDoc.exists && emailDoc.data() != null) {
-          candidates.add(emailDoc.data()!);
-        }
-      } catch (_) {}
-
-      // Query doc(boundEmail)
-      try {
-        final rawDoc = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(boundEmail)
-            .get();
-        if (rawDoc.exists && rawDoc.data() != null) {
-          candidates.add(rawDoc.data()!);
-        }
-      } catch (_) {}
-
-      // Query by membershipBoundEmail
-      try {
-        final querySnap = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .where('membershipBoundEmail', isEqualTo: boundEmail)
-            .limit(3)
-            .get();
-        for (final d in querySnap.docs) {
-          candidates.add(d.data());
-        }
-      } catch (_) {}
-
-      // Query by parentEmail
-      try {
-        final querySnap = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .where('parentEmail', isEqualTo: boundEmail)
-            .limit(3)
-            .get();
-        for (final d in querySnap.docs) {
-          candidates.add(d.data());
-        }
-      } catch (_) {}
-
-      // Fallback: Check existing documents in vip_students
+      // 4. Query by exact email match in document fields
       if (candidates.isEmpty) {
         try {
-          final allSnap = await FirebaseFirestore.instance
+          final querySnap = await FirebaseFirestore.instance
               .collection(_collectionName)
-              .limit(10)
+              .where('parentEmail', isEqualTo: boundEmail)
+              .limit(1)
               .get();
-          for (final d in allSnap.docs) {
-            final dData = d.data();
-            final pEmail = (dData['parentEmail'] ?? dData['membershipBoundEmail'])?.toString().toLowerCase();
-            if (pEmail == boundEmail || pEmail == 'gpt.vivek@gmail.com') {
-              candidates.add(dData);
-            }
-          }
-          if (candidates.isEmpty && allSnap.docs.isNotEmpty) {
-            candidates.add(allSnap.docs.first.data());
+          for (final d in querySnap.docs) {
+            candidates.add(d.data());
           }
         } catch (_) {}
       }
@@ -491,32 +463,32 @@ class CloudProgressService {
           firestoreData['membershipBoundEmail'] = boundEmail;
           firestoreData['studentName'] = currentSnapshot['name'];
 
-          // Save under user.uid first so security rules (request.auth.uid == userId) succeed!
-          if (user != null) {
+          // Exactly ONE document per email in vip_students: stored at doc(emailKey)
+          await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(emailKey)
+              .set(firestoreData, SetOptions(merge: true));
+
+          // Clean up any historical duplicate documents for this email to ensure ONLY ONE item exists
+          if (user != null && user.uid != emailKey) {
             try {
               await FirebaseFirestore.instance
                   .collection(_collectionName)
                   .doc(user.uid)
-                  .set(firestoreData, SetOptions(merge: true));
+                  .delete();
+            } catch (_) {}
+          }
+          if (boundEmail != emailKey) {
+            try {
+              await FirebaseFirestore.instance
+                  .collection(_collectionName)
+                  .doc(boundEmail)
+                  .delete();
             } catch (_) {}
           }
 
-          try {
-            await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .doc(emailKey)
-                .set(firestoreData, SetOptions(merge: true));
-          } catch (_) {}
-
-          try {
-            await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .doc(boundEmail)
-                .set(firestoreData, SetOptions(merge: true));
-          } catch (_) {}
-
           developer.log(
-            'CloudProgressService: VIP progress synced to Cloud Firestore for $boundEmail (${currentSnapshot["stars"]} stars, ${currentSnapshot["points"]} points).',
+            'CloudProgressService: VIP progress synced to Cloud Firestore under vip_students/$emailKey for $boundEmail (${currentSnapshot["stars"]} stars, ${currentSnapshot["points"]} points).',
             name: 'CloudSync',
           );
         } else {
@@ -557,8 +529,16 @@ class CloudProgressService {
       final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
       final emailKey = boundEmail.replaceAll('.', '_');
 
-      // 2. Delete user.uid document
-      if (user != null) {
+      // 2. Delete primary emailKey document
+      try {
+        await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(emailKey)
+            .delete();
+      } catch (_) {}
+
+      // 3. Delete user.uid document if different
+      if (user != null && user.uid != emailKey) {
         try {
           await FirebaseFirestore.instance
               .collection(_collectionName)
@@ -567,20 +547,27 @@ class CloudProgressService {
         } catch (_) {}
       }
 
-      // 3. Delete emailKey document
-      try {
-        await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(emailKey)
-            .delete();
-      } catch (_) {}
+      // 4. Delete raw boundEmail document if different
+      if (boundEmail != emailKey) {
+        try {
+          await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(boundEmail)
+              .delete();
+        } catch (_) {}
+      }
 
-      // 4. Delete boundEmail document
+      // 5. Query and delete any matching documents by field query
       try {
-        await FirebaseFirestore.instance
+        final querySnap = await FirebaseFirestore.instance
             .collection(_collectionName)
-            .doc(boundEmail)
-            .delete();
+            .where('parentEmail', isEqualTo: boundEmail)
+            .get();
+        for (final doc in querySnap.docs) {
+          try {
+            await doc.reference.delete();
+          } catch (_) {}
+        }
       } catch (_) {}
 
       developer.log(

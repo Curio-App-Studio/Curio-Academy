@@ -1,13 +1,16 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/profile/profile_provider.dart';
 import '../../data/local/local_storage_service.dart';
 import '../../features/onboarding/presentation/first_time_onboarding_screen.dart';
 import '../../core/audio/audio_service.dart';
 import '../../services/cloud_progress_service.dart';
+import '../../app.dart';
 
 /// Modal bottom sheet allowing parents to manage data, reset progress, or delete
 /// cloud data in compliance with Google Play Families and Data Deletion Policy.
-class DataManagementSheet extends StatefulWidget {
+class DataManagementSheet extends ConsumerStatefulWidget {
   const DataManagementSheet({super.key});
 
   static Future<void> show(BuildContext context) {
@@ -20,10 +23,10 @@ class DataManagementSheet extends StatefulWidget {
   }
 
   @override
-  State<DataManagementSheet> createState() => _DataManagementSheetState();
+  ConsumerState<DataManagementSheet> createState() => _DataManagementSheetState();
 }
 
-class _DataManagementSheetState extends State<DataManagementSheet> {
+class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
   bool _gatePassed = false;
   late int _num1;
   late int _num2;
@@ -366,18 +369,16 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
               await LocalStorageService.instance.resetProgressOnly();
-              if (parentContext.mounted) {
-                ScaffoldMessenger.of(parentContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isHindi
-                          ? 'सीखने की प्रगति सफलतापूर्वक 0 पर रीसेट कर दी गई है।'
-                          : 'Learning progress successfully reset to 0.',
-                    ),
-                    backgroundColor: const Color(0xFFD97706),
+              appScaffoldMessengerKey.currentState?.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isHindi
+                        ? 'सीखने की प्रगति सफलतापूर्वक 0 पर रीसेट कर दी गई है।'
+                        : 'Learning progress successfully reset to 0.',
                   ),
-                );
-              }
+                  backgroundColor: const Color(0xFFD97706),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD97706),
@@ -412,15 +413,15 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final profileNotifier = ref.read(studentProfileProvider.notifier);
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
               await LocalStorageService.instance.resetAllAppDataExceptMembership();
-              if (parentContext.mounted) {
-                Navigator.of(parentContext).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const FirstTimeOnboardingScreen()),
-                  (route) => false,
-                );
-              }
+              profileNotifier.resetProfile();
+              appNavigatorKey.currentState?.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const FirstTimeOnboardingScreen()),
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF7C3AED),
@@ -458,22 +459,20 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
               final success = await CloudProgressService().deleteCloudData();
-              if (parentContext.mounted) {
-                ScaffoldMessenger.of(parentContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success
-                          ? (isHindi
-                              ? 'क्लाउड डेटा हमेशा के लिए हटा दिया गया है।'
-                              : 'Cloud backup permanently deleted from Firestore.')
-                          : (isHindi
-                              ? 'क्लाउड डेटा हटाने में विफल।'
-                              : 'Failed to delete cloud data.'),
-                    ),
-                    backgroundColor: const Color(0xFFDC2626),
+              appScaffoldMessengerKey.currentState?.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    success
+                        ? (isHindi
+                            ? 'क्लाउड डेटा हमेशा के लिए हटा दिया गया है।'
+                            : 'Cloud backup permanently deleted from Firestore.')
+                        : (isHindi
+                            ? 'क्लाउड डेटा हटाने में विफल।'
+                            : 'Failed to delete cloud data.'),
                   ),
-                );
-              }
+                  backgroundColor: const Color(0xFFDC2626),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),

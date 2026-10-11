@@ -6,6 +6,9 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/tier_theme_provider.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldMessengerState> appScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 class CurioApp extends ConsumerWidget {
   const CurioApp({super.key});
 
@@ -15,6 +18,8 @@ class CurioApp extends ConsumerWidget {
     final themeData = AppTheme.buildTheme(activeTier);
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
+      scaffoldMessengerKey: appScaffoldMessengerKey,
       title: 'Curio Academy',
       debugShowCheckedModeBanner: false,
       theme: themeData,

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../data/local/local_storage_service.dart';
+import '../../data/models/grade_tier.dart';
 import '../../data/models/student_profile.dart';
 import '../theme/tier_theme_provider.dart';
 
@@ -46,6 +47,11 @@ class StudentProfileNotifier extends StateNotifier<StudentProfile> {
     );
     state = updated;
     await LocalStorageService.instance.saveStudentProfile(updated);
+  }
+
+  void resetProfile() {
+    state = const StudentProfile(studentName: '');
+    ref.read(gradeTierProvider.notifier).setTier(GradeTier.primaryBuilder);
   }
 }
 
