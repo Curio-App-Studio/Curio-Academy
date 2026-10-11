@@ -245,6 +245,10 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
         const Divider(),
         const SizedBox(height: 10),
 
+        // 0. Cloud Auto-Sync Toggle Switch
+        _buildCloudSyncTile(context, isHindi, isVip),
+        const SizedBox(height: 12),
+
         // 1. Reset Learning Progress Only
         _buildActionTile(
           icon: Icons.restart_alt_rounded,
@@ -284,6 +288,145 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
         ),
         const SizedBox(height: 14),
       ],
+    );
+  }
+
+  Widget _buildCloudSyncTile(BuildContext context, bool isHindi, bool isVip) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: LocalStorageService.instance.cloudSyncEnabledNotifier,
+      builder: (context, isSyncEnabled, _) {
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isSyncEnabled ? const Color(0xFFF0FDF4) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSyncEnabled ? const Color(0xFF86EFAC) : Colors.grey.shade200,
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isSyncEnabled ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isSyncEnabled ? Icons.cloud_sync_rounded : Icons.cloud_off_rounded,
+                  color: isSyncEnabled ? const Color(0xFF16A34A) : Colors.grey.shade600,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          isHindi ? 'क्लाउड ऑटो-सिंक' : 'Cloud Auto-Sync',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSyncEnabled ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isSyncEnabled
+                                ? (isHindi ? 'सक्रिय' : 'ON')
+                                : (isHindi ? 'बंद' : 'OFF'),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: isSyncEnabled ? const Color(0xFF15803D) : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isSyncEnabled
+                          ? (isHindi
+                              ? 'प्रगति क्लाउड पर स्वचालित रूप से बैकअप हो रही है।'
+                              : 'Progress is automatically backed up to Cloud Firestore.')
+                          : (isHindi
+                              ? 'क्लाउड बैकअप बंद है। डेटा केवल इसी डिवाइस पर रहेगा।'
+                              : 'Cloud backup paused. Progress is only stored on this device.'),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch.adaptive(
+                value: isSyncEnabled,
+                activeThumbColor: const Color(0xFF16A34A),
+                activeTrackColor: const Color(0xFF86EFAC),
+                onChanged: (bool value) async {
+                  if (value) {
+                    if (!isVip) {
+                      AudioService.instance.playSfx(CurioSfx.gentleWobble);
+                      appScaffoldMessengerKey.currentState?.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isHindi
+                                ? 'क्लाउड सिंक के लिए VIP सदस्यता आवश्यक है।'
+                                : 'VIP Membership required for Cloud Auto-Sync.',
+                          ),
+                          backgroundColor: const Color(0xFFD97706),
+                        ),
+                      );
+                      return;
+                    }
+                    AudioService.instance.playSfx(CurioSfx.correctCheer);
+                    await LocalStorageService.instance.setCloudSyncEnabled(true);
+                    final syncSuccess = await CloudProgressService().syncProgressToCloud(force: true);
+                    appScaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          syncSuccess
+                              ? (isHindi
+                                  ? 'क्लाउड ऑटो-सिंक सक्रिय किया गया और बैकअप पूरा हुआ!'
+                                  : 'Cloud Auto-Sync enabled and progress backed up!')
+                              : (isHindi
+                                  ? 'क्लाउड ऑटो-सिंक सक्रिय किया गया।'
+                                  : 'Cloud Auto-Sync enabled.'),
+                        ),
+                        backgroundColor: const Color(0xFF16A34A),
+                      ),
+                    );
+                  } else {
+                    AudioService.instance.playSfx(CurioSfx.click);
+                    await LocalStorageService.instance.setCloudSyncEnabled(false);
+                    appScaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isHindi
+                              ? 'क्लाउड ऑटो-सिंक बंद कर दिया गया है।'
+                              : 'Cloud Auto-Sync disabled.',
+                        ),
+                        backgroundColor: Colors.grey.shade800,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

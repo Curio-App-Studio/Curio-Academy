@@ -894,7 +894,8 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                           try {
                             final cred = await CloudProgressService().signInWithGoogle();
                             if (cred != null) {
-                              await CloudProgressService().syncProgressToCloud();
+                              await LocalStorageService.instance.setCloudSyncEnabled(true);
+                              await CloudProgressService().syncProgressToCloud(force: true);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -923,6 +924,7 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                             }
                           }
                         } else {
+                          await LocalStorageService.instance.setCloudSyncEnabled(true);
                           await CloudProgressService().syncProgressToCloud(force: true);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

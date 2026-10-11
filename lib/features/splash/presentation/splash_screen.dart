@@ -78,8 +78,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     bool hasCloudBackup = false;
 
-    if (isVip) {
-      // 2. VIP user detected: automatically connect membership Google Account & auto-sync/restore backup
+    if (isVip && LocalStorageService.instance.isCloudSyncEnabled) {
+      // 2. VIP user with Cloud Sync enabled: connect membership Google Account & auto-sync/restore backup
       try {
         hasCloudBackup = await CloudProgressService().autoSyncAndRestore().timeout(
           const Duration(milliseconds: 5500),

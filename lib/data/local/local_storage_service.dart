@@ -74,6 +74,10 @@ abstract class ILocalStorageService {
   String? get boundMembershipEmail;
   Future<void> setBoundMembershipEmail(String? email);
 
+  // Cloud Sync Settings
+  bool get isCloudSyncEnabled;
+  Future<void> setCloudSyncEnabled(bool value);
+
   // Bonus stars (rewarded activities)
   Future<void> addBonusStars(int count);
 }
@@ -128,6 +132,7 @@ class LocalStorageService implements ILocalStorageService {
   static const String _keyCompletedChapters = 'curio_completed_chapters';
   static const String _prefixChapterActivities = 'curio_chapter_act_';
   static const String _keyTableChantStyle = 'curio_table_chant_style';
+  static const String _keyCloudSyncEnabled = 'curio_cloud_sync_enabled';
 
   SharedPreferences? _prefs;
   StudentProfile? _cachedProfile;
@@ -169,6 +174,21 @@ class LocalStorageService implements ILocalStorageService {
   final ValueNotifier<int> spellBeeHighScoreNotifier = ValueNotifier<int>(0);
   final ValueNotifier<List<String>> spellBeeMistakesNotifier = ValueNotifier<List<String>>([]);
   final ValueNotifier<int> spellBeeMockBestScoreNotifier = ValueNotifier<int>(0);
+  bool _isCloudSyncEnabled = false;
+  final ValueNotifier<bool> cloudSyncEnabledNotifier = ValueNotifier<bool>(false);
+
+  @override
+  bool get isCloudSyncEnabled => _isCloudSyncEnabled;
+
+  @override
+  Future<void> setCloudSyncEnabled(bool value) async {
+    _isCloudSyncEnabled = value;
+    cloudSyncEnabledNotifier.value = value;
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.setBool(_keyCloudSyncEnabled, value);
+    } catch (_) {}
+  }
 
   @override
   bool get isClosedTester => _isClosedTester;
@@ -294,6 +314,12 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.remove(_keySubscriptionEndDate);
       await _prefs?.remove(_keySubscriptionCanceled);
     } catch (_) {}
+
+    // When subscription is cancelled, delete cloud backup as per Data Deletion Policy and disable sync
+    if (onCloudDataDeleteRequested != null) {
+      await onCloudDataDeleteRequested!();
+    }
+    await setCloudSyncEnabled(false);
   }
 
   @override
@@ -662,6 +688,10 @@ class LocalStorageService implements ILocalStorageService {
         }
       }
 
+      // Load cloud sync setting (default: false - do not auto enable)
+      _isCloudSyncEnabled = _prefs?.getBool(_keyCloudSyncEnabled) ?? false;
+      cloudSyncEnabledNotifier.value = _isCloudSyncEnabled;
+
       _initDailyStreak();
       mistakeCountNotifier.value = mistakeCount;
     } catch (_) {
@@ -777,6 +807,9 @@ class LocalStorageService implements ILocalStorageService {
     if (onCloudDataDeleteRequested != null) {
       await onCloudDataDeleteRequested!();
     }
+
+    // 4. Disable auto cloud sync
+    await setCloudSyncEnabled(false);
   }
 
 

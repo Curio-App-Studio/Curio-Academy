@@ -14,6 +14,10 @@ void main() {
   });
 
   group('CloudProgressService VIP Progress Sync & Restore Tests', () {
+    test('Cloud sync is disabled by default (false)', () async {
+      expect(LocalStorageService.instance.isCloudSyncEnabled, isFalse);
+    });
+
     test('Free user does not sync to cloud (VIP only)', () async {
       final storage = LocalStorageService.instance;
       await storage.cancelPremiumStatus();
@@ -23,11 +27,25 @@ void main() {
       expect(synced, isFalse);
     });
 
-    test('VIP user syncs progress successfully to cloud snapshot', () async {
+    test('VIP user skips auto-sync when isCloudSyncEnabled is false (default)', () async {
+      final storage = LocalStorageService.instance;
+      await storage.setPremiumUser(true);
+      expect(CloudProgressService().isVipEligible, isTrue);
+      expect(storage.isCloudSyncEnabled, isFalse);
+
+      // Auto-sync does NOT execute when disabled
+      final synced = await CloudProgressService().syncProgressToCloud();
+      expect(synced, isFalse);
+      expect(CloudProgressService().lastSyncTime, isNull);
+    });
+
+    test('VIP user syncs successfully when isCloudSyncEnabled is true or force is true', () async {
       final storage = LocalStorageService.instance;
       // Mark as VIP
       await storage.setPremiumUser(true);
+      await storage.setCloudSyncEnabled(true);
       expect(CloudProgressService().isVipEligible, isTrue);
+      expect(storage.isCloudSyncEnabled, isTrue);
 
       // Setup sample student progress
       await storage.saveStudentProfile(
@@ -57,6 +75,7 @@ void main() {
     test('Restoring cloud progress reconstructs full student profile and stars', () async {
       final storage = LocalStorageService.instance;
       await storage.setPremiumUser(true);
+      await storage.setCloudSyncEnabled(true);
 
       // 1. Create original VIP profile & progress
       await storage.saveStudentProfile(
@@ -69,7 +88,7 @@ void main() {
       );
       await storage.addBonusStars(25);
       await storage.markChapterCompleted('ukg_counting_1');
-      await CloudProgressService().syncProgressToCloud();
+      await CloudProgressService().syncProgressToCloud(force: true);
 
       // 2. Simulate complete app reset (wiping student progress)
       await storage.resetStudentProgress();
@@ -139,9 +158,10 @@ void main() {
       expect(storage.isPremiumUser, isTrue);
     });
 
-    test('resetAllAppDataExceptMembership wipes profile and progress while STRICTLY preserving VIP Membership', () async {
+    test('resetAllAppDataExceptMembership wipes profile, disables cloud sync, while preserving VIP', () async {
       final storage = LocalStorageService.instance;
       await storage.setPremiumUser(true);
+      await storage.setCloudSyncEnabled(true);
       await storage.setBoundMembershipEmail('gpt.vivek@gmail.com');
       await storage.saveStudentProfile(
         const StudentProfile(
@@ -163,12 +183,19 @@ void main() {
       expect(storage.isOnboarded(), isFalse);
       expect(storage.totalStars, equals(0));
 
+      // Cloud sync is disabled
+      expect(storage.isCloudSyncEnabled, isFalse);
+
       // VIP Membership and Google Account binding are STRICTLY preserved
       expect(storage.isPremiumUser, isTrue);
       expect(storage.boundMembershipEmail, equals('gpt.vivek@gmail.com'));
     });
 
-    test('deleteCloudData clears local cloud snapshot and last sync time', () async {
+    test('deleteCloudData clears local cloud snapshot, sync time, and disables cloud sync', () async {
+      final storage = LocalStorageService.instance;
+      await storage.setCloudSyncEnabled(true);
+      expect(storage.isCloudSyncEnabled, isTrue);
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('curio_vip_cached_cloud_snapshot', '{"stars": 10}');
       await prefs.setString('curio_vip_last_cloud_sync', DateTime.now().toIso8601String());
@@ -179,6 +206,19 @@ void main() {
       expect(prefs.getString('curio_vip_cached_cloud_snapshot'), isNull);
       expect(prefs.getString('curio_vip_last_cloud_sync'), isNull);
       expect(CloudProgressService().lastSyncTime, isNull);
+      expect(storage.isCloudSyncEnabled, isFalse);
+    });
+
+    test('cancelPremiumStatus disables cloud sync and removes VIP', () async {
+      final storage = LocalStorageService.instance;
+      await storage.setPremiumUser(true);
+      await storage.setCloudSyncEnabled(true);
+      expect(storage.isCloudSyncEnabled, isTrue);
+
+      await storage.cancelPremiumStatus();
+
+      expect(storage.isPremiumUser, isFalse);
+      expect(storage.isCloudSyncEnabled, isFalse);
     });
   });
 }

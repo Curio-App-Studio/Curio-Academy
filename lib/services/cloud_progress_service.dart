@@ -131,7 +131,9 @@ class CloudProgressService {
     } catch (_) {}
 
     LocalStorageService.onVipProgressChanged = () {
-      syncProgressToCloud();
+      if (LocalStorageService.instance.isCloudSyncEnabled) {
+        syncProgressToCloud();
+      }
     };
 
     LocalStorageService.onCloudDataDeleteRequested = () async {
@@ -223,6 +225,13 @@ class CloudProgressService {
   Future<bool> autoSyncAndRestore({bool force = false}) async {
     if (!isVipEligible && !force) return false;
     if (!isFirebaseAvailable) return false;
+    if (!force && !LocalStorageService.instance.isCloudSyncEnabled) {
+      developer.log(
+        'CloudProgressService: autoSyncAndRestore skipped because cloud sync is disabled by user.',
+        name: 'CloudSync',
+      );
+      return false;
+    }
 
     try {
       User? user = currentUser;
@@ -380,6 +389,14 @@ class CloudProgressService {
       return false;
     }
 
+    if (!force && !LocalStorageService.instance.isCloudSyncEnabled) {
+      developer.log(
+        'CloudProgressService: Cloud sync is disabled by user. Skipping auto-sync.',
+        name: 'CloudSync',
+      );
+      return false;
+    }
+
     final snapshot = LocalStorageService.instance.exportProgressSnapshot();
     final studentName = snapshot['name']?.toString().trim();
     final stars = (snapshot['stars'] as num?)?.toInt() ?? 0;
@@ -517,11 +534,12 @@ class CloudProgressService {
   /// Google Play Families Data Deletion Policy and user cancellation requests.
   Future<bool> deleteCloudData() async {
     try {
-      // 1. Clear local cloud sync cache
+      // 1. Clear local cloud sync cache and disable auto-sync
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyCachedSnapshot);
       await prefs.remove(_keyLastCloudSync);
       _lastSyncTime = null;
+      await LocalStorageService.instance.setCloudSyncEnabled(false);
 
       if (!isFirebaseAvailable) return true;
 
