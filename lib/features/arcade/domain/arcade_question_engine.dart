@@ -23,16 +23,25 @@ class ArcadeQuestionEngine {
 
   ArcadeQuestionEngine({Random? random}) : _random = random ?? Random();
 
-  /// Generates a question appropriate for the student's class tier
-  ArcadeQuestion generateQuestion(StudentClass studentClass) {
-    switch (studentClass.tier) {
-      case GradeTier.earlyExplorer:
-        return _generateEarlyExplorerQuestion();
-      case GradeTier.primaryBuilder:
-        return _generatePrimaryBuilderQuestion(studentClass);
-      case GradeTier.middleAchiever:
-        return _generateMiddleAchieverQuestion();
-    }
+  /// Generates a question appropriate for the student's class tier, with optional prompt exclusion to avoid repetition
+  ArcadeQuestion generateQuestion(StudentClass studentClass, {Set<String>? excludedPrompts}) {
+    ArcadeQuestion q;
+    int retries = 0;
+    do {
+      switch (studentClass.tier) {
+        case GradeTier.earlyExplorer:
+          q = _generateEarlyExplorerQuestion();
+          break;
+        case GradeTier.primaryBuilder:
+          q = _generatePrimaryBuilderQuestion(studentClass);
+          break;
+        case GradeTier.middleAchiever:
+          q = _generateMiddleAchieverQuestion();
+          break;
+      }
+      retries++;
+    } while (excludedPrompts != null && excludedPrompts.contains(q.displayPrompt) && retries < 100);
+    return q;
   }
 
   /// LKG, UKG, Class 1: Single-digit addition, subtraction, doubles

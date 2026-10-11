@@ -57,6 +57,7 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
   List<bool> _tileUsed = [];
   bool _isChecking = false;
   final List<SpellBeeSprintAttempt> _attempts = [];
+  final Set<String> _usedWords = {};
 
   @override
   void initState() {
@@ -83,6 +84,7 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
       _isGameOver = false;
       _isNewHighScore = false;
       _attempts.clear();
+      _usedWords.clear();
     });
 
     _nextWord();
@@ -105,7 +107,11 @@ class _SpellBeeSprintScreenState extends ConsumerState<SpellBeeSprintScreen> {
 
   void _nextWord() {
     final activeProfile = ref.read(studentProfileProvider);
-    final word = SpellBeeRepository.instance.getRandomSprintWord(activeProfile.studentClass);
+    final word = SpellBeeRepository.instance.getRandomSprintWord(
+      activeProfile.studentClass,
+      excludedWords: _usedWords,
+    );
+    _usedWords.add(word.word.toUpperCase());
     final tiles = SpellBeeRepository.instance.generateLetterTiles(word, maxDecoys: 1);
 
     setState(() {

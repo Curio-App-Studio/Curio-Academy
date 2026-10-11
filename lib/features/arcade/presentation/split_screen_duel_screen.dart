@@ -35,6 +35,7 @@ class _SplitScreenDuelScreenState extends ConsumerState<SplitScreenDuelScreen> {
   bool _p2LockedOut = false;
   int? _winner; // 1 or 2
   int _roundNumber = 1;
+  final Set<String> _usedPrompts = {};
 
   @override
   void initState() {
@@ -49,14 +50,20 @@ class _SplitScreenDuelScreenState extends ConsumerState<SplitScreenDuelScreen> {
       _player2Score = 0;
       _roundNumber = 1;
       _winner = null;
+      _usedPrompts.clear();
     });
     _nextQuestion();
   }
 
   void _nextQuestion() {
     final activeProfile = ref.read(studentProfileProvider);
+    final question = _engine.generateQuestion(
+      activeProfile.studentClass,
+      excludedPrompts: _usedPrompts,
+    );
+    _usedPrompts.add(question.displayPrompt);
     setState(() {
-      _currentQuestion = _engine.generateQuestion(activeProfile.studentClass);
+      _currentQuestion = question;
       _p1LockedOut = false;
       _p2LockedOut = false;
     });

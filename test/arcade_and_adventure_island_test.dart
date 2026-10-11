@@ -42,6 +42,17 @@ void main() {
         expect(q.options.toSet().length, 4);
       }
     });
+
+    test('generateQuestion with excludedPrompts never returns an excluded question prompt', () {
+      final usedPrompts = <String>{};
+      for (int i = 0; i < 25; i++) {
+        final q = engine.generateQuestion(StudentClass.class4, excludedPrompts: usedPrompts);
+        expect(usedPrompts.contains(q.displayPrompt), isFalse,
+            reason: 'Math question prompt ${q.displayPrompt} should not repeat in same sprint');
+        usedPrompts.add(q.displayPrompt);
+      }
+      expect(usedPrompts.length, equals(25));
+    });
   });
 
   group('LocalStorageService Speed Math & Chest Tests', () {

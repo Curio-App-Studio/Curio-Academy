@@ -253,40 +253,87 @@ class SpellBeeRepository {
     return tierWords.isNotEmpty ? tierWords : list;
   }
 
-  /// Returns 5 words tailored for an Adventure Stage (1 to 10)
+  /// Returns 5 distinct words tailored for an Adventure Stage (1 to 10)
   List<SpellBeeWord> getWordsForStage(StudentClass studentClass, int stage) {
     final pool = getWordsForClass(studentClass);
+    final seen = <String>{};
+    final uniquePool = <SpellBeeWord>[];
+    for (final w in pool) {
+      if (seen.add(w.word.toUpperCase())) {
+        uniquePool.add(w);
+      }
+    }
+    if (uniquePool.length < 5) {
+      for (final w in allWordsList) {
+        if (seen.add(w.word.toUpperCase())) {
+          uniquePool.add(w);
+        }
+        if (uniquePool.length >= 5) break;
+      }
+    }
+
     // Deterministic progression for stages so replaying is consistent
     final seed = (studentClass.label.hashCode) ^ (stage * 31);
     final stageRandom = Random(seed);
-    final shuffled = List<SpellBeeWord>.from(pool)..shuffle(stageRandom);
-    
-    // Pick 5 words (loop around if needed)
-    final words = <SpellBeeWord>[];
-    for (int i = 0; i < 5; i++) {
-      words.add(shuffled[i % shuffled.length]);
-    }
-    return words;
+    final shuffled = List<SpellBeeWord>.from(uniquePool)..shuffle(stageRandom);
+    return shuffled.take(5).toList();
   }
 
-  /// Returns random words for 60-Second Speed Spell Bee Sprint
-  SpellBeeWord getRandomSprintWord(StudentClass studentClass) {
+  /// Returns random words for 60-Second Speed Spell Bee Sprint, guaranteeing no repeats
+  SpellBeeWord getRandomSprintWord(StudentClass studentClass, {Set<String>? excludedWords}) {
     final pool = getWordsForClass(studentClass);
+    final normExcluded = excludedWords?.map((w) => w.trim().toUpperCase()).toSet();
+
+    // 1. Filter class pool by excluded words
+    final available = pool.where((w) => !(normExcluded?.contains(w.word.toUpperCase()) ?? false)).toList();
+    if (available.isNotEmpty) {
+      return available[_random.nextInt(available.length)];
+    }
+
+    // 2. If class pool exhausted during sprint, expand to same grade tier
+    final tierWords = allWordsList.where((w) => w.targetClass.tier == studentClass.tier).toList();
+    final tierAvailable = tierWords.where((w) => !(normExcluded?.contains(w.word.toUpperCase()) ?? false)).toList();
+    if (tierAvailable.isNotEmpty) {
+      return tierAvailable[_random.nextInt(tierAvailable.length)];
+    }
+
+    // 3. If tier exhausted, expand to all words
+    final allAvailable = allWordsList.where((w) => !(normExcluded?.contains(w.word.toUpperCase()) ?? false)).toList();
+    if (allAvailable.isNotEmpty) {
+      return allAvailable[_random.nextInt(allAvailable.length)];
+    }
+
+    // 4. Fallback if entire vocabulary exhausted
     return pool[_random.nextInt(pool.length)];
   }
 
-  /// Returns a curated mock exam set (e.g. 10 competition words) for the student class
+  /// Returns a curated mock exam set (e.g. 10 competition words) for the student class with no duplicates
   List<SpellBeeWord> getMockExamWords(StudentClass studentClass, {int count = 10}) {
     final pool = getWordsForClass(studentClass);
-    final shuffled = List<SpellBeeWord>.from(pool)..shuffle(_random);
+    final seen = <String>{};
+    final uniquePool = <SpellBeeWord>[];
+    for (final w in pool) {
+      if (seen.add(w.word.toUpperCase())) {
+        uniquePool.add(w);
+      }
+    }
+
+    if (uniquePool.length < count) {
+      for (final w in allWordsList) {
+        if (seen.add(w.word.toUpperCase())) {
+          uniquePool.add(w);
+        }
+        if (uniquePool.length >= count) break;
+      }
+    }
+
+    final shuffled = List<SpellBeeWord>.from(uniquePool)..shuffle(_random);
     return shuffled.take(count).toList();
   }
 
-  /// Returns words for Spot-The-Correct-Spelling Olympiad MCQ
+  /// Returns words for Spot-The-Correct-Spelling Olympiad MCQ with no duplicates
   List<SpellBeeWord> getMcqWords(StudentClass studentClass, {int count = 10}) {
-    final pool = getWordsForClass(studentClass);
-    final shuffled = List<SpellBeeWord>.from(pool)..shuffle(_random);
-    return shuffled.take(count).toList();
+    return getMockExamWords(studentClass, count: count);
   }
 
   /// Searches the word bank by word, meaning, or language of origin

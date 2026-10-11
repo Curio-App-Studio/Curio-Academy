@@ -114,6 +114,7 @@ class _TimedExamScreenState extends ConsumerState<TimedExamScreen> {
     }
 
     final parsedQuestions = <ExamQuestion>[];
+    final seenPrompts = <String>{};
     for (int i = 0; i < rawActivities.length; i++) {
       final act = rawActivities[i];
       String prompt = act.promptData.text;
@@ -189,6 +190,13 @@ class _TimedExamScreenState extends ConsumerState<TimedExamScreen> {
       prompt = _sanitizeExamPrompt(prompt, answer);
       tts = _sanitizeExamPrompt(tts, answer);
 
+      // Deduplicate so no prompt repeats within the exam
+      final promptKey = prompt.trim().toLowerCase();
+      if (seenPrompts.contains(promptKey)) {
+        continue;
+      }
+      seenPrompts.add(promptKey);
+
       if (options.isEmpty) {
         options = [answer, 'Not this one', 'Something else'];
       }
@@ -201,7 +209,7 @@ class _TimedExamScreenState extends ConsumerState<TimedExamScreen> {
 
       parsedQuestions.add(
         ExamQuestion(
-          questionNumber: i + 1,
+          questionNumber: parsedQuestions.length + 1,
           activity: act,
           prompt: prompt,
           ttsFallback: tts,

@@ -61,6 +61,40 @@ void main() {
       expect(sprintWord.word.isNotEmpty, isTrue);
       expect(sprintWord.definition.isNotEmpty, isTrue);
     });
+
+    test('SpellBeeRepository getRandomSprintWord with excludedWords never repeats words', () {
+      final usedWords = <String>{};
+      for (int i = 0; i < 20; i++) {
+        final word = repo.getRandomSprintWord(StudentClass.class3, excludedWords: usedWords);
+        expect(usedWords.contains(word.word.toUpperCase()), isFalse,
+            reason: 'Word ${word.word} should not have been repeated');
+        usedWords.add(word.word.toUpperCase());
+      }
+      expect(usedWords.length, equals(20));
+    });
+
+    test('SpellBeeRepository getMockExamWords and getMcqWords return unique words with zero duplicates', () {
+      for (final studentClass in StudentClass.values) {
+        final mockWords = repo.getMockExamWords(studentClass, count: 10);
+        expect(mockWords.length, equals(10));
+        final uniqueMock = mockWords.map((w) => w.word.toUpperCase()).toSet();
+        expect(uniqueMock.length, equals(10), reason: 'Mock exam words must be unique for ${studentClass.label}');
+
+        final mcqWords = repo.getMcqWords(studentClass, count: 10);
+        expect(mcqWords.length, equals(10));
+        final uniqueMcq = mcqWords.map((w) => w.word.toUpperCase()).toSet();
+        expect(uniqueMcq.length, equals(10), reason: 'MCQ words must be unique for ${studentClass.label}');
+      }
+    });
+
+    test('SpellBeeRepository getWordsForStage returns 5 unique words with zero duplicates per stage', () {
+      for (int stage = 1; stage <= 5; stage++) {
+        final words = repo.getWordsForStage(StudentClass.class2, stage);
+        expect(words.length, equals(5));
+        final uniqueStageWords = words.map((w) => w.word.toUpperCase()).toSet();
+        expect(uniqueStageWords.length, equals(5), reason: 'Stage $stage must have 5 unique words');
+      }
+    });
   });
 
   group('Spell Bee LocalStorage Persistence Tests', () {

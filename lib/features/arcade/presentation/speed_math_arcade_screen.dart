@@ -57,6 +57,7 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
   int? _selectedOption;
   bool? _isSelectionCorrect;
   final List<SpeedMathAttempt> _attempts = [];
+  final Set<String> _usedPrompts = {};
 
   @override
   void initState() {
@@ -85,6 +86,7 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
       _selectedOption = null;
       _isSelectionCorrect = null;
       _attempts.clear();
+      _usedPrompts.clear();
     });
 
     _nextQuestion();
@@ -106,7 +108,12 @@ class _SpeedMathArcadeScreenState extends ConsumerState<SpeedMathArcadeScreen> w
 
   void _nextQuestion() {
     final activeProfile = ref.read(studentProfileProvider);
-    _currentQuestion = _engine.generateQuestion(activeProfile.studentClass);
+    final question = _engine.generateQuestion(
+      activeProfile.studentClass,
+      excludedPrompts: _usedPrompts,
+    );
+    _usedPrompts.add(question.displayPrompt);
+    _currentQuestion = question;
     _selectedOption = null;
     _isSelectionCorrect = null;
   }
