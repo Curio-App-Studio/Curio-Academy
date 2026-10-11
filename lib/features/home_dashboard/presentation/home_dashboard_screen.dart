@@ -26,6 +26,7 @@ import '../../phonics_abc/presentation/phonics_abc_screen.dart';
 import '../../activities/bubble_pop/presentation/bubble_pop_screen.dart';
 import '../../activities/card_match/presentation/card_match_screen.dart';
 import '../../rhymes_stories/presentation/rhymes_stories_screen.dart';
+import '../../../shared/dialogs/data_management_sheet.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -176,6 +177,9 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               } else if (value == 'membership') {
                 AudioService.instance.playSfx(CurioSfx.click);
                 MembershipPaywallSheet.show(context);
+              } else if (value == 'data_settings') {
+                AudioService.instance.playSfx(CurioSfx.click);
+                DataManagementSheet.show(context);
               }
             },
             itemBuilder: (context) => [
@@ -228,6 +232,22 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(strings.editProfile, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'data_settings',
+                child: Row(
+                  children: [
+                    const Icon(Icons.shield_outlined, color: Color(0xFFEF4444), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        (ref.strings.isHindi ? 'डेटा और रीसेट विकल्प 🛡️' : 'Data & Reset Options 🛡️'),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

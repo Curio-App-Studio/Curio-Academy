@@ -87,6 +87,14 @@ class LocalStorageService implements ILocalStorageService {
   /// Optional listener invoked when student progress changes for VIP Cloud Sync
   static VoidCallback? onVipProgressChanged;
 
+  /// Optional callback to delete cloud backup data as per Data Deletion Policy
+  static Future<void> Function()? onCloudDataDeleteRequested;
+
+  /// Immediately notifies the VIP Cloud Sync listener that student progress has changed
+  static void notifyProgressChanged() {
+    onVipProgressChanged?.call();
+  }
+
   static const String _keyBoard = 'curio_student_board';
   static const String _keyClass = 'curio_student_class';
   static const String _keyName = 'curio_student_name';
@@ -332,6 +340,7 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.setInt(_keyBonusStars, _bonusStars);
       await _prefs?.setInt(_keyStars, _totalStars);
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   @override
@@ -355,6 +364,7 @@ class LocalStorageService implements ILocalStorageService {
         _prefs ??= await SharedPreferences.getInstance();
         await _prefs?.setInt(_keySpeedMathHighScore, score);
       } catch (_) {}
+      notifyProgressChanged();
       return true; // New high score
     }
     return false;
@@ -370,6 +380,7 @@ class LocalStorageService implements ILocalStorageService {
         _prefs ??= await SharedPreferences.getInstance();
         await _prefs?.setInt(_keySpellBeeHighScore, score);
       } catch (_) {}
+      notifyProgressChanged();
       return true; // New high score
     }
     return false;
@@ -438,6 +449,7 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.setInt(_keySpellBeeExamsCount, _spellBeeExamsCount);
       await _prefs?.setInt(_keySpellBeeMockBestScore, _spellBeeMockBestScore);
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   bool isChestClaimed(String chestId) => _claimedChests.contains(chestId);
@@ -448,6 +460,7 @@ class LocalStorageService implements ILocalStorageService {
       _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setStringList(_keyClaimedChests, _claimedChests.toList());
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   final Map<String, StudentQuestionAttempt> _cachedAttempts = {};
@@ -700,6 +713,72 @@ class LocalStorageService implements ILocalStorageService {
     } catch (_) {}
   }
 
+  /// Resets student learning progress (stars, points, completed chapters, chests, games)
+  /// while keeping the student's profile (name, avatar, board, class) and membership intact.
+  Future<void> resetProgressOnly() async {
+    _completedActivities.clear();
+    _cachedAttempts.clear();
+    _cachedChapterActivities.clear();
+    _claimedChests.clear();
+    _completedChapters.clear();
+    _spellBeeMistakes.clear();
+    _bonusStars = 0;
+    _speedMathHighScore = 0;
+    _spellBeeHighScore = 0;
+    _spellBeeMockBestScore = 0;
+    _spellBeeExamsCount = 0;
+    _totalStars = 0;
+    _totalPoints = 0;
+    totalStarsNotifier.value = 0;
+    totalPointsNotifier.value = 0;
+    speedMathHighScoreNotifier.value = 0;
+    spellBeeHighScoreNotifier.value = 0;
+    spellBeeMistakesNotifier.value = [];
+    spellBeeMockBestScoreNotifier.value = 0;
+    mistakeCountNotifier.value = 0;
+
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.remove(_keyStars);
+      await _prefs?.remove(_keyPoints);
+      await _prefs?.remove(_keyCompleted);
+      await _prefs?.remove(_keyQuestionAttempts);
+      await _prefs?.remove(_keyBonusStars);
+      await _prefs?.remove(_keySpeedMathHighScore);
+      await _prefs?.remove(_keySpellBeeHighScore);
+      await _prefs?.remove(_keySpellBeeMistakes);
+      await _prefs?.remove(_keySpellBeeMockBestScore);
+      await _prefs?.remove(_keySpellBeeExamsCount);
+      await _prefs?.remove(_keyClaimedChests);
+      await _prefs?.remove(_keyCompletedChapters);
+    } catch (_) {}
+
+    notifyProgressChanged();
+  }
+
+  /// Resets ALL application data (student profile, learning progress, cloud backups)
+  /// while STRICTLY PRESERVING VIP Membership, billing records, and Google Play entitlement.
+  Future<void> resetAllAppDataExceptMembership() async {
+    // 1. Reset all learning progress
+    await resetProgressOnly();
+
+    // 2. Wipe profile & onboarding status
+    _cachedProfile = null;
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.remove(_keyBoard);
+      await _prefs?.remove(_keyClass);
+      await _prefs?.remove(_keyName);
+      await _prefs?.remove(_keyAvatar);
+      await _prefs?.setBool(_keyOnboarded, false);
+    } catch (_) {}
+
+    // 3. Request deletion of cloud data as per Data Deletion Policy
+    if (onCloudDataDeleteRequested != null) {
+      await onCloudDataDeleteRequested!();
+    }
+  }
+
 
   static String _formatDate(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
@@ -766,6 +845,7 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.setStringList(_keyCompleted, _completedActivities.toList());
       await _prefs?.setInt(_keyStars, _totalStars);
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   @override
@@ -787,6 +867,7 @@ class LocalStorageService implements ILocalStorageService {
       _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setStringList(_keyCompletedChapters, _completedChapters.toList());
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   /// A chapter is marked complete after giving at least 5 answers or completing a test
@@ -835,6 +916,7 @@ class LocalStorageService implements ILocalStorageService {
       _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setInt(_keyPoints, _totalPoints);
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   @override
@@ -847,6 +929,7 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.setString(_keyName, profile.studentName);
       await _prefs?.setString(_keyAvatar, profile.avatarIcon);
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   @override
@@ -1023,6 +1106,7 @@ class LocalStorageService implements ILocalStorageService {
       await _prefs?.setStringList(_keyCompletedChapters, _completedChapters.toList());
       await _prefs?.setInt(_keyStars, _totalStars);
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   @override
@@ -1069,6 +1153,7 @@ class LocalStorageService implements ILocalStorageService {
       final map = _cachedAttempts.map((k, v) => MapEntry(k, v.toJson()));
       await _prefs?.setString(_keyQuestionAttempts, jsonEncode(map));
     } catch (_) {}
+    notifyProgressChanged();
   }
 
   @override

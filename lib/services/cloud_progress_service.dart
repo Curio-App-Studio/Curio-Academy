@@ -78,6 +78,7 @@ class CloudProgressService {
 
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<String?> userEmailNotifier = ValueNotifier<String?>(null);
+  bool _hasPendingSync = false;
 
   /// Checks if current user is entitled to VIP Cloud Progress Backup
   bool get isVipEligible =>
@@ -131,6 +132,10 @@ class CloudProgressService {
 
     LocalStorageService.onVipProgressChanged = () {
       syncProgressToCloud();
+    };
+
+    LocalStorageService.onCloudDataDeleteRequested = () async {
+      await deleteCloudData();
     };
   }
 
@@ -258,9 +263,9 @@ class CloudProgressService {
       final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
       final emailKey = boundEmail.replaceAll('.', '_');
 
-      DocumentSnapshot<Map<String, dynamic>>? doc;
+      final List<Map<String, dynamic>> candidates = [];
 
-      // 2. Priority 1: Query doc(user.uid) directly (conforms to Firestore security rules)
+      // Query doc(user.uid) directly
       if (user != null) {
         try {
           final uidDoc = await FirebaseFirestore.instance
@@ -268,94 +273,100 @@ class CloudProgressService {
               .doc(user.uid)
               .get();
           if (uidDoc.exists && uidDoc.data() != null) {
-            doc = uidDoc;
+            candidates.add(uidDoc.data()!);
           }
         } catch (_) {}
       }
 
-      // Priority 2: Query Cloud Firestore by membership account email
-      if (doc == null || !doc.exists) {
+      // Query doc(emailKey)
+      try {
+        final emailDoc = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(emailKey)
+            .get();
+        if (emailDoc.exists && emailDoc.data() != null) {
+          candidates.add(emailDoc.data()!);
+        }
+      } catch (_) {}
+
+      // Query doc(boundEmail)
+      try {
+        final rawDoc = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(boundEmail)
+            .get();
+        if (rawDoc.exists && rawDoc.data() != null) {
+          candidates.add(rawDoc.data()!);
+        }
+      } catch (_) {}
+
+      // Query by membershipBoundEmail
+      try {
+        final querySnap = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .where('membershipBoundEmail', isEqualTo: boundEmail)
+            .limit(3)
+            .get();
+        for (final d in querySnap.docs) {
+          candidates.add(d.data());
+        }
+      } catch (_) {}
+
+      // Query by parentEmail
+      try {
+        final querySnap = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .where('parentEmail', isEqualTo: boundEmail)
+            .limit(3)
+            .get();
+        for (final d in querySnap.docs) {
+          candidates.add(d.data());
+        }
+      } catch (_) {}
+
+      // Fallback: Check existing documents in vip_students
+      if (candidates.isEmpty) {
         try {
-          final emailDoc = await FirebaseFirestore.instance
+          final allSnap = await FirebaseFirestore.instance
               .collection(_collectionName)
-              .doc(emailKey)
+              .limit(10)
               .get();
-          if (emailDoc.exists && emailDoc.data() != null) {
-            doc = emailDoc;
+          for (final d in allSnap.docs) {
+            final dData = d.data();
+            final pEmail = (dData['parentEmail'] ?? dData['membershipBoundEmail'])?.toString().toLowerCase();
+            if (pEmail == boundEmail || pEmail == 'gpt.vivek@gmail.com') {
+              candidates.add(dData);
+            }
+          }
+          if (candidates.isEmpty && allSnap.docs.isNotEmpty) {
+            candidates.add(allSnap.docs.first.data());
           }
         } catch (_) {}
+      }
 
-        if (doc == null || !doc.exists) {
-          try {
-            final rawDoc = await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .doc(boundEmail)
-                .get();
-            if (rawDoc.exists && rawDoc.data() != null) {
-              doc = rawDoc;
-            }
-          } catch (_) {}
-        }
+      // Pick the document with the highest genuine progress
+      Map<String, dynamic>? bestData;
+      int bestScore = -1;
 
-        if (doc == null || !doc.exists) {
-          try {
-            final querySnap = await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .where('membershipBoundEmail', isEqualTo: boundEmail)
-                .limit(1)
-                .get();
-            if (querySnap.docs.isNotEmpty) {
-              doc = querySnap.docs.first;
-            }
-          } catch (_) {}
-        }
+      for (final cand in candidates) {
+        final stars = (cand['stars'] as num?)?.toInt() ?? 0;
+        final points = (cand['points'] as num?)?.toInt() ?? 0;
+        final chaptersCount = (cand['completedChapters'] as List?)?.length ?? 0;
+        final attemptsCount = (cand['questionAttempts'] as Map?)?.length ?? 0;
+        final hasName = (cand['name'] ?? cand['studentName'])?.toString().isNotEmpty == true;
 
-        if (doc == null || !doc.exists) {
-          try {
-            final querySnap = await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .where('parentEmail', isEqualTo: boundEmail)
-                .limit(1)
-                .get();
-            if (querySnap.docs.isNotEmpty) {
-              doc = querySnap.docs.first;
-            }
-          } catch (_) {}
-        }
-
-        // Fallback: Check existing documents in vip_students
-        if (doc == null || !doc.exists) {
-          try {
-            final allSnap = await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .limit(10)
-                .get();
-            debugPrint('[autoSyncAndRestore] Docs found in $_collectionName: ${allSnap.docs.length}');
-            for (final d in allSnap.docs) {
-              final dData = d.data();
-              debugPrint('[autoSyncAndRestore] doc: ${d.id} -> $dData');
-              final pEmail = (dData['parentEmail'] ?? dData['membershipBoundEmail'])?.toString().toLowerCase();
-              if (pEmail == boundEmail || pEmail == 'gpt.vivek@gmail.com') {
-                doc = d;
-                break;
-              }
-            }
-            if (doc == null && allSnap.docs.isNotEmpty) {
-              doc = allSnap.docs.first;
-              debugPrint('[autoSyncAndRestore] Using first doc in collection: ${doc.id}');
-            }
-          } catch (e) {
-            debugPrint('[autoSyncAndRestore] allSnap error: $e');
-          }
+        final score = (stars * 100) + points + (chaptersCount * 50) + (attemptsCount * 10) + (hasName ? 5 : 0);
+        if (score > bestScore) {
+          bestScore = score;
+          bestData = cand;
         }
       }
 
-      if (doc != null && doc.exists && doc.data() != null) {
-        final data = doc.data()!;
-        debugPrint('[autoSyncAndRestore] Selected document: ${doc.id}, data: $data');
-        final cloudStars = (data['stars'] as num?)?.toInt() ?? 0;
-        final studentName = (data['name'] ?? data['studentName']) as String?;
-        final completedChapters = data['completedChapters'] as List?;
+      if (bestData != null) {
+        debugPrint('[autoSyncAndRestore] Selected best candidate data: $bestData');
+        final cloudStars = (bestData['stars'] as num?)?.toInt() ?? 0;
+        final studentName = (bestData['name'] ?? bestData['studentName']) as String?;
+        final completedChapters = bestData['completedChapters'] as List?;
 
         final hasRealBackup = (cloudStars > 0) ||
             (completedChapters != null && completedChapters.isNotEmpty) ||
@@ -367,7 +378,7 @@ class CloudProgressService {
         debugPrint('[autoSyncAndRestore] hasRealBackup: $hasRealBackup (stars=$cloudStars, name=$studentName)');
 
         if (hasRealBackup) {
-          await LocalStorageService.instance.restoreProgressSnapshot(data);
+          await LocalStorageService.instance.restoreProgressSnapshot(bestData);
           debugPrint('[autoSyncAndRestore] Successfully restored VIP backup for $boundEmail (${studentName ?? ""}, $cloudStars stars)!');
           developer.log(
             'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore for $boundEmail (${studentName ?? ""}, $cloudStars stars).',
@@ -397,94 +408,124 @@ class CloudProgressService {
       return false;
     }
 
-    if (isSyncingNotifier.value) return false;
+    final snapshot = LocalStorageService.instance.exportProgressSnapshot();
+    final studentName = snapshot['name']?.toString().trim();
+    final stars = (snapshot['stars'] as num?)?.toInt() ?? 0;
+    final chapters = (snapshot['completedChapters'] as List?)?.length ?? 0;
+
+    // Never overwrite cloud backup with an uninitialized default or wiped profile
+    final isDefaultOrEmpty = (studentName == null ||
+            studentName.isEmpty ||
+            studentName == 'Young Explorer' ||
+            studentName == 'Little Champ') &&
+        stars == 0 &&
+        chapters == 0;
+
+    if (isDefaultOrEmpty && !force) {
+      developer.log(
+        'CloudProgressService: Skipping cloud sync of empty/default profile to protect cloud backup.',
+        name: 'CloudSync',
+      );
+      return false;
+    }
+
+    if (isSyncingNotifier.value) {
+      _hasPendingSync = true;
+      while (isSyncingNotifier.value) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+      return true;
+    }
 
     isSyncingNotifier.value = true;
     try {
-      final snapshot = LocalStorageService.instance.exportProgressSnapshot();
-      final jsonString = jsonEncode(snapshot);
+      do {
+        _hasPendingSync = false;
+        final currentSnapshot = LocalStorageService.instance.exportProgressSnapshot();
+        final jsonString = jsonEncode(currentSnapshot);
 
-      // Persist local cache mirror
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyCachedSnapshot, jsonString);
+        // Persist local cache mirror
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyCachedSnapshot, jsonString);
 
-      _lastSyncTime = DateTime.now();
-      await prefs.setString(_keyLastCloudSync, _lastSyncTime!.toIso8601String());
+        _lastSyncTime = DateTime.now();
+        await prefs.setString(_keyLastCloudSync, _lastSyncTime!.toIso8601String());
 
-      // If Firebase is available, ensure background session and upload directly under membership Google account
-      var user = currentUser;
-      if (isFirebaseAvailable && user == null) {
-        try {
-          final googleUser = await _googleSignIn.signInSilently();
-          if (googleUser != null) {
-            final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
-            final selectedEmail = googleUser.email.trim().toLowerCase();
-            if (boundEmail == null || boundEmail.isEmpty || selectedEmail == boundEmail) {
-              final googleAuth = await googleUser.authentication;
-              final credential = GoogleAuthProvider.credential(
-                accessToken: googleAuth.accessToken,
-                idToken: googleAuth.idToken,
-              );
-              final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-              user = userCredential.user;
-              _cachedEmail = user?.email ?? googleUser.email;
-              userEmailNotifier.value = _cachedEmail;
-            }
-          }
-        } catch (_) {}
-      }
-
-      if (isFirebaseAvailable && user == null) {
-        try {
-          final anonCred = await FirebaseAuth.instance.signInAnonymously();
-          user = anonCred.user;
-        } catch (_) {}
-      }
-
-      if (isFirebaseAvailable) {
-        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
-        final emailKey = boundEmail.replaceAll('.', '_');
-
-        final firestoreData = Map<String, dynamic>.from(snapshot);
-        firestoreData['updatedAt'] = FieldValue.serverTimestamp();
-        firestoreData['parentEmail'] = boundEmail;
-        firestoreData['membershipBoundEmail'] = boundEmail;
-        firestoreData['studentName'] = snapshot['name'];
-
-        // Save under user.uid first so security rules (request.auth.uid == userId) succeed!
-        if (user != null) {
+        // If Firebase is available, ensure background session and upload directly under membership Google account
+        var user = currentUser;
+        if (isFirebaseAvailable && user == null) {
           try {
-            await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .doc(user.uid)
-                .set(firestoreData, SetOptions(merge: true));
+            final googleUser = await _googleSignIn.signInSilently();
+            if (googleUser != null) {
+              final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+              final selectedEmail = googleUser.email.trim().toLowerCase();
+              if (boundEmail == null || boundEmail.isEmpty || selectedEmail == boundEmail) {
+                final googleAuth = await googleUser.authentication;
+                final credential = GoogleAuthProvider.credential(
+                  accessToken: googleAuth.accessToken,
+                  idToken: googleAuth.idToken,
+                );
+                final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+                user = userCredential.user;
+                _cachedEmail = user?.email ?? googleUser.email;
+                userEmailNotifier.value = _cachedEmail;
+              }
+            }
           } catch (_) {}
         }
 
-        try {
-          await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .doc(emailKey)
-              .set(firestoreData, SetOptions(merge: true));
-        } catch (_) {}
+        if (isFirebaseAvailable && user == null) {
+          try {
+            final anonCred = await FirebaseAuth.instance.signInAnonymously();
+            user = anonCred.user;
+          } catch (_) {}
+        }
 
-        try {
-          await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .doc(boundEmail)
-              .set(firestoreData, SetOptions(merge: true));
-        } catch (_) {}
+        if (isFirebaseAvailable) {
+          final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+          final emailKey = boundEmail.replaceAll('.', '_');
 
-        developer.log(
-          'CloudProgressService: VIP progress synced to Cloud Firestore for $boundEmail (${snapshot["stars"]} stars).',
-          name: 'CloudSync',
-        );
-      } else {
-        developer.log(
-          'CloudProgressService: VIP progress cached locally. Will sync to Firestore once Firebase is available.',
-          name: 'CloudSync',
-        );
-      }
+          final firestoreData = Map<String, dynamic>.from(currentSnapshot);
+          firestoreData['updatedAt'] = FieldValue.serverTimestamp();
+          firestoreData['parentEmail'] = boundEmail;
+          firestoreData['membershipBoundEmail'] = boundEmail;
+          firestoreData['studentName'] = currentSnapshot['name'];
+
+          // Save under user.uid first so security rules (request.auth.uid == userId) succeed!
+          if (user != null) {
+            try {
+              await FirebaseFirestore.instance
+                  .collection(_collectionName)
+                  .doc(user.uid)
+                  .set(firestoreData, SetOptions(merge: true));
+            } catch (_) {}
+          }
+
+          try {
+            await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(emailKey)
+                .set(firestoreData, SetOptions(merge: true));
+          } catch (_) {}
+
+          try {
+            await FirebaseFirestore.instance
+                .collection(_collectionName)
+                .doc(boundEmail)
+                .set(firestoreData, SetOptions(merge: true));
+          } catch (_) {}
+
+          developer.log(
+            'CloudProgressService: VIP progress synced to Cloud Firestore for $boundEmail (${currentSnapshot["stars"]} stars, ${currentSnapshot["points"]} points).',
+            name: 'CloudSync',
+          );
+        } else {
+          developer.log(
+            'CloudProgressService: VIP progress cached locally. Will sync to Firestore once Firebase is available.',
+            name: 'CloudSync',
+          );
+        }
+      } while (_hasPendingSync);
 
       return true;
     } catch (e, stack) {
@@ -497,6 +538,64 @@ class CloudProgressService {
       return false;
     } finally {
       isSyncingNotifier.value = false;
+    }
+  }
+
+  /// Permanently deletes all student cloud progress from Cloud Firestore as per
+  /// Google Play Families Data Deletion Policy and user cancellation requests.
+  Future<bool> deleteCloudData() async {
+    try {
+      // 1. Clear local cloud sync cache
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyCachedSnapshot);
+      await prefs.remove(_keyLastCloudSync);
+      _lastSyncTime = null;
+
+      if (!isFirebaseAvailable) return true;
+
+      final user = currentUser;
+      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+      final emailKey = boundEmail.replaceAll('.', '_');
+
+      // 2. Delete user.uid document
+      if (user != null) {
+        try {
+          await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(user.uid)
+              .delete();
+        } catch (_) {}
+      }
+
+      // 3. Delete emailKey document
+      try {
+        await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(emailKey)
+            .delete();
+      } catch (_) {}
+
+      // 4. Delete boundEmail document
+      try {
+        await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(boundEmail)
+            .delete();
+      } catch (_) {}
+
+      developer.log(
+        'CloudProgressService: Cloud data permanently deleted for $boundEmail as per data deletion policy.',
+        name: 'CloudSync',
+      );
+      return true;
+    } catch (e, stack) {
+      developer.log(
+        'CloudProgressService: Error deleting cloud data: $e',
+        error: e,
+        stackTrace: stack,
+        name: 'CloudSync',
+      );
+      return false;
     }
   }
 

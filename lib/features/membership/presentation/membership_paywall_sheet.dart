@@ -1224,6 +1224,25 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                 ),
                 const SizedBox(height: 6),
 
+                // Button 2b: Data Deletion Policy (Cloud Data Deletion)
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _confirmDeleteCloudData(isHindi);
+                    },
+                    icon: const Icon(Icons.delete_forever_rounded, size: 16, color: Color(0xFFDC2626)),
+                    label: Text(
+                      isHindi
+                          ? 'क्लाउड डेटा हटाएं (डेटा हटाना नीति)'
+                          : 'Delete Cloud Data (Data Deletion Policy)',
+                      style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12.5, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+
                 // Button 3: Keep Subscription (Dismiss)
                 SizedBox(
                   width: double.infinity,
@@ -1241,6 +1260,59 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
           ),
         );
       },
+    );
+  }
+
+  /// Confirmation dialog before permanently deleting cloud data as per Data Deletion Policy
+  void _confirmDeleteCloudData(bool isHindi) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          isHindi ? 'क्लाउड बैकअप हटाएं?' : 'Delete Cloud Backup?',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          isHindi
+              ? 'Google Play डेटा विलोपन नीति के अनुसार, यह Cloud Firestore से आपके बैकअप को हमेशा के लिए हटा देगा।'
+              : 'Under Google Play Data Deletion Policy, this permanently deletes your backup records from Cloud Firestore.',
+          style: const TextStyle(fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(isHindi ? 'रद्द करें' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final success = await CloudProgressService().deleteCloudData();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? (isHindi
+                              ? 'क्लाउड डेटा हमेशा के लिए हटा दिया गया है।'
+                              : 'Cloud backup permanently deleted from Firestore.')
+                          : (isHindi
+                              ? 'क्लाउड डेटा हटाने में विफल।'
+                              : 'Failed to delete cloud data.'),
+                    ),
+                    backgroundColor: const Color(0xFFDC2626),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isHindi ? 'हाँ, क्लाउड डेटा हटाएं' : 'Yes, Delete Cloud Data'),
+          ),
+        ],
+      ),
     );
   }
 
