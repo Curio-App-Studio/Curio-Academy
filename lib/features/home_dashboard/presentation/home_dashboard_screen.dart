@@ -30,6 +30,7 @@ import '../../../shared/dialogs/data_management_sheet.dart';
 import '../../tracing/presentation/tracing_screen.dart';
 import '../../smart_revision/presentation/smart_revision_screen.dart';
 import '../../feedback/presentation/feedback_sheet.dart';
+import '../../../services/notification_service.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -45,6 +46,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       InAppUpdateService.instance.checkForUpdate(context: context);
       _checkMilestoneReview();
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          NotificationService.instance.requestPermissions();
+        }
+      });
     });
   }
 

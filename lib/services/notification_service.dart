@@ -43,8 +43,11 @@ class NotificationService {
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
-  /// Initializes Firebase Cloud Messaging and Local Notifications
-  Future<void> initialize() async {
+  bool _permissionRequested = false;
+
+  /// Initializes Firebase Cloud Messaging and Local Notifications in the background
+  /// Note: The system permission dialog is deferred until user reaches the Dashboard!
+  Future<void> initialize({bool requestPermissionOnStartup = false}) async {
     if (_initialized) return;
 
     try {
@@ -54,8 +57,10 @@ class NotificationService {
       // 2. Initialize local notifications for foreground heads-up display
       await _initLocalNotifications();
 
-      // 3. Request permissions (Android 13+ and iOS)
-      await _requestPermissions();
+      // 3. Request permissions only if requested on startup (otherwise deferred to Dashboard)
+      if (requestPermissionOnStartup) {
+        await requestPermissions();
+      }
 
       // 4. Configure foreground presentation options
       await _messaging.setForegroundNotificationPresentationOptions(
@@ -107,7 +112,10 @@ class NotificationService {
     }
   }
 
-  Future<void> _requestPermissions() async {
+  /// Requests notification permission on Dashboard when user has settled
+  Future<void> requestPermissions() async {
+    if (_permissionRequested) return;
+    _permissionRequested = true;
     try {
       final settings = await _messaging.requestPermission(
         alert: true,
@@ -122,6 +130,9 @@ class NotificationService {
             .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
         await androidImplementation?.requestNotificationsPermission();
       }
+
+      // Sync token again now that permission has been determined
+      await _retrieveAndSyncToken();
     } catch (e) {
       debugPrint('[NotificationService] Permission request note: $e');
     }
