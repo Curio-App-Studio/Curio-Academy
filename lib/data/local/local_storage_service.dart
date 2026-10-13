@@ -1304,6 +1304,9 @@ class LocalStorageService implements ILocalStorageService {
     await _prefs?.setString(_keyName, name);
     await _prefs?.setString(_keyAvatar, avatar);
     await _prefs?.setBool(_keyOnboarded, true);
+    _isCloudSyncEnabled = true;
+    cloudSyncEnabledNotifier.value = true;
+    await _prefs?.setBool(_keyCloudSyncEnabled, true);
 
     if (data.containsKey('bonusStars')) {
       _bonusStars = (data['bonusStars'] as num?)?.toInt() ?? 0;

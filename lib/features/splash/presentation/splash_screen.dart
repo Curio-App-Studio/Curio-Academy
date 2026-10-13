@@ -78,18 +78,22 @@ class _SplashScreenState extends State<SplashScreen>
 
     bool hasCloudBackup = false;
 
-    if (isVip && LocalStorageService.instance.isCloudSyncEnabled) {
-      // 2. VIP user with Cloud Sync enabled: connect membership Google Account & auto-sync/restore backup
+    // 2. Check and restore cloud backup for VIP / subscribed user or bound account (e.g. gpt.vivek@gmail.com)
+    // Runs on fresh install so existing profiles and progress open the Dashboard directly!
+    if (isVip || LocalStorageService.instance.boundMembershipEmail != null) {
       try {
-        hasCloudBackup = await CloudProgressService().autoSyncAndRestore().timeout(
+        hasCloudBackup = await CloudProgressService().autoSyncAndRestore(force: true).timeout(
           const Duration(milliseconds: 5500),
           onTimeout: () => false,
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[SplashScreen] autoSyncAndRestore error: $e');
+      }
 
-      // If cloud backup existed and was restored, mark onboarded so we can skip profile setup
+      // If cloud backup existed and was restored, mark onboarded & enable cloud sync
       if (hasCloudBackup) {
         await LocalStorageService.instance.setOnboarded(true);
+        await LocalStorageService.instance.setCloudSyncEnabled(true);
       }
     }
 
