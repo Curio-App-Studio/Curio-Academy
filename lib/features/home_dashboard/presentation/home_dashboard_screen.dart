@@ -29,6 +29,7 @@ import '../../rhymes_stories/presentation/rhymes_stories_screen.dart';
 import '../../../shared/dialogs/data_management_sheet.dart';
 import '../../tracing/presentation/tracing_screen.dart';
 import '../../smart_revision/presentation/smart_revision_screen.dart';
+import '../../feedback/presentation/feedback_sheet.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -185,6 +186,9 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               } else if (value == 'revision') {
                 AudioService.instance.playSfx(CurioSfx.click);
                 SmartRevisionScreen.push(context);
+              } else if (value == 'feedback') {
+                AudioService.instance.playSfx(CurioSfx.click);
+                FeedbackBottomSheet.show(context);
               } else if (value == 'data_settings') {
                 AudioService.instance.playSfx(CurioSfx.click);
                 DataManagementSheet.show(context);
@@ -272,6 +276,22 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(strings.editProfile, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'feedback',
+                child: Row(
+                  children: [
+                    const Icon(Icons.rate_review_rounded, color: Color(0xFF8B5CF6), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        (ref.strings.isHindi ? 'प्रतिक्रिया और सुझाव 💬' : 'Feedback & Suggestions 💬'),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

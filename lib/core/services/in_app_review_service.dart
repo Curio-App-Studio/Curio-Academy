@@ -65,9 +65,9 @@ class InAppReviewService {
     return true;
   }
 
-  /// Displays a child-safe Parent Gate dialog before opening the Play Store review.
-  /// This complies with Google Play Families Policy for children under 13.
-  Future<void> showParentGatedReview(BuildContext context) async {
+  /// Checks parental verification with a math challenge before proceeding.
+  /// Complies with Google Play Families Policy for children under 13.
+  static Future<bool> verifyParentGate(BuildContext context, {String? reason}) async {
     final random = Random();
     final a = random.nextInt(8) + 11; // 11 to 18
     final b = random.nextInt(9) + 4;  // 4 to 12
@@ -96,9 +96,9 @@ class InAppReviewService {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Help us keep Curio Academy awesome! Please verify you are a parent to share your feedback.',
-                style: TextStyle(fontSize: 14, color: Color(0xFF475569)),
+              Text(
+                reason ?? 'Help us keep Curio Academy awesome! Please verify you are a parent to continue.',
+                style: const TextStyle(fontSize: 14, color: Color(0xFF475569)),
               ),
               const SizedBox(height: 16),
               Container(
@@ -156,11 +156,22 @@ class InAppReviewService {
                   setState(() => errorMessage = 'Incorrect answer. Try again!');
                 }
               },
-              child: const Text('Verify & Rate ⭐'),
+              child: const Text('Verify 🛡️'),
             ),
           ],
         ),
       ),
+    );
+
+    return verified ?? false;
+  }
+
+  /// Displays a child-safe Parent Gate dialog before opening the Play Store review.
+  /// This complies with Google Play Families Policy for children under 13.
+  Future<void> showParentGatedReview(BuildContext context) async {
+    final verified = await verifyParentGate(
+      context,
+      reason: 'Help us keep Curio Academy awesome! Please verify you are a parent to share your review.',
     );
 
     if (verified == true) {
