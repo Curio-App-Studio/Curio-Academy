@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/audio/audio_service.dart';
 import '../../../core/services/device_info_helper.dart';
 import '../../../data/local/local_storage_service.dart';
+import '../../../services/cloud_progress_service.dart';
 import '../data/feedback_model.dart';
 import '../domain/feedback_service.dart';
 
@@ -38,7 +39,7 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
   int _rating = 5;
   FeedbackCategory _selectedCategory = FeedbackCategory.feature;
   final TextEditingController _commentController = TextEditingController();
-  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _gmailController = TextEditingController();
   bool _isSubmitting = false;
   bool _isSubmitted = false;
   AppDeviceDetails? _deviceDetails;
@@ -49,6 +50,16 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
     _gatePassed = widget.initialGatePassed;
     _generateChallenge();
     _loadDeviceInfo();
+    _initGmailAccount();
+  }
+
+  void _initGmailAccount() {
+    final activeEmail = CloudProgressService().googleAccountEmail ??
+        LocalStorageService.instance.boundMembershipEmail ??
+        '';
+    if (activeEmail.isNotEmpty) {
+      _gmailController.text = activeEmail;
+    }
   }
 
   void _loadDeviceInfo() async {
@@ -62,7 +73,7 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
   void dispose() {
     _gateController.dispose();
     _commentController.dispose();
-    _contactController.dispose();
+    _gmailController.dispose();
     super.dispose();
   }
 
@@ -145,12 +156,19 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
     try {
       final profile = await LocalStorageService.instance.getStudentProfile();
       final deviceDetails = _deviceDetails ?? await DeviceInfoHelper.getDeviceDetails();
+      final enteredGmail = _gmailController.text.trim();
+      final effectiveGmail = enteredGmail.isNotEmpty
+          ? enteredGmail
+          : (CloudProgressService().googleAccountEmail ??
+             LocalStorageService.instance.boundMembershipEmail ??
+             'anonymous');
 
       final feedback = UserFeedback(
+        gmailId: effectiveGmail,
         rating: _rating,
         category: _selectedCategory,
         comment: comment.isEmpty ? 'Rating: $_rating Stars' : comment,
-        contactInfo: _contactController.text.trim().isEmpty ? null : _contactController.text.trim(),
+        contactInfo: enteredGmail.isEmpty ? null : enteredGmail,
         studentName: profile?.studentName,
         studentClass: profile?.studentClass.label,
         board: profile?.board.code,
@@ -517,20 +535,23 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
         ),
         const SizedBox(height: 12),
 
-        // Optional contact info
+        // Parent's Gmail ID (Auto-populated or editable)
         TextField(
-          controller: _contactController,
+          controller: _gmailController,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.alternate_email_rounded, size: 18, color: Color(0xFF64748B)),
-            hintText: isHindi
-                ? 'ईमेल या फोन (वैकल्पिक - यदि आप उत्तर चाहते हैं)'
-                : 'Email or Phone (Optional, if you would like a reply)',
-            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            prefixIcon: const Icon(Icons.mark_email_read_rounded, size: 20, color: Color(0xFF6366F1)),
+            labelText: isHindi ? 'अभिभावक का Gmail ID' : "Parent's Gmail ID",
+            labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+            hintText: 'e.g. parent@gmail.com',
+            helperText: isHindi
+                ? 'सभी सुझाव इस Gmail ID के अनुसार ग्रुप होंगे'
+                : 'All feedback will be grouped by this Gmail ID',
+            helperStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),

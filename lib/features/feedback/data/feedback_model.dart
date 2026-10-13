@@ -27,9 +27,10 @@ enum FeedbackCategory {
   }
 }
 
-/// Model encapsulating user feedback submitted to Firestore with device, OS, and app metadata
+/// Model encapsulating user feedback submitted to Firestore with device, OS, Gmail ID, and app metadata
 class UserFeedback {
   final String? id;
+  final String gmailId;
   final int rating; // 1 to 5
   final FeedbackCategory category;
   final String comment;
@@ -49,6 +50,7 @@ class UserFeedback {
 
   const UserFeedback({
     this.id,
+    this.gmailId = 'anonymous',
     required this.rating,
     required this.category,
     required this.comment,
@@ -69,6 +71,7 @@ class UserFeedback {
 
   Map<String, dynamic> toMap() {
     return {
+      'gmailId': gmailId.trim().toLowerCase(),
       'rating': rating,
       'category': category.name,
       'categoryLabel': category.labelEn,
@@ -91,6 +94,18 @@ class UserFeedback {
     };
   }
 
+  Map<String, dynamic> toSummaryMap() {
+    return {
+      'rating': rating,
+      'category': category.name,
+      'categoryLabel': category.labelEn,
+      'comment': comment.trim(),
+      'submittedAt': createdAt.toIso8601String(),
+      'appVersion': '$appVersion+$buildNumber',
+      'device': '$deviceBrand $deviceModel'.trim(),
+    };
+  }
+
   factory UserFeedback.fromMap(String id, Map<String, dynamic> map) {
     DateTime parsedDate;
     final created = map['createdAt'];
@@ -104,6 +119,7 @@ class UserFeedback {
 
     return UserFeedback(
       id: id,
+      gmailId: map['gmailId'] as String? ?? 'anonymous',
       rating: (map['rating'] as num?)?.toInt() ?? 5,
       category: FeedbackCategory.fromString(map['category'] as String?),
       comment: map['comment'] as String? ?? '',

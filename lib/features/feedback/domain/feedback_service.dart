@@ -12,22 +12,58 @@ class FeedbackService {
   static const String _collectionName = 'user_feedback';
   static const String _keyOfflineFeedback = 'curio_pending_offline_feedback';
 
-  /// Submits feedback to Cloud Firestore `user_feedback` collection.
-  /// If offline or if Firestore encounters an error, saves locally to retry later.
+  /// Sanitizes Gmail address into a safe Firestore document key
+  static String sanitizeGmailId(String? email) {
+    if (email == null || email.trim().isEmpty) return 'anonymous';
+    final cleaned = email.trim().toLowerCase().replaceAll('/', '_');
+    return cleaned.isEmpty ? 'anonymous' : cleaned;
+  }
+
+  /// Submits feedback to Cloud Firestore, grouped under the user's Gmail ID.
+  ///
+  /// Grouping Hierarchy in Firestore:
+  /// - Parent Document: `user_feedback/{sanitizedGmailId}`
+  ///   Holds the summary (total feedbacks, latest rating, student profile, recent history).
+  /// - Subcollection: `user_feedback/{sanitizedGmailId}/submissions/{submissionId}`
+  ///   Holds each granular, individual feedback item with device/OS/app metadata.
   Future<bool> submitFeedback(UserFeedback feedback) async {
+    final gmailDocId = sanitizeGmailId(feedback.gmailId);
+
     try {
-      debugPrint('[FeedbackService] Sending feedback (${feedback.category.name}, ${feedback.rating} stars) to Firestore...');
-      await FirebaseFirestore.instance
-          .collection(_collectionName)
+      debugPrint('[FeedbackService] Sending feedback (${feedback.category.name}, ${feedback.rating} stars) for Gmail: $gmailDocId...');
+      final userDocRef = FirebaseFirestore.instance.collection(_collectionName).doc(gmailDocId);
+
+      // 1. Save detailed submission document in the user's 'submissions' subcollection
+      final submissionRef = await userDocRef
+          .collection('submissions')
           .add(feedback.toMap())
           .timeout(const Duration(seconds: 8));
-      debugPrint('[FeedbackService] Feedback submitted successfully to Firestore.');
 
-      // Also try syncing any previously pending offline feedbacks
+      // 2. Update parent user summary document grouped by Gmail ID
+      await userDocRef.set({
+        'gmailId': feedback.gmailId.trim().isNotEmpty ? feedback.gmailId.trim().toLowerCase() : 'anonymous',
+        'studentName': feedback.studentName ?? 'Anonymous',
+        'studentClass': feedback.studentClass ?? 'Unknown',
+        'board': feedback.board ?? 'CBSE',
+        'totalFeedbackCount': FieldValue.increment(1),
+        'latestRating': feedback.rating,
+        'latestCategory': feedback.category.name,
+        'latestCategoryLabel': feedback.category.labelEn,
+        'latestComment': feedback.comment.trim(),
+        'latestSubmittedAt': FieldValue.serverTimestamp(),
+        'latestDevice': '${feedback.deviceBrand} ${feedback.deviceModel}'.trim(),
+        'latestOsVersion': feedback.osVersion,
+        'appVersion': '${feedback.appVersion}+${feedback.buildNumber}',
+        'recentFeedbacks': FieldValue.arrayUnion([feedback.toSummaryMap()]),
+      }, SetOptions(merge: true)).timeout(const Duration(seconds: 8));
+
+      debugPrint('[FeedbackService] Feedback submitted successfully: user_feedback/$gmailDocId/submissions/${submissionRef.id}');
+
+      // Sync any pending items from the offline queue
       _syncOfflineQueue();
       return true;
     } catch (e) {
-      debugPrint('[FeedbackService] Firestore direct write failed ($e). Caching locally in offline queue.');
+      debugPrint('[FeedbackService] Firestore write failed ($e). Caching locally in offline queue.');
       await _cacheOfflineFeedback(feedback);
       return true;
     }
@@ -58,10 +94,24 @@ class FeedbackService {
       for (final raw in list) {
         try {
           final map = jsonDecode(raw) as Map<String, dynamic>;
-          await FirebaseFirestore.instance.collection(_collectionName).add({
+          final gmailId = map['gmailId'] as String? ?? 'anonymous';
+          final gmailDocId = sanitizeGmailId(gmailId);
+          final userDocRef = FirebaseFirestore.instance.collection(_collectionName).doc(gmailDocId);
+
+          await userDocRef.collection('submissions').add({
             ...map,
             'createdAt': FieldValue.serverTimestamp(),
           });
+
+          await userDocRef.set({
+            'gmailId': gmailId,
+            'totalFeedbackCount': FieldValue.increment(1),
+            'latestRating': map['rating'] ?? 5,
+            'latestCategory': map['category'] ?? 'feature',
+            'latestComment': map['comment'] ?? '',
+            'latestSubmittedAt': FieldValue.serverTimestamp(),
+            'appVersion': map['fullAppVersion'] ?? '1.0.0+11',
+          }, SetOptions(merge: true));
         } catch (_) {
           remaining.add(raw);
         }

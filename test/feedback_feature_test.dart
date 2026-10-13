@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:curio_math/features/feedback/data/feedback_model.dart';
+import 'package:curio_math/features/feedback/domain/feedback_service.dart';
 import 'package:curio_math/features/feedback/presentation/feedback_sheet.dart';
 
 void main() {
   group('UserFeedback Model Tests', () {
-    test('UserFeedback creates map properly and handles categories', () {
+    test('UserFeedback creates map properly and handles categories and gmailId', () {
       final feedback = UserFeedback(
+        gmailId: 'Parent.Aarav@gmail.com',
         rating: 5,
         category: FeedbackCategory.feature,
         comment: 'Great app! Please add multiplication tables practice.',
-        contactInfo: 'parent@example.com',
+        contactInfo: 'parent.aarav@gmail.com',
         studentName: 'Aarav',
         studentClass: 'Class 3',
         board: 'CBSE',
@@ -26,10 +28,11 @@ void main() {
       );
 
       final map = feedback.toMap();
+      expect(map['gmailId'], 'parent.aarav@gmail.com');
       expect(map['rating'], 5);
       expect(map['category'], 'feature');
       expect(map['comment'], 'Great app! Please add multiplication tables practice.');
-      expect(map['contactInfo'], 'parent@example.com');
+      expect(map['contactInfo'], 'parent.aarav@gmail.com');
       expect(map['studentName'], 'Aarav');
       expect(map['studentClass'], 'Class 3');
       expect(map['board'], 'CBSE');
@@ -42,6 +45,19 @@ void main() {
       expect(map['deviceManufacturer'], 'Samsung');
       expect(map['osVersion'], 'Android 14 (API 34)');
       expect(map['osSdkInt'], 34);
+
+      final summary = feedback.toSummaryMap();
+      expect(summary['rating'], 5);
+      expect(summary['category'], 'feature');
+      expect(summary['device'], 'Samsung SM-G991B');
+    });
+
+    test('FeedbackService sanitizeGmailId normalizes emails safely', () {
+      expect(FeedbackService.sanitizeGmailId('Vivek.Parent@Gmail.Com'), 'vivek.parent@gmail.com');
+      expect(FeedbackService.sanitizeGmailId('   user@gmail.com  '), 'user@gmail.com');
+      expect(FeedbackService.sanitizeGmailId('user/test@gmail.com'), 'user_test@gmail.com');
+      expect(FeedbackService.sanitizeGmailId(''), 'anonymous');
+      expect(FeedbackService.sanitizeGmailId(null), 'anonymous');
     });
 
     test('FeedbackCategory parsing fallback works reliably', () {
@@ -85,6 +101,7 @@ void main() {
       expect(find.byIcon(Icons.star_rounded), findsNWidgets(5));
       expect(find.textContaining('Feature Request'), findsOneWidget);
       expect(find.textContaining('Report an Issue'), findsOneWidget);
+      expect(find.textContaining("Parent's Gmail ID"), findsOneWidget);
       expect(find.textContaining('Submit Feedback'), findsOneWidget);
     });
   });
