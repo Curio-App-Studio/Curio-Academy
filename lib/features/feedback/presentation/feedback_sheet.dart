@@ -150,18 +150,29 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
       return;
     }
 
+    final enteredGmail = _gmailController.text.trim();
+    final emailRegex = RegExp(r'^[\w\.\+\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
+    if (enteredGmail.isEmpty || !emailRegex.hasMatch(enteredGmail)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isHindi
+                ? 'कृपया आगे बढ़ने के लिए एक मान्य Gmail / ईमेल आईडी दर्ज करें।'
+                : 'Please enter a valid Gmail / Email address to submit feedback.',
+          ),
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     AudioService.instance.playSfx(CurioSfx.click);
 
     try {
       final profile = await LocalStorageService.instance.getStudentProfile();
       final deviceDetails = _deviceDetails ?? await DeviceInfoHelper.getDeviceDetails();
-      final enteredGmail = _gmailController.text.trim();
-      final effectiveGmail = enteredGmail.isNotEmpty
-          ? enteredGmail
-          : (CloudProgressService().googleAccountEmail ??
-             LocalStorageService.instance.boundMembershipEmail ??
-             'anonymous');
+      final effectiveGmail = enteredGmail;
 
       final feedback = UserFeedback(
         gmailId: effectiveGmail,
@@ -542,12 +553,12 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.mark_email_read_rounded, size: 20, color: Color(0xFF6366F1)),
-            labelText: isHindi ? 'अभिभावक का Gmail ID' : "Parent's Gmail ID",
+            labelText: isHindi ? 'अभिभावक का Gmail ID *' : "Parent's Gmail ID *",
             labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
             hintText: 'e.g. parent@gmail.com',
             helperText: isHindi
-                ? 'सभी सुझाव इस Gmail ID के अनुसार ग्रुप होंगे'
-                : 'All feedback will be grouped by this Gmail ID',
+                ? '* अनिवार्य: सभी सुझाव इस Gmail ID के अनुसार ग्रुप होंगे'
+                : '* Required: All feedback will be grouped by this Gmail ID',
             helperStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),

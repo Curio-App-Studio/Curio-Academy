@@ -104,5 +104,29 @@ void main() {
       expect(find.textContaining("Parent's Gmail ID"), findsOneWidget);
       expect(find.textContaining('Submit Feedback'), findsOneWidget);
     });
+
+    testWidgets('Shows validation snackbar when submitted without valid Gmail ID', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FeedbackBottomSheet(initialGatePassed: true),
+          ),
+        ),
+      );
+
+      // Find the Gmail field and ensure it's empty
+      final textFields = find.byType(TextField);
+      expect(textFields, findsNWidgets(2)); // comment field and gmail field
+      await tester.enterText(textFields.last, '');
+
+      // Tap submit
+      final submitButton = find.textContaining('Submit Feedback');
+      await tester.ensureVisible(submitButton);
+      await tester.tap(submitButton);
+      await tester.pump();
+
+      // Expect validation message
+      expect(find.textContaining('Please enter a valid Gmail / Email address'), findsOneWidget);
+    });
   });
 }
