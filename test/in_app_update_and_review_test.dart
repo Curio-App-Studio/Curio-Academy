@@ -77,7 +77,7 @@ void main() {
 
       // Enter an obviously incorrect answer
       await tester.enterText(find.byType(TextField), '9999');
-      await tester.tap(find.text('Verify & Rate ⭐'));
+      await tester.tap(find.text('Verify 🛡️'));
       await tester.pumpAndSettle();
 
       // Error message is displayed

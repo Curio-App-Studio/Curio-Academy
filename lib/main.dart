@@ -7,6 +7,7 @@ import 'data/local/local_storage_service.dart';
 import 'services/ad_service.dart';
 import 'services/cloud_progress_service.dart';
 import 'services/in_app_purchase_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,8 @@ void main() async {
   // Initialize Firebase (Option 1: Cloud Firestore + Google Sign-In)
   try {
     await Firebase.initializeApp();
+    // Initialize Firebase Cloud Messaging & Local Notifications
+    await NotificationService.instance.initialize();
   } catch (e) {
     debugPrint('[Firebase] Initialization: $e');
   }
