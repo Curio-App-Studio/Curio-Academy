@@ -14,6 +14,14 @@ void main() {
         studentName: 'Aarav',
         studentClass: 'Class 3',
         board: 'CBSE',
+        appVersion: '1.0.0',
+        buildNumber: '11',
+        platform: 'Android',
+        deviceModel: 'SM-G991B',
+        deviceBrand: 'Samsung',
+        deviceManufacturer: 'Samsung',
+        osVersion: 'Android 14 (API 34)',
+        osSdkInt: 34,
         createdAt: DateTime(2026, 10, 13, 10, 0),
       );
 
@@ -26,6 +34,14 @@ void main() {
       expect(map['studentClass'], 'Class 3');
       expect(map['board'], 'CBSE');
       expect(map['platform'], 'Android');
+      expect(map['appVersion'], '1.0.0');
+      expect(map['buildNumber'], '11');
+      expect(map['fullAppVersion'], '1.0.0+11');
+      expect(map['deviceModel'], 'SM-G991B');
+      expect(map['deviceBrand'], 'Samsung');
+      expect(map['deviceManufacturer'], 'Samsung');
+      expect(map['osVersion'], 'Android 14 (API 34)');
+      expect(map['osSdkInt'], 34);
     });
 
     test('FeedbackCategory parsing fallback works reliably', () {

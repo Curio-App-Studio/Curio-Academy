@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/audio/audio_service.dart';
+import '../../../core/services/device_info_helper.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../data/feedback_model.dart';
 import '../domain/feedback_service.dart';
@@ -40,12 +41,21 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
   final TextEditingController _contactController = TextEditingController();
   bool _isSubmitting = false;
   bool _isSubmitted = false;
+  AppDeviceDetails? _deviceDetails;
 
   @override
   void initState() {
     super.initState();
     _gatePassed = widget.initialGatePassed;
     _generateChallenge();
+    _loadDeviceInfo();
+  }
+
+  void _loadDeviceInfo() async {
+    final details = await DeviceInfoHelper.getDeviceDetails();
+    if (mounted) {
+      setState(() => _deviceDetails = details);
+    }
   }
 
   @override
@@ -134,6 +144,7 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
 
     try {
       final profile = await LocalStorageService.instance.getStudentProfile();
+      final deviceDetails = _deviceDetails ?? await DeviceInfoHelper.getDeviceDetails();
 
       final feedback = UserFeedback(
         rating: _rating,
@@ -143,6 +154,14 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
         studentName: profile?.studentName,
         studentClass: profile?.studentClass.label,
         board: profile?.board.code,
+        appVersion: deviceDetails.appVersion,
+        buildNumber: deviceDetails.buildNumber,
+        platform: deviceDetails.platform,
+        deviceModel: deviceDetails.deviceModel,
+        deviceBrand: deviceDetails.deviceBrand,
+        deviceManufacturer: deviceDetails.deviceManufacturer,
+        osVersion: deviceDetails.osVersion,
+        osSdkInt: deviceDetails.osSdkInt,
         createdAt: DateTime.now(),
       );
 
@@ -605,6 +624,36 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
                   ],
                 ),
         ),
+        if (_deviceDetails != null) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF64748B)),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      '${_deviceDetails!.deviceBrand.toUpperCase()} ${_deviceDetails!.deviceModel} • ${_deviceDetails!.osVersion} • v${_deviceDetails!.fullAppVersion}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

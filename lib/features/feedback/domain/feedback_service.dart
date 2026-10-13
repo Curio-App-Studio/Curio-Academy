@@ -38,18 +38,9 @@ class FeedbackService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final list = prefs.getStringList(_keyOfflineFeedback) ?? [];
-      list.add(jsonEncode({
-        'rating': feedback.rating,
-        'category': feedback.category.name,
-        'comment': feedback.comment,
-        'contactInfo': feedback.contactInfo,
-        'studentName': feedback.studentName,
-        'studentClass': feedback.studentClass,
-        'board': feedback.board,
-        'appVersion': feedback.appVersion,
-        'platform': feedback.platform,
-        'localTimestamp': feedback.createdAt.toIso8601String(),
-      }));
+      final map = feedback.toMap();
+      map.remove('createdAt'); // Server timestamp placeholder cannot be jsonEncoded
+      list.add(jsonEncode(map));
       await prefs.setStringList(_keyOfflineFeedback, list);
     } catch (e) {
       debugPrint('[FeedbackService] Error caching feedback locally: $e');

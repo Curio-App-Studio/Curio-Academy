@@ -26,6 +26,8 @@ dependencies:
   cloud_firestore: ^6.10.0
   google_sign_in: ^6.2.2
   speech_to_text: ^7.5.0
+  device_info_plus: ^13.3.0
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:
