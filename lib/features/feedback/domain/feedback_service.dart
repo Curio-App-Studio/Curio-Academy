@@ -152,7 +152,7 @@ class FeedbackService {
             'latestCategory': map['category'] ?? 'feature',
             'latestComment': map['comment'] ?? '',
             'latestSubmittedAt': FieldValue.serverTimestamp(),
-            'appVersion': map['fullAppVersion'] ?? '1.0.0+11',
+            'appVersion': map['fullAppVersion'] ?? '1.0.0+12',
           }, SetOptions(merge: true));
         } catch (_) {
           remaining.add(raw);
