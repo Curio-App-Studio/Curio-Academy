@@ -224,24 +224,34 @@ class NotificationService {
 
       // 1. Store under global fcm_tokens collection
       final tokenDocId = token.length > 64 ? token.substring(token.length - 64) : token;
-      await FirebaseFirestore.instance
-          .collection('fcm_tokens')
-          .doc(tokenDocId)
-          .set(tokenData, SetOptions(merge: true));
+      try {
+        await FirebaseFirestore.instance
+            .collection('fcm_tokens')
+            .doc(tokenDocId)
+            .set(tokenData, SetOptions(merge: true));
+        debugPrint('[NotificationService] Token synced to fcm_tokens/$tokenDocId');
+      } catch (e) {
+        debugPrint('[NotificationService] Note: fcm_tokens write error (check Firestore rules): $e');
+      }
 
       // 2. If member has a registered email, mirror token inside their vip_students document
       if (boundEmail != 'anonymous') {
         final emailKey = boundEmail.replaceAll('.', '_');
-        await FirebaseFirestore.instance
-            .collection('vip_students')
-            .doc(emailKey)
-            .set({
-              'fcmToken': token,
-              'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+        try {
+          await FirebaseFirestore.instance
+              .collection('vip_students')
+              .doc(emailKey)
+              .set({
+                'fcmToken': token,
+                'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+          debugPrint('[NotificationService] Token mirrored to vip_students/$emailKey');
+        } catch (e) {
+          debugPrint('[NotificationService] Mirror token to vip_students note: $e');
+        }
       }
     } catch (e) {
-      debugPrint('[NotificationService] Save token to cloud note: $e');
+      debugPrint('[NotificationService] Save token to cloud error: $e');
     }
   }
 
