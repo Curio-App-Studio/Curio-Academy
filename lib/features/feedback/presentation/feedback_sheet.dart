@@ -6,6 +6,7 @@ import '../../../data/local/local_storage_service.dart';
 import '../../../services/cloud_progress_service.dart';
 import '../data/feedback_model.dart';
 import '../domain/feedback_service.dart';
+import '../../../services/notification_service.dart';
 
 /// Kid-safe, Parental-gated feedback and review sheet for Curio Academy
 class FeedbackBottomSheet extends StatefulWidget {
@@ -195,6 +196,9 @@ class _FeedbackBottomSheetState extends State<FeedbackBottomSheet> {
       );
 
       await FeedbackService.instance.submitFeedback(feedback);
+
+      // Link device's FCM token to this parent's Gmail address
+      NotificationService.instance.syncEmailToken(effectiveGmail);
 
       AudioService.instance.playSfx(CurioSfx.correctCheer);
       if (mounted) {

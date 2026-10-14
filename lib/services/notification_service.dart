@@ -211,9 +211,11 @@ class NotificationService {
     }
   }
 
-  Future<void> _saveTokenToCloud(String token) async {
+  Future<void> _saveTokenToCloud(String token, {String? explicitEmail}) async {
     try {
-      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'anonymous';
+      final boundEmail = explicitEmail?.trim().toLowerCase() ??
+          LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ??
+          'anonymous';
       final isVip = LocalStorageService.instance.isPremiumUser || LocalStorageService.instance.isClosedTester;
       final profile = await LocalStorageService.instance.getStudentProfile();
       final deviceDetails = await DeviceInfoHelper.getDeviceDetails();
@@ -233,20 +235,48 @@ class NotificationService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // 1. Store under global fcm_tokens collection
       final tokenDocId = token.length > 64 ? token.substring(token.length - 64) : token;
+
+      // 1. Store under fcm_tokens/{emailKey} -> devices/{tokenDocId}
       try {
-        await FirebaseFirestore.instance
-            .collection('fcm_tokens')
-            .doc(tokenDocId)
-            .set(tokenData, SetOptions(merge: true));
-        debugPrint('[NotificationService] Token synced to fcm_tokens/$tokenDocId');
+        if (boundEmail != 'anonymous' && boundEmail.isNotEmpty) {
+          final emailKey = boundEmail.replaceAll('.', '_');
+          final emailDocRef = FirebaseFirestore.instance.collection('fcm_tokens').doc(emailKey);
+
+          // Parent document summary for clean browsing in Firebase Console
+          await emailDocRef.set({
+            'parentEmail': boundEmail,
+            'latestToken': token,
+            'isVip': isVip,
+            'studentName': profile?.studentName,
+            'studentClass': profile?.studentClass.label,
+            'latestDevice': '${deviceDetails.deviceBrand} ${deviceDetails.deviceModel}',
+            'appVersion': deviceDetails.appVersion,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'activeTokens': FieldValue.arrayUnion([token]),
+          }, SetOptions(merge: true));
+
+          // Granular device details in subcollection
+          await emailDocRef.collection('devices').doc(tokenDocId).set(tokenData, SetOptions(merge: true));
+          debugPrint('[NotificationService] Token synced to fcm_tokens/$emailKey/devices/$tokenDocId');
+        } else {
+          // Unregistered / Anonymous users: grouped under fcm_tokens/anonymous/devices/{tokenDocId}
+          final anonDocRef = FirebaseFirestore.instance.collection('fcm_tokens').doc('anonymous');
+          await anonDocRef.set({
+            'type': 'unregistered_devices',
+            'latestDevice': '${deviceDetails.deviceBrand} ${deviceDetails.deviceModel}',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          await anonDocRef.collection('devices').doc(tokenDocId).set(tokenData, SetOptions(merge: true));
+          debugPrint('[NotificationService] Anonymous token synced to fcm_tokens/anonymous/devices/$tokenDocId');
+        }
       } catch (e) {
         debugPrint('[NotificationService] Note: fcm_tokens write error (check Firestore rules): $e');
       }
 
       // 2. If member has a registered email, mirror token inside their vip_students document
-      if (boundEmail != 'anonymous') {
+      if (boundEmail != 'anonymous' && boundEmail.isNotEmpty) {
         final emailKey = boundEmail.replaceAll('.', '_');
         try {
           await FirebaseFirestore.instance
@@ -263,6 +293,13 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('[NotificationService] Save token to cloud error: $e');
+    }
+  }
+
+  /// Associates the device FCM token with a parent's email (e.g. from Feedback or Sign In)
+  Future<void> syncEmailToken(String email) async {
+    if (_fcmToken != null && _fcmToken!.isNotEmpty && email.trim().isNotEmpty && email != 'anonymous') {
+      await _saveTokenToCloud(_fcmToken!, explicitEmail: email);
     }
   }
 
