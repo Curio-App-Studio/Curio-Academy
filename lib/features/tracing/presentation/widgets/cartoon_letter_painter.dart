@@ -72,10 +72,16 @@ class CartoonLetterPainter extends CustomPainter {
       foreground: innerWhiteStrokePaint,
     );
 
-    // 3. LAYER C: DEEP TEAL LETTER TRACK FILL
+    // 3. LAYER C: TEAL LETTER TRACK WITH PROGRESSIVE COLORED FILL
+    // We isolate the track fill in a layer so strokes are clipped with BlendMode.srcATop.
+    // This guarantees the strokes ONLY color the teal channel, without ever touching or modifying the white or black borders!
+    final trackBounds = letterBounds.inflate(20);
+    canvas.saveLayer(trackBounds, Paint());
+
+    // Paint the deep ocean teal base fill
     final trackFillPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = const Color(0xFF0A686B); // Deep ocean teal from reference
+      ..color = const Color(0xFF0A686B);
 
     _paintTextWithStyle(
       canvas,
@@ -85,17 +91,13 @@ class CartoonLetterPainter extends CustomPainter {
       foreground: trackFillPaint,
     );
 
-    // --- STEP 2: CLIPPED PROGRESSIVE COLORED STROKE FILLS ---
-    // Only clip and blend when there are active or completed strokes, keeping untraced track deep teal!
+    // If there are completed or active dragging strokes, paint them with srcATop!
     if (completedStrokes.isNotEmpty || liveCurrentStroke.isNotEmpty) {
-      final boundsWithMargin = letterBounds.inflate(40);
-      canvas.saveLayer(boundsWithMargin, Paint());
-
-      // 1. Draw completed & active colored strokes onto the transparent layer
       final strokePaint = Paint()
+        ..blendMode = BlendMode.srcATop
+        ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke
         ..strokeWidth = 52.0; // Broad enough to fully fill the letter channel
 
       for (int i = 0; i < completedStrokes.length; i++) {
@@ -130,36 +132,9 @@ class CartoonLetterPainter extends CustomPainter {
           canvas.drawPath(path, strokePaint);
         }
       }
-
-      // 2. Mask with letter glyph using BlendMode.dstIn so only the drawn parts show and untraced parts stay transparent!
-      _paintTextWithStyle(
-        canvas,
-        centerOffset,
-        character,
-        fontSize,
-        foreground: Paint()
-          ..blendMode = BlendMode.dstIn
-          ..color = Colors.black,
-      );
-
-      canvas.restore();
-
-      // 3. Re-apply inner white border lightly so the stroke edges remain super crisp
-      final borderTouchUp = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 6.0
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = Colors.white;
-
-      _paintTextWithStyle(
-        canvas,
-        centerOffset,
-        character,
-        fontSize,
-        foreground: borderTouchUp,
-      );
     }
+
+    canvas.restore();
 
     // --- STEP 3: DRAW ACTIVE STROKE GUIDE DOTS & CHEVRON ---
     if (activeStrokeIndex < allStrokes.length) {
