@@ -9,6 +9,9 @@ import '../domain/tracing_character.dart';
 import '../domain/tracing_checkpoint.dart';
 import '../domain/tracing_evaluator.dart';
 import '../domain/tracing_repository.dart';
+import '../domain/tracing_stroke_data.dart';
+import 'widgets/cartoon_background_painter.dart';
+import 'widgets/cartoon_letter_painter.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
   final TracingCategory initialCategory;
@@ -38,25 +41,32 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   late List<TracingCharacter> _characterList;
   int _currentIndex = 0;
 
-  // Drawing strokes: list of continuous stroke lines
+  // Active Drawing & Completed Strokes
   final List<List<Offset>> _strokes = [];
   final List<Color> _strokeColors = [];
   List<Offset> _currentStroke = [];
+  final List<List<Offset>> _completedStrokePaths = [];
+  final List<Color> _completedStrokeColors = [];
+
+  // Sequential Stroke Progression
+  List<TracingStrokeGuide> _strokeGuides = [];
+  int _activeStrokeIndex = 0;
+  int _activeDotIndex = 0;
 
   // Sparkle particle trail
   final List<_SparkleParticle> _particles = [];
 
-  // Color Palette
+  // Color Palette (Red default from reference image 2)
   static const List<Color> _crayonColors = [
-    Color(0xFFFF3B30), // Red
+    Color(0xFFE11D48), // Vibrant Red
     Color(0xFFFF9500), // Orange
     Color(0xFFFFCC00), // Yellow
-    Color(0xFF34C759), // Green
-    Color(0xFF007AFF), // Blue
-    Color(0xFFAF52DE), // Purple
-    Color(0xFFFF2D55), // Pink
+    Color(0xFF22C55E), // Green
+    Color(0xFF0EA5E9), // Blue
+    Color(0xFFA855F7), // Purple
+    Color(0xFFEC4899), // Pink
   ];
-  Color _selectedColor = const Color(0xFF007AFF);
+  Color _selectedColor = const Color(0xFFE11D48);
   bool _rainbowMode = false;
   int _rainbowColorIndex = 0;
 
@@ -65,16 +75,18 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   late Animation<double> _celebrationScale;
   bool _showCelebration = false;
 
+  // Animated Hand Pointer Bouncing Controller
+  late AnimationController _handBounceController;
+  late Animation<double> _handBounceAnimation;
+
   // Real-time tracking accuracy & auto-check state
   double _liveAccuracy = 0.0;
   int _liveStars = 0;
   Size _canvasSize = const Size(360, 400);
-  bool _isEvaluating = false;
-  int _panPointCounter = 0;
   TracingEvaluationResult? _lastResult;
   Timer? _celebrationAutoAdvanceTimer;
 
-  // Interactive pixel checkpoints (target beads along letter path)
+  // Checkpoints fallback list
   List<TracingCheckpoint> _checkpoints = [];
 
   @override
@@ -92,10 +104,18 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       curve: Curves.elasticOut,
     );
 
-    // Speak initial character and load checkpoints after frame
+    _handBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..repeat(reverse: true);
+    _handBounceAnimation = Tween<double>(begin: -1.0, end: 1.0).animate(
+      CurvedAnimation(parent: _handBounceController, curve: Curves.easeInOut),
+    );
+
+    // Speak initial character and load stroke guides after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speakCurrentCharacter();
-      _loadCheckpoints();
+      _loadCharacterGuides();
     });
   }
 
@@ -103,25 +123,17 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   void dispose() {
     _celebrationAutoAdvanceTimer?.cancel();
     _celebrationController.dispose();
+    _handBounceController.dispose();
     super.dispose();
   }
 
   TracingCharacter get _currentChar => _characterList[_currentIndex];
 
-  Future<void> _loadCheckpoints() async {
-    try {
-      final cps = await TracingEvaluator.getCheckpoints(
-        character: _currentChar.character,
-        canvasSize: _canvasSize,
-      );
-      if (mounted) {
-        setState(() {
-          _checkpoints = cps;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading checkpoints: $e');
-    }
+  void _loadCharacterGuides() {
+    setState(() {
+      _strokeGuides = TracingStrokeCatalog.getStrokes(_currentChar.character);
+      _clearCanvas();
+    });
   }
 
   void _onCategorySelected(TracingCategory category) {
@@ -134,7 +146,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _currentIndex = 0;
       _clearCanvas();
     });
-    _loadCheckpoints();
+    _loadCharacterGuides();
     _speakCurrentCharacter();
   }
 
@@ -144,14 +156,15 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _strokes.clear();
       _strokeColors.clear();
       _currentStroke = [];
+      _completedStrokePaths.clear();
+      _completedStrokeColors.clear();
+      _activeStrokeIndex = 0;
+      _activeDotIndex = 0;
       _particles.clear();
       _showCelebration = false;
       _liveAccuracy = 0.0;
       _liveStars = 0;
       _lastResult = null;
-      for (final cp in _checkpoints) {
-        cp.isCollected = false;
-      }
     });
   }
 
@@ -167,9 +180,8 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       TracingEvaluator.clearCache();
       setState(() {
         _currentIndex--;
-        _clearCanvas();
       });
-      _loadCheckpoints();
+      _loadCharacterGuides();
       _speakCurrentCharacter();
     }
   }
@@ -180,78 +192,117 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       TracingEvaluator.clearCache();
       setState(() {
         _currentIndex++;
-        _clearCanvas();
       });
-      _loadCheckpoints();
+      _loadCharacterGuides();
       _speakCurrentCharacter();
     }
   }
 
-  void _collectCheckpointsAt(Offset pos) {
-    if (_checkpoints.isEmpty) return;
-    bool newlyCollected = false;
-    for (final cp in _checkpoints) {
-      if (!cp.isCollected) {
-        if ((cp.position - pos).distance <= 28.0) {
-          cp.isCollected = true;
-          newlyCollected = true;
-          _addSparkle(cp.position, const Color(0xFFFFD700));
-        }
-      }
-    }
-    if (newlyCollected) {
-      AudioService.instance.playSfx(CurioSfx.bubblePop);
-      final total = _checkpoints.length;
-      final collected = _checkpoints.where((c) => c.isCollected).length;
-      final ratio = total > 0 ? (collected / total) : 0.0;
-      _liveAccuracy = ratio;
-      if (ratio >= 0.85) {
-        _liveStars = 3;
-      } else if (ratio >= 0.60) {
-        _liveStars = 2;
-      } else if (ratio >= 0.35) {
-        _liveStars = 1;
-      } else {
-        _liveStars = 0;
-      }
-    }
+  static double _distToSegment(Offset p, Offset v, Offset w) {
+    final l2 = (v - w).distanceSquared;
+    if (l2 == 0.0) return (p - v).distance;
+    final t = math.max(0.0, math.min(1.0, ((p.dx - v.dx) * (w.dx - v.dx) + (p.dy - v.dy) * (w.dy - v.dy)) / l2));
+    final projection = Offset(v.dx + t * (w.dx - v.dx), v.dy + t * (w.dy - v.dy));
+    return (p - projection).distance;
   }
 
-  void _onPanStart(DragStartDetails details) {
+  void _handlePanStart(DragStartDetails details, Rect letterBounds) {
+    if (_showCelebration) return;
     Color strokeColor = _selectedColor;
     if (_rainbowMode) {
       strokeColor = _crayonColors[_rainbowColorIndex % _crayonColors.length];
       _rainbowColorIndex++;
+      _selectedColor = strokeColor;
     }
 
     setState(() {
       _currentStroke = [details.localPosition];
-      _strokes.add(_currentStroke);
-      _strokeColors.add(strokeColor);
       _addSparkle(details.localPosition, strokeColor);
-      _collectCheckpointsAt(details.localPosition);
+      _checkPointHit(details.localPosition, letterBounds);
     });
   }
 
-  void _onPanUpdate(DragUpdateDetails details) {
+  void _handlePanUpdate(DragUpdateDetails details, Rect letterBounds) {
+    if (_showCelebration) return;
     setState(() {
       _currentStroke.add(details.localPosition);
-      _addSparkle(details.localPosition, _strokeColors.isNotEmpty ? _strokeColors.last : _selectedColor);
-      _collectCheckpointsAt(details.localPosition);
+      _addSparkle(details.localPosition, _selectedColor);
+      _checkPointHit(details.localPosition, letterBounds);
     });
-    _panPointCounter++;
-    if (_panPointCounter % 5 == 0) {
-      _evaluateLiveTracking(autoCheck: false);
+  }
+
+  void _handlePanEnd(DragEndDetails details, Rect letterBounds) {
+    // Keep stroke progress intact for child
+  }
+
+  void _checkPointHit(Offset pos, Rect letterBounds) {
+    if (_activeStrokeIndex >= _strokeGuides.length) return;
+    final strokeGuide = _strokeGuides[_activeStrokeIndex];
+    final screenPoints = strokeGuide.toScreenCoordinates(letterBounds);
+    if (_activeDotIndex >= screenPoints.length) return;
+
+    final targetPoint = screenPoints[_activeDotIndex];
+    bool hit = (pos - targetPoint).distance <= 48.0;
+    if (!hit && _currentStroke.length >= 2) {
+      final prevPos = _currentStroke[_currentStroke.length - 2];
+      hit = _distToSegment(targetPoint, prevPos, pos) <= 48.0;
+    }
+
+    if (hit) {
+      AudioService.instance.playSfx(CurioSfx.bubblePop);
+      _addSparkle(targetPoint, const Color(0xFFFFD700));
+      _addSparkle(targetPoint, Colors.white);
+
+      _activeDotIndex++;
+
+      // In fast dragging, collect any dots already passed
+      while (_activeDotIndex < screenPoints.length) {
+        final nextPt = screenPoints[_activeDotIndex];
+        if ((pos - nextPt).distance <= 48.0) {
+          _activeDotIndex++;
+          _addSparkle(nextPt, const Color(0xFFFFD700));
+        } else {
+          break;
+        }
+      }
+
+      // Compute total dots progress
+      final totalDots = _strokeGuides.fold<int>(0, (sum, g) => sum + g.normalizedPoints.length);
+      int collectedDots = 0;
+      for (int i = 0; i < _activeStrokeIndex && i < _strokeGuides.length; i++) {
+        collectedDots += _strokeGuides[i].normalizedPoints.length;
+      }
+      collectedDots += _activeDotIndex;
+
+      final ratio = totalDots > 0 ? (collectedDots / totalDots).clamp(0.0, 1.0) : 0.0;
+      _liveAccuracy = ratio;
+      if (ratio >= 0.85) {
+        _liveStars = 3;
+      } else if (ratio >= 0.55) {
+        _liveStars = 2;
+      } else if (ratio >= 0.25) {
+        _liveStars = 1;
+      }
+
+      // Check if current stroke finished
+      if (_activeDotIndex >= screenPoints.length) {
+        AudioService.instance.playSfx(CurioSfx.starAward);
+        _completedStrokePaths.add(List.from(_currentStroke));
+        _completedStrokeColors.add(_selectedColor);
+        _currentStroke = [];
+        _activeStrokeIndex++;
+        _activeDotIndex = 0;
+
+        // Check if all strokes of the character are completed
+        if (_activeStrokeIndex >= _strokeGuides.length) {
+          _triggerFullCelebration();
+        }
+      }
     }
   }
 
-  void _onPanEnd(DragEndDetails details) {
-    _currentStroke = [];
-    _evaluateLiveTracking(autoCheck: true);
-  }
-
   void _addSparkle(Offset position, Color color) {
-    if (_particles.length > 25) {
+    if (_particles.length > 30) {
       _particles.removeAt(0);
     }
     _particles.add(
@@ -264,52 +315,32 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
     );
   }
 
-  Future<void> _evaluateLiveTracking({bool autoCheck = false}) async {
-    if (_isEvaluating || _strokes.isEmpty) return;
-    _isEvaluating = true;
-    try {
-      final result = await TracingEvaluator.evaluate(
-        character: _currentChar.character,
-        strokes: _strokes,
-        canvasSize: _canvasSize,
-      );
-      if (!mounted) return;
-      setState(() {
-        _liveAccuracy = result.accuracy;
-        _liveStars = result.stars;
-      });
-
-      final totalCps = _checkpoints.length;
-      final collectedCps = _checkpoints.where((c) => c.isCollected).length;
-      final cpRatio = totalCps > 0 ? (collectedCps / totalCps) : 0.0;
-
-      if (autoCheck && result.isCompleted && (totalCps == 0 || cpRatio >= 0.70) && !_showCelebration) {
-        _celebrateSuccess(result);
-      }
-    } catch (e) {
-      debugPrint('Live tracking eval error: $e');
-    } finally {
-      _isEvaluating = false;
-    }
-  }
-
-  Future<void> _celebrateSuccess(TracingEvaluationResult result) async {
+  Future<void> _triggerFullCelebration() async {
     if (_showCelebration) return;
     await LocalStorageService.instance.markCharacterTraced(_currentChar.id);
 
     AudioService.instance.playSfx(CurioSfx.starAward);
     AudioService.instance.playSfx(CurioSfx.applause);
 
+    final evalResult = const TracingEvaluationResult(
+      isCompleted: true,
+      coverage: 1.0,
+      accuracy: 1.0,
+      stars: 3,
+      feedbackEn: 'Superb handwriting! Perfect trace! 🌟🌟🌟',
+      feedbackHi: 'अद्भुत सुलेख! बहुत सुंदर लिखा! 🌟🌟🌟',
+    );
+
     setState(() {
       _showCelebration = true;
-      _lastResult = result;
-      _liveAccuracy = result.accuracy;
-      _liveStars = result.stars;
+      _lastResult = evalResult;
+      _liveAccuracy = 1.0;
+      _liveStars = 3;
     });
     _celebrationController.forward(from: 0.0);
 
     final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
-    final cheerText = isHindi ? result.feedbackHi : result.feedbackEn;
+    final cheerText = isHindi ? evalResult.feedbackHi : evalResult.feedbackEn;
     AudioService.instance.speakPrompt(cheerText, isHindi: isHindi);
 
     _celebrationAutoAdvanceTimer?.cancel();
@@ -322,63 +353,31 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
 
   Future<void> _checkAndCelebrate() async {
     if (_showCelebration) return;
-    if (_strokes.isEmpty) {
+    if (_activeStrokeIndex < _strokeGuides.length) {
       AudioService.instance.playSfx(CurioSfx.gentleWobble);
       final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isHindi ? 'अपनी उंगली से अक्षर पर ट्रेस करें! ✍️' : 'Trace the letter with your finger first! ✍️',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          backgroundColor: const Color(0xFF6366F1),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    final result = await TracingEvaluator.evaluate(
-      character: _currentChar.character,
-      strokes: _strokes,
-      canvasSize: _canvasSize,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _liveAccuracy = result.accuracy;
-      _liveStars = result.stars;
-    });
-
-    final totalCps = _checkpoints.length;
-    final collectedCps = _checkpoints.where((c) => c.isCollected).length;
-    final cpRatio = totalCps > 0 ? (collectedCps / totalCps) : 0.0;
-
-    if (result.isCompleted && (totalCps == 0 || cpRatio >= 0.70)) {
-      _celebrateSuccess(result);
-    } else {
-      AudioService.instance.playSfx(CurioSfx.gentleWobble);
-      final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
-      final String feedback;
-      if (!result.isCompleted) {
-        feedback = isHindi ? result.feedbackHi : result.feedbackEn;
-      } else {
-        feedback = isHindi
-            ? 'अक्षर के सभी मोतियों को छुएं! ($collectedCps/$totalCps) ✍️'
-            : 'Trace through all the beads on the letter! ($collectedCps/$totalCps) ✍️';
+      final totalDots = _strokeGuides.fold<int>(0, (sum, g) => sum + g.normalizedPoints.length);
+      int collectedDots = 0;
+      for (int i = 0; i < _activeStrokeIndex && i < _strokeGuides.length; i++) {
+        collectedDots += _strokeGuides[i].normalizedPoints.length;
       }
+      collectedDots += _activeDotIndex;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            feedback,
+            isHindi
+                ? 'उंगली से सभी मोतियों पर ट्रेस करें! ($collectedDots/$totalDots) ✍️'
+                : 'Trace through all the dots on the letter! ($collectedDots/$totalDots) ✍️',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFEA580C),
           duration: const Duration(seconds: 2),
         ),
       );
+      return;
     }
+    _triggerFullCelebration();
   }
 
   void _showCharacterSelectionSheet() {
@@ -448,7 +447,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
                           _currentIndex = idx;
                           _clearCanvas();
                         });
-                        _loadCheckpoints();
+                        _loadCharacterGuides();
                         _speakCurrentCharacter();
                       },
                       child: Container(
@@ -770,92 +769,96 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
         final newSize = Size(constraints.maxWidth, constraints.maxHeight);
         if (_canvasSize != newSize) {
           _canvasSize = newSize;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _loadCheckpoints();
-          });
         }
+
+        final fontSize = math.min(_canvasSize.width * 0.78, _canvasSize.height * 0.72).clamp(180.0, 320.0);
+        final tp = TextPainter(
+          text: TextSpan(
+            text: _currentChar.character,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Roboto',
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        final letterBounds = Rect.fromLTWH(
+          (_canvasSize.width - tp.width) / 2,
+          (_canvasSize.height - tp.height) / 2 - 12,
+          tp.width,
+          tp.height,
+        );
+
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 3),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: const Color(0xFF0F172A), width: 3.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.indigo.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(28),
             child: Stack(
               children: [
-                // Notebook Guided Ruled Lines
-                CustomPaint(
-                  size: Size.infinite,
-                  painter: _NotebookLinesPainter(),
-                ),
-
-                // Large Dotted Outline of Target Character
-                Center(
-                  child: Text(
-                    _currentChar.character,
-                    style: TextStyle(
-                      fontSize: 220,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFFE2E8F0).withValues(alpha: 0.75),
-                      fontFamily: 'Roboto',
-                    ),
-                  ),
-                ),
-
-                // Interactive Pixel Checkpoint Beads (Under finger, over letter outline)
-                CustomPaint(
-                  size: Size.infinite,
-                  painter: _CheckpointBeadsPainter(checkpoints: _checkpoints),
-                ),
-
-                // Guided Start Hint Star ⭐
-                Align(
-                  alignment: Alignment(
-                    (_currentChar.startHint.dx * 2) - 1,
-                    (_currentChar.startHint.dy * 2) - 1,
-                  ),
-                  child: IgnorePointer(
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF08A).withValues(alpha: 0.8),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.yellow.withValues(alpha: 0.5), blurRadius: 8),
-                        ],
-                      ),
-                      child: const Text('⭐', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                ),
-
-                // Interactive Finger Drawing Gesture Area
-                GestureDetector(
-                  onPanStart: _onPanStart,
-                  onPanUpdate: _onPanUpdate,
-                  onPanEnd: _onPanEnd,
+                // 1. Scenic Cartoon Preschool Background (Sky, Rainbow, Tree Canopies, Meadow)
+                const Positioned.fill(
                   child: CustomPaint(
-                    size: Size.infinite,
-                    painter: _TracingStrokesPainter(
-                      strokes: _strokes,
-                      colors: _strokeColors,
-                      particles: _particles,
-                    ),
+                    painter: CartoonBackgroundPainter(),
                   ),
                 ),
 
-                // Floating Real-Time Tracking Accuracy HUD 🎯
+                // 2. Chunky Double-Bordered Cartoon Letter Track, Progressive Color Fill & Active Stroke Dots
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _handBounceAnimation,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: CartoonLetterPainter(
+                          character: _currentChar.character,
+                          letterBounds: letterBounds,
+                          fontSize: fontSize,
+                          allStrokes: _strokeGuides,
+                          activeStrokeIndex: _activeStrokeIndex,
+                          activeDotIndex: _activeDotIndex,
+                          completedStrokes: _completedStrokePaths,
+                          strokeColors: _completedStrokeColors,
+                          liveCurrentStroke: _currentStroke,
+                          currentCrayonColor: _selectedColor,
+                          handBounceOffset: _handBounceAnimation.value,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // 3. Popping Sparkle Particles Trail
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _SparklesPainter(particles: _particles),
+                  ),
+                ),
+
+                // 4. Interactive Finger Gesture Detector
+                Positioned.fill(
+                  child: GestureDetector(
+                    onPanStart: (details) => _handlePanStart(details, letterBounds),
+                    onPanUpdate: (details) => _handlePanUpdate(details, letterBounds),
+                    onPanEnd: (details) => _handlePanEnd(details, letterBounds),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+
+                // 5. Floating Real-Time Tracking Accuracy HUD 🎯
                 Positioned(
-                  top: 12,
-                  right: 12,
+                  top: 14,
+                  right: 14,
                   child: _buildTrackingAccuracyBadge(isHindi),
                 ),
               ],
@@ -867,19 +870,22 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   }
 
   Widget _buildTrackingAccuracyBadge(bool isHindi) {
-    final percent = (_liveAccuracy * 100).toInt();
-    final totalCps = _checkpoints.length;
-    final collectedCps = _checkpoints.where((c) => c.isCollected).length;
+    final totalDots = _strokeGuides.fold<int>(0, (sum, g) => sum + g.normalizedPoints.length);
+    int collectedDots = 0;
+    for (int i = 0; i < _activeStrokeIndex && i < _strokeGuides.length; i++) {
+      collectedDots += _strokeGuides[i].normalizedPoints.length;
+    }
+    collectedDots += _activeDotIndex;
 
-    Color bgColor = const Color(0xFFF1F5F9);
-    Color borderColor = const Color(0xFFCBD5E1);
-    Color textColor = const Color(0xFF475569);
+    Color bgColor = Colors.white.withValues(alpha: 0.95);
+    Color borderColor = const Color(0xFFE2E8F0);
+    Color textColor = const Color(0xFF1E293B);
 
-    if (percent >= 65) {
+    if (_liveStars == 3) {
       bgColor = const Color(0xFFECFDF5);
       borderColor = const Color(0xFF10B981);
       textColor = const Color(0xFF047857);
-    } else if (percent >= 35) {
+    } else if (_liveStars >= 1) {
       bgColor = const Color(0xFFFEF3C7);
       borderColor = const Color(0xFFF59E0B);
       textColor = const Color(0xFFB45309);
@@ -894,41 +900,41 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       starsDisplay = '⭐☆☆';
     }
 
-    final displayText = totalCps > 0
-        ? (isHindi ? 'मोती: $collectedCps/$totalCps' : 'Dots: $collectedCps/$totalCps')
-        : (isHindi ? 'सटीकता: $percent%' : 'Accuracy: $percent%');
+    final displayText = totalDots > 0
+        ? (isHindi ? 'मोती: $collectedDots/$totalDots' : 'Dots: $collectedDots/$totalDots')
+        : (isHindi ? 'सुलेख' : 'Trace');
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 2.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🎯', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 5),
+          const Text('🎯', style: TextStyle(fontSize: 15)),
+          const SizedBox(width: 6),
           Text(
             displayText,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
               color: textColor,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Text(
             starsDisplay,
-            style: const TextStyle(fontSize: 11),
+            style: const TextStyle(fontSize: 13),
           ),
         ],
       ),
@@ -1217,116 +1223,27 @@ class _NotebookLinesPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// Painter for child's finger tracing strokes and sparkling particles
-class _TracingStrokesPainter extends CustomPainter {
-  final List<List<Offset>> strokes;
-  final List<Color> colors;
+// Painter for sparkling particles trailing finger and popping on dots
+class _SparklesPainter extends CustomPainter {
   final List<_SparkleParticle> particles;
 
-  _TracingStrokesPainter({
-    required this.strokes,
-    required this.colors,
-    required this.particles,
-  });
+  const _SparklesPainter({required this.particles});
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Draw glowing particles
     for (final p in particles) {
       final particlePaint = Paint()
-        ..color = p.color.withValues(alpha: 0.6)
+        ..color = p.color.withValues(alpha: 0.75)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(p.position, p.size / 2, particlePaint);
-    }
 
-    // 2. Draw user finger strokes
-    for (int i = 0; i < strokes.length; i++) {
-      final stroke = strokes[i];
-      if (stroke.isEmpty) continue;
-
-      final color = i < colors.length ? colors[i] : const Color(0xFF007AFF);
-      final paint = Paint()
-        ..color = color
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = 22.0
-        ..style = PaintingStyle.stroke;
-
-      if (stroke.length == 1) {
-        canvas.drawCircle(stroke.first, 11.0, Paint()..color = color..style = PaintingStyle.fill);
-      } else {
-        final path = Path();
-        path.moveTo(stroke.first.dx, stroke.first.dy);
-        for (int j = 1; j < stroke.length; j++) {
-          path.lineTo(stroke[j].dx, stroke[j].dy);
-        }
-        canvas.drawPath(path, paint);
-      }
+      final centerHighlight = Paint()
+        ..color = Colors.white.withValues(alpha: 0.9)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(p.position, p.size / 4, centerHighlight);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _TracingStrokesPainter oldDelegate) => true;
-}
-
-// Painter for interactive pixel checkpoint beads along letter strokes
-class _CheckpointBeadsPainter extends CustomPainter {
-  final List<TracingCheckpoint> checkpoints;
-
-  _CheckpointBeadsPainter({required this.checkpoints});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (checkpoints.isEmpty) return;
-
-    final uncollectedBorder = Paint()
-      ..color = const Color(0xFF94A3B8).withValues(alpha: 0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-
-    final uncollectedFill = Paint()
-      ..color = Colors.white.withValues(alpha: 0.95)
-      ..style = PaintingStyle.fill;
-
-    final uncollectedCenter = Paint()
-      ..color = const Color(0xFF64748B)
-      ..style = PaintingStyle.fill;
-
-    final collectedGlow = Paint()
-      ..color = const Color(0xFFFFB703).withValues(alpha: 0.5)
-      ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
-
-    final collectedFill = Paint()
-      ..color = const Color(0xFFFFC107)
-      ..style = PaintingStyle.fill;
-
-    final collectedBorder = Paint()
-      ..color = const Color(0xFFD97706)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-
-    final highlight = Paint()
-      ..color = Colors.white.withValues(alpha: 0.95)
-      ..style = PaintingStyle.fill;
-
-    for (final cp in checkpoints) {
-      final center = cp.position;
-      if (cp.isCollected) {
-        // Glowing star / golden gem bead
-        canvas.drawCircle(center, 9.5, collectedGlow);
-        canvas.drawCircle(center, 7.5, collectedFill);
-        canvas.drawCircle(center, 7.5, collectedBorder);
-        canvas.drawCircle(center - const Offset(2.2, 2.2), 2.4, highlight);
-      } else {
-        // Soft guide pearl
-        canvas.drawCircle(center, 6.0, uncollectedFill);
-        canvas.drawCircle(center, 6.0, uncollectedBorder);
-        canvas.drawCircle(center, 2.0, uncollectedCenter);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _CheckpointBeadsPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _SparklesPainter oldDelegate) => true;
 }
