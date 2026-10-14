@@ -1313,9 +1313,9 @@ class LocalStorageService implements ILocalStorageService {
     _prefs ??= await SharedPreferences.getInstance();
 
     final boardCode = data['board'] as String? ?? 'CBSE';
-    final classLabel = data['studentClass'] as String? ?? 'LKG';
-    final name = data['name'] as String? ?? 'Young Explorer';
-    final avatar = data['avatar'] as String? ?? '🦁';
+    final classLabel = (data['studentClass'] ?? data['class']) as String? ?? 'LKG';
+    final name = (data['name'] ?? data['studentName']) as String? ?? 'Young Explorer';
+    final avatar = (data['avatar'] ?? data['avatarIcon']) as String? ?? '🦁';
 
     _cachedProfile = StudentProfile(
       studentName: name,
@@ -1332,6 +1332,11 @@ class LocalStorageService implements ILocalStorageService {
     _isCloudSyncEnabled = true;
     cloudSyncEnabledNotifier.value = true;
     await _prefs?.setBool(_keyCloudSyncEnabled, true);
+
+    final restoredEmail = (data['parentEmail'] ?? data['membershipBoundEmail']) as String?;
+    if (restoredEmail != null && restoredEmail.trim().isNotEmpty) {
+      await setBoundMembershipEmail(restoredEmail.trim());
+    }
 
     if (data.containsKey('bonusStars')) {
       _bonusStars = (data['bonusStars'] as num?)?.toInt() ?? 0;

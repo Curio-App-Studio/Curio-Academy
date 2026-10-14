@@ -57,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
     // 1. On load after install, check for active Google Play VIP membership first
     try {
       await InAppPurchaseService.instance.restorePurchases().timeout(
-        const Duration(milliseconds: 3000),
+        const Duration(milliseconds: 4500),
         onTimeout: () {},
       );
     } catch (_) {}
@@ -67,9 +67,9 @@ class _SplashScreenState extends State<SplashScreen>
         LocalStorageService.instance.isClosedTester;
 
     // If purchase stream is still settling in background, wait briefly
-    if (!isVip && InAppPurchaseService.instance.purchasePendingNotifier.value) {
-      for (int i = 0; i < 10; i++) {
-        await Future.delayed(const Duration(milliseconds: 100));
+    if (!isVip) {
+      for (int i = 0; i < 15; i++) {
+        await Future.delayed(const Duration(milliseconds: 150));
         isVip = LocalStorageService.instance.isPremiumUser ||
             LocalStorageService.instance.isClosedTester;
         if (isVip) break;
@@ -82,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (isVip) {
       try {
         hasCloudBackup = await CloudProgressService().autoSyncAndRestore(force: true).timeout(
-          const Duration(milliseconds: 5500),
+          const Duration(milliseconds: 6500),
           onTimeout: () => false,
         );
       } catch (e) {

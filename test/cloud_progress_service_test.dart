@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:curio_math/data/local/local_storage_service.dart';
 import 'package:curio_math/data/models/student_profile.dart';
+import 'package:curio_math/data/models/subscription_record.dart';
 import 'package:curio_math/services/cloud_progress_service.dart';
+import 'package:curio_math/services/in_app_purchase_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -219,6 +221,56 @@ void main() {
 
       expect(storage.isPremiumUser, isFalse);
       expect(storage.isCloudSyncEnabled, isFalse);
+    });
+
+    test('Fresh install VIP snapshot restore binds parentEmail, restores studentName and marks onboarded', () async {
+      final storage = LocalStorageService.instance;
+      // Start with completely clean storage (like fresh install)
+      SharedPreferences.setMockInitialValues({});
+      await storage.init();
+      expect(storage.boundMembershipEmail, isNull);
+      expect(storage.isOnboarded(), isFalse);
+
+      // Simulate snapshot from Firestore for Sadaf
+      final firestoreSnapshot = {
+        'studentName': 'Sadaf',
+        'studentClass': 'Class 8',
+        'avatar': '🦁',
+        'board': 'CBSE',
+        'parentEmail': 'sadaf.anju@gmail.com',
+        'stars': 42,
+        'points': 420,
+        'latestPurchaseToken': 'pcincblbfiboecmgoaihcllj.AO-J1OxtQBcZPMCtTL',
+      };
+
+      await storage.restoreProgressSnapshot(firestoreSnapshot);
+
+      expect(storage.boundMembershipEmail, equals('sadaf.anju@gmail.com'));
+      expect(storage.isOnboarded(), isTrue);
+      expect(storage.isCloudSyncEnabled, isTrue);
+
+      final profile = await storage.getStudentProfile();
+      expect(profile, isNotNull);
+      expect(profile!.studentName, equals('Sadaf'));
+      expect(profile.studentClass, equals(StudentClass.class8));
+      expect(profile.avatarIcon, equals('🦁'));
+      expect(storage.totalStars, equals(42));
+    });
+
+    test('InAppPurchaseService exposes restored purchase tokens from subscription history', () async {
+      final storage = LocalStorageService.instance;
+      final record = SubscriptionRecord(
+        productId: 'curio_vip_monthly',
+        planName: 'Monthly VIP',
+        billingPrice: '₹79.00',
+        purchaseDate: DateTime.now(),
+        purchaseToken: 'token_abc_123',
+      );
+      await storage.saveSubscriptionHistory([record]);
+
+      final iap = InAppPurchaseService.instance;
+      expect(iap.latestPurchaseToken, equals('token_abc_123'));
+      expect(iap.restoredPurchaseTokens, contains('token_abc_123'));
     });
   });
 }

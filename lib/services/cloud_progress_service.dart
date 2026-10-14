@@ -271,82 +271,18 @@ class CloudProgressService {
 
       final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
       final effectiveEmail = boundEmail ?? (user?.isAnonymous == false ? user?.email?.trim().toLowerCase() : null);
-      if (effectiveEmail == null || effectiveEmail.isEmpty) {
-        developer.log('autoSyncAndRestore: No valid user email found. Skipping restore.', name: 'CloudSync');
+      final localTokens = InAppPurchaseService.instance.restoredPurchaseTokens;
+
+      if ((effectiveEmail == null || effectiveEmail.isEmpty) && localTokens.isEmpty) {
+        developer.log('autoSyncAndRestore: No valid user email or purchase token found. Skipping restore.', name: 'CloudSync');
         return false;
       }
-      final emailKey = effectiveEmail.replaceAll('.', '_');
 
-      final List<Map<String, dynamic>> candidates = [];
-
-      // 1. Primary: Query doc(emailKey) where emailKey has dots replaced by underscores
-      try {
-        final emailDoc = await FirebaseFirestore.instance
-            .collection(_collectionName)
-            .doc(emailKey)
-            .get();
-        if (emailDoc.exists && emailDoc.data() != null) {
-          candidates.add(emailDoc.data()!);
-        }
-      } catch (_) {}
-
-      // 2. Query doc(boundEmail) (legacy key)
-      if (candidates.isEmpty && boundEmail != emailKey) {
-        try {
-          final rawDoc = await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .doc(boundEmail)
-              .get();
-          if (rawDoc.exists && rawDoc.data() != null) {
-            candidates.add(rawDoc.data()!);
-          }
-        } catch (_) {}
-      }
-
-      // 3. Query doc(user.uid)
-      if (candidates.isEmpty && user != null && user.uid != emailKey) {
-        try {
-          final uidDoc = await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .doc(user.uid)
-              .get();
-          if (uidDoc.exists && uidDoc.data() != null) {
-            candidates.add(uidDoc.data()!);
-          }
-        } catch (_) {}
-      }
-
-      // 4. Query by exact email match in document fields
-      if (candidates.isEmpty) {
-        try {
-          final querySnap = await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .where('parentEmail', isEqualTo: boundEmail)
-              .limit(1)
-              .get();
-          for (final d in querySnap.docs) {
-            candidates.add(d.data());
-          }
-        } catch (_) {}
-      }
-
-      // Pick the document with the highest genuine progress
-      Map<String, dynamic>? bestData;
-      int bestScore = -1;
-
-      for (final cand in candidates) {
-        final stars = (cand['stars'] as num?)?.toInt() ?? 0;
-        final points = (cand['points'] as num?)?.toInt() ?? 0;
-        final chaptersCount = (cand['completedChapters'] as List?)?.length ?? 0;
-        final attemptsCount = (cand['questionAttempts'] as Map?)?.length ?? 0;
-        final hasName = (cand['name'] ?? cand['studentName'])?.toString().isNotEmpty == true;
-
-        final score = (stars * 100) + points + (chaptersCount * 50) + (attemptsCount * 10) + (hasName ? 5 : 0);
-        if (score > bestScore) {
-          bestScore = score;
-          bestData = cand;
-        }
-      }
+      final bestData = await _findBestCloudBackup(
+        explicitEmail: effectiveEmail,
+        purchaseTokens: localTokens,
+        firebaseUser: user,
+      );
 
       if (bestData != null) {
         debugPrint('[autoSyncAndRestore] Selected best candidate data: $bestData');
@@ -364,23 +300,211 @@ class CloudProgressService {
         debugPrint('[autoSyncAndRestore] hasRealBackup: $hasRealBackup (stars=$cloudStars, name=$studentName)');
 
         if (hasRealBackup) {
+          final restoredEmail = (bestData['parentEmail'] ?? bestData['membershipBoundEmail']) as String?;
+          if (restoredEmail != null && restoredEmail.trim().isNotEmpty) {
+            final cleanEmail = restoredEmail.trim().toLowerCase();
+            await LocalStorageService.instance.setBoundMembershipEmail(cleanEmail);
+            _cachedEmail = cleanEmail;
+            userEmailNotifier.value = cleanEmail;
+          }
           await LocalStorageService.instance.restoreProgressSnapshot(bestData);
-          debugPrint('[autoSyncAndRestore] Successfully restored VIP backup for $boundEmail (${studentName ?? ""}, $cloudStars stars)!');
+          await LocalStorageService.instance.setOnboarded(true);
+          await LocalStorageService.instance.setCloudSyncEnabled(true);
+          debugPrint('[autoSyncAndRestore] Successfully restored VIP backup for ${restoredEmail ?? boundEmail} (${studentName ?? ""}, $cloudStars stars)!');
           developer.log(
-            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore for $boundEmail (${studentName ?? ""}, $cloudStars stars).',
+            'autoSyncAndRestore: Automatically restored VIP backup from Cloud Firestore for ${restoredEmail ?? boundEmail} (${studentName ?? ""}, $cloudStars stars).',
             name: 'CloudSync',
           );
           return true; // Cloud backup exists and was restored!
         }
       }
 
-      debugPrint('[autoSyncAndRestore] No cloud backup exists in Firestore for membership user ($boundEmail).');
+      debugPrint('[autoSyncAndRestore] No cloud backup exists in Firestore for membership user (${effectiveEmail ?? localTokens}).');
       return false;
     } catch (e, stack) {
       debugPrint('[autoSyncAndRestore] Exception: $e');
       developer.log('autoSyncAndRestore note: $e', error: e, stackTrace: stack, name: 'CloudSync');
       return false;
     }
+  }
+
+  /// Searches Cloud Firestore for VIP backup candidates using:
+  /// 1. Document key by email (doc(sadaf_anju@gmail_com))
+  /// 2. Document field queries by email (parentEmail / membershipBoundEmail)
+  /// 3. Verified Google Play purchase tokens (latestPurchaseToken, purchaseToken, purchaseTokens array, or subscription history)
+  Future<Map<String, dynamic>?> _findBestCloudBackup({
+    String? explicitEmail,
+    Set<String>? purchaseTokens,
+    User? firebaseUser,
+  }) async {
+    final List<Map<String, dynamic>> candidates = [];
+    final boundEmail = explicitEmail ??
+        LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ??
+        (firebaseUser?.isAnonymous == false ? firebaseUser?.email?.trim().toLowerCase() : null);
+
+    // 1. Email-based document queries
+    if (boundEmail != null && boundEmail.isNotEmpty) {
+      final emailKey = boundEmail.replaceAll('.', '_');
+      try {
+        final emailDoc = await FirebaseFirestore.instance
+            .collection(_collectionName)
+            .doc(emailKey)
+            .get();
+        if (emailDoc.exists && emailDoc.data() != null) {
+          candidates.add(emailDoc.data()!);
+        }
+      } catch (_) {}
+
+      if (candidates.isEmpty && boundEmail != emailKey) {
+        try {
+          final rawDoc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(boundEmail)
+              .get();
+          if (rawDoc.exists && rawDoc.data() != null) {
+            candidates.add(rawDoc.data()!);
+          }
+        } catch (_) {}
+      }
+
+      if (candidates.isEmpty && firebaseUser != null && firebaseUser.uid != emailKey) {
+        try {
+          final uidDoc = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .doc(firebaseUser.uid)
+              .get();
+          if (uidDoc.exists && uidDoc.data() != null) {
+            candidates.add(uidDoc.data()!);
+          }
+        } catch (_) {}
+      }
+
+      if (candidates.isEmpty) {
+        try {
+          final querySnap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('parentEmail', isEqualTo: boundEmail)
+              .limit(1)
+              .get();
+          for (final d in querySnap.docs) {
+            candidates.add(d.data());
+          }
+        } catch (_) {}
+      }
+
+      if (candidates.isEmpty) {
+        try {
+          final querySnap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('membershipBoundEmail', isEqualTo: boundEmail)
+              .limit(1)
+              .get();
+          for (final d in querySnap.docs) {
+            candidates.add(d.data());
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 2. Token-based document queries (Crucial for Fresh Installs where local storage is empty)
+    final tokens = purchaseTokens ?? InAppPurchaseService.instance.restoredPurchaseTokens;
+    if (candidates.isEmpty && tokens.isNotEmpty) {
+      debugPrint('[_findBestCloudBackup] Searching Firestore by ${tokens.length} restored purchase token(s)...');
+      for (final token in tokens) {
+        if (token.isEmpty) continue;
+        try {
+          final snap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('latestPurchaseToken', isEqualTo: token)
+              .limit(1)
+              .get();
+          for (final d in snap.docs) {
+            candidates.add(d.data());
+          }
+        } catch (_) {}
+        if (candidates.isNotEmpty) break;
+
+        try {
+          final snap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('purchaseToken', isEqualTo: token)
+              .limit(1)
+              .get();
+          for (final d in snap.docs) {
+            candidates.add(d.data());
+          }
+        } catch (_) {}
+        if (candidates.isNotEmpty) break;
+
+        try {
+          final snap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .where('purchaseTokens', arrayContains: token)
+              .limit(1)
+              .get();
+          for (final d in snap.docs) {
+            candidates.add(d.data());
+          }
+        } catch (_) {}
+        if (candidates.isNotEmpty) break;
+      }
+
+      // Fallback: If where queries return empty (e.g. unindexed field in rules or token in nested subscriptionHistory),
+      // scan vip_students collection documents directly.
+      if (candidates.isEmpty) {
+        try {
+          final allVipSnap = await FirebaseFirestore.instance
+              .collection(_collectionName)
+              .limit(100)
+              .get();
+          for (final doc in allVipSnap.docs) {
+            final data = doc.data();
+            final docToken = (data['latestPurchaseToken'] ?? data['purchaseToken'])?.toString().trim();
+            if (docToken != null && tokens.contains(docToken)) {
+              candidates.add(data);
+              break;
+            }
+            final hist = data['subscriptionHistory'];
+            if (hist is List) {
+              for (final item in hist) {
+                if (item is Map) {
+                  final t = item['purchaseToken']?.toString().trim();
+                  if (t != null && tokens.contains(t)) {
+                    candidates.add(data);
+                    break;
+                  }
+                }
+              }
+            }
+            if (candidates.isNotEmpty) break;
+          }
+        } catch (e) {
+          debugPrint('[_findBestCloudBackup] Scan note: $e');
+        }
+      }
+    }
+
+    if (candidates.isEmpty) return null;
+
+    // Pick candidate with highest genuine progress
+    Map<String, dynamic>? bestData;
+    int bestScore = -1;
+
+    for (final cand in candidates) {
+      final stars = (cand['stars'] as num?)?.toInt() ?? 0;
+      final points = (cand['points'] as num?)?.toInt() ?? 0;
+      final chaptersCount = (cand['completedChapters'] as List?)?.length ?? 0;
+      final attemptsCount = (cand['questionAttempts'] as Map?)?.length ?? 0;
+      final hasName = (cand['name'] ?? cand['studentName'])?.toString().isNotEmpty == true;
+
+      final score = (stars * 100) + points + (chaptersCount * 50) + (attemptsCount * 10) + (hasName ? 5 : 0);
+      if (score > bestScore) {
+        bestScore = score;
+        bestData = cand;
+      }
+    }
+
+    return bestData;
   }
 
   /// Syncs current student progress to Cloud Firestore for VIP / Paid members.
@@ -488,6 +612,22 @@ class CloudProgressService {
           firestoreData['parentEmail'] = boundEmail;
           firestoreData['membershipBoundEmail'] = boundEmail;
           firestoreData['studentName'] = currentSnapshot['name'];
+          firestoreData['name'] = currentSnapshot['name'];
+          firestoreData['isVip'] = true;
+
+          // Save top-level purchase tokens for instant token-based recovery on fresh install
+          final history = LocalStorageService.instance.getSubscriptionHistory();
+          final tokens = history
+              .map((s) => s.purchaseToken?.trim())
+              .where((t) => t != null && t.isNotEmpty)
+              .cast<String>()
+              .toSet()
+              .toList();
+          if (tokens.isNotEmpty) {
+            firestoreData['latestPurchaseToken'] = tokens.first;
+            firestoreData['purchaseToken'] = tokens.first;
+            firestoreData['purchaseTokens'] = tokens;
+          }
 
           // Exactly ONE document per email in vip_students: stored at doc(emailKey)
           await FirebaseFirestore.instance
@@ -695,7 +835,7 @@ class CloudProgressService {
 
       Map<String, dynamic>? snapshotData;
 
-      // 2. Query Cloud Firestore directly for membership Google account (zero account dialogs)
+      // 2. Query Cloud Firestore directly using bound email and verified purchase tokens
       if (isFirebaseAvailable) {
         User? user = currentUser;
         if (user == null) {
@@ -705,47 +845,30 @@ class CloudProgressService {
           } catch (_) {}
         }
 
-        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? (user?.isAnonymous == false ? user?.email?.trim().toLowerCase() : null);
-        if (boundEmail == null || boundEmail.isEmpty) {
-          return const CloudRestoreResult(
-            status: CloudRestoreStatus.noBackupFound,
-            message: 'No Google account email bound to this membership.',
-          );
-        }
-        final emailKey = boundEmail.replaceAll('.', '_');
+        // Try automatic lookup via bound email or Google Play purchase tokens (zero dialogs)
+        snapshotData = await _findBestCloudBackup(
+          purchaseTokens: InAppPurchaseService.instance.restoredPurchaseTokens,
+          firebaseUser: user,
+        );
 
-        try {
-          final doc = await FirebaseFirestore.instance
-              .collection(_collectionName)
-              .doc(emailKey)
-              .get();
-          if (doc.exists && doc.data() != null) {
-            snapshotData = doc.data();
+        // If not found and user can be prompted for Google Sign-In, allow them to choose their account
+        if (snapshotData == null && promptGoogleSignIn) {
+          try {
+            final userCredential = await signInWithGoogle();
+            if (userCredential != null) {
+              final signedInEmail = userCredential.user?.email?.trim().toLowerCase();
+              if (signedInEmail != null && signedInEmail.isNotEmpty) {
+                snapshotData = await _findBestCloudBackup(
+                  explicitEmail: signedInEmail,
+                  firebaseUser: userCredential.user,
+                );
+              }
+            }
+          } on DifferentGoogleAccountException {
+            rethrow;
+          } catch (e) {
+            developer.log('Google Sign-In note during restore: $e', name: 'CloudSync');
           }
-        } catch (_) {}
-
-        if (snapshotData == null) {
-          try {
-            final doc = await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .doc(boundEmail)
-                .get();
-            if (doc.exists && doc.data() != null) {
-              snapshotData = doc.data();
-            }
-          } catch (_) {}
-        }
-
-        if (snapshotData == null && user != null) {
-          try {
-            final doc = await FirebaseFirestore.instance
-                .collection(_collectionName)
-                .doc(user.uid)
-                .get();
-            if (doc.exists && doc.data() != null) {
-              snapshotData = doc.data();
-            }
-          } catch (_) {}
         }
       }
 
@@ -768,10 +891,19 @@ class CloudProgressService {
       }
 
       // 4. Restore progress into local storage
+      final restoredEmail = (snapshotData['parentEmail'] ?? snapshotData['membershipBoundEmail']) as String?;
+      if (restoredEmail != null && restoredEmail.trim().isNotEmpty) {
+        final cleanEmail = restoredEmail.trim().toLowerCase();
+        await LocalStorageService.instance.setBoundMembershipEmail(cleanEmail);
+        _cachedEmail = cleanEmail;
+        userEmailNotifier.value = cleanEmail;
+      }
       await LocalStorageService.instance.restoreProgressSnapshot(snapshotData);
+      await LocalStorageService.instance.setOnboarded(true);
+      await LocalStorageService.instance.setCloudSyncEnabled(true);
 
       final stars = (snapshotData['stars'] as num?)?.toInt() ?? 0;
-      final studentName = snapshotData['name'] as String? ?? 'Young Explorer';
+      final studentName = (snapshotData['name'] ?? snapshotData['studentName']) as String? ?? 'Young Explorer';
 
       developer.log(
         'CloudProgressService: Successfully restored VIP progress for $studentName ($stars stars).',

@@ -51,6 +51,27 @@ class InAppPurchaseService {
   List<String> _notFoundIds = [];
   List<String> get notFoundIds => List.unmodifiable(_notFoundIds);
 
+  /// Returns the most recent Google Play purchase token, if available.
+  String? get latestPurchaseToken {
+    final history = LocalStorageService.instance.getSubscriptionHistory();
+    for (final record in history) {
+      if (record.purchaseToken != null && record.purchaseToken!.trim().isNotEmpty) {
+        return record.purchaseToken!.trim();
+      }
+    }
+    return null;
+  }
+
+  /// Returns all restored Google Play purchase tokens from subscription history.
+  Set<String> get restoredPurchaseTokens {
+    final history = LocalStorageService.instance.getSubscriptionHistory();
+    return history
+        .map((s) => s.purchaseToken?.trim())
+        .where((t) => t != null && t.isNotEmpty)
+        .cast<String>()
+        .toSet();
+  }
+
   /// Initializes Google Play Billing connection, loads products, and listens to purchase stream.
   Future<void> initialize() async {
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
