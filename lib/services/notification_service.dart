@@ -72,11 +72,19 @@ class NotificationService {
       // 5. Setup message streams
       _setupMessageListeners();
 
-      // 6. Fetch and register token
-      await _retrieveAndSyncToken();
+      // 6. Fetch and register token with safe timeout
+      await _retrieveAndSyncToken().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => debugPrint('[NotificationService] Token retrieval timed out.'),
+      );
 
-      // 7. Subscribe to default broadcast topics
-      await _subscribeToDefaultTopics();
+      // 7. Subscribe to default broadcast topics only if token is valid
+      if (_fcmToken != null && _fcmToken!.isNotEmpty) {
+        await _subscribeToDefaultTopics().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => debugPrint('[NotificationService] Topic subscription timed out.'),
+        );
+      }
 
       _initialized = true;
       debugPrint('[NotificationService] Successfully initialized Firebase Cloud Messaging.');
@@ -304,15 +312,28 @@ class NotificationService {
   }
 
   Future<void> _subscribeToDefaultTopics() async {
+    if (_fcmToken == null || _fcmToken!.isEmpty) {
+      debugPrint('[NotificationService] Skipping topic subscription because FCM token is unavailable.');
+      return;
+    }
     try {
       // General topic for all installed users
-      await _messaging.subscribeToTopic('curio_all_users');
-      await _messaging.subscribeToTopic('curio_learning_updates');
+      await _messaging.subscribeToTopic('curio_all_users').timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => debugPrint('[NotificationService] subscribeToTopic curio_all_users timed out.'),
+      );
+      await _messaging.subscribeToTopic('curio_learning_updates').timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => debugPrint('[NotificationService] subscribeToTopic curio_learning_updates timed out.'),
+      );
 
       // VIP members broadcast topic
       final isVip = LocalStorageService.instance.isPremiumUser || LocalStorageService.instance.isClosedTester;
       if (isVip) {
-        await _messaging.subscribeToTopic('curio_vip_members');
+        await _messaging.subscribeToTopic('curio_vip_members').timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => debugPrint('[NotificationService] subscribeToTopic curio_vip_members timed out.'),
+        );
       }
     } catch (e) {
       debugPrint('[NotificationService] Topic subscription note: $e');

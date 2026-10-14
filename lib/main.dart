@@ -24,8 +24,10 @@ void main() async {
   // Initialize Firebase (Option 1: Cloud Firestore + Google Sign-In)
   try {
     await Firebase.initializeApp();
-    // Initialize Firebase Cloud Messaging & Local Notifications
-    await NotificationService.instance.initialize();
+    // Initialize Firebase Cloud Messaging & Local Notifications in background (never blocks UI)
+    NotificationService.instance.initialize().catchError((e) {
+      debugPrint('[NotificationService] Background init note: $e');
+    });
   } catch (e) {
     debugPrint('[Firebase] Initialization: $e');
   }
