@@ -6,6 +6,7 @@ import '../../../core/audio/audio_service.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../data/local/local_storage_service.dart';
 import '../domain/tracing_character.dart';
+import '../domain/tracing_checkpoint.dart';
 import '../domain/tracing_evaluator.dart';
 import '../domain/tracing_repository.dart';
 
@@ -73,6 +74,9 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   TracingEvaluationResult? _lastResult;
   Timer? _celebrationAutoAdvanceTimer;
 
+  // Interactive pixel checkpoints (target beads along letter path)
+  List<TracingCheckpoint> _checkpoints = [];
+
   @override
   void initState() {
     super.initState();
@@ -88,9 +92,10 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       curve: Curves.elasticOut,
     );
 
-    // Speak initial character after frame
+    // Speak initial character and load checkpoints after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speakCurrentCharacter();
+      _loadCheckpoints();
     });
   }
 
@@ -103,6 +108,22 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
 
   TracingCharacter get _currentChar => _characterList[_currentIndex];
 
+  Future<void> _loadCheckpoints() async {
+    try {
+      final cps = await TracingEvaluator.getCheckpoints(
+        character: _currentChar.character,
+        canvasSize: _canvasSize,
+      );
+      if (mounted) {
+        setState(() {
+          _checkpoints = cps;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading checkpoints: $e');
+    }
+  }
+
   void _onCategorySelected(TracingCategory category) {
     if (_currentCategory == category) return;
     AudioService.instance.playSfx(CurioSfx.click);
@@ -113,6 +134,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _currentIndex = 0;
       _clearCanvas();
     });
+    _loadCheckpoints();
     _speakCurrentCharacter();
   }
 
@@ -127,6 +149,9 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _liveAccuracy = 0.0;
       _liveStars = 0;
       _lastResult = null;
+      for (final cp in _checkpoints) {
+        cp.isCollected = false;
+      }
     });
   }
 
@@ -144,6 +169,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
         _currentIndex--;
         _clearCanvas();
       });
+      _loadCheckpoints();
       _speakCurrentCharacter();
     }
   }
@@ -156,7 +182,38 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
         _currentIndex++;
         _clearCanvas();
       });
+      _loadCheckpoints();
       _speakCurrentCharacter();
+    }
+  }
+
+  void _collectCheckpointsAt(Offset pos) {
+    if (_checkpoints.isEmpty) return;
+    bool newlyCollected = false;
+    for (final cp in _checkpoints) {
+      if (!cp.isCollected) {
+        if ((cp.position - pos).distance <= 28.0) {
+          cp.isCollected = true;
+          newlyCollected = true;
+          _addSparkle(cp.position, const Color(0xFFFFD700));
+        }
+      }
+    }
+    if (newlyCollected) {
+      AudioService.instance.playSfx(CurioSfx.bubblePop);
+      final total = _checkpoints.length;
+      final collected = _checkpoints.where((c) => c.isCollected).length;
+      final ratio = total > 0 ? (collected / total) : 0.0;
+      _liveAccuracy = ratio;
+      if (ratio >= 0.85) {
+        _liveStars = 3;
+      } else if (ratio >= 0.60) {
+        _liveStars = 2;
+      } else if (ratio >= 0.35) {
+        _liveStars = 1;
+      } else {
+        _liveStars = 0;
+      }
     }
   }
 
@@ -172,6 +229,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _strokes.add(_currentStroke);
       _strokeColors.add(strokeColor);
       _addSparkle(details.localPosition, strokeColor);
+      _collectCheckpointsAt(details.localPosition);
     });
   }
 
@@ -179,6 +237,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
     setState(() {
       _currentStroke.add(details.localPosition);
       _addSparkle(details.localPosition, _strokeColors.isNotEmpty ? _strokeColors.last : _selectedColor);
+      _collectCheckpointsAt(details.localPosition);
     });
     _panPointCounter++;
     if (_panPointCounter % 5 == 0) {
@@ -220,7 +279,11 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
         _liveStars = result.stars;
       });
 
-      if (autoCheck && result.isCompleted && !_showCelebration) {
+      final totalCps = _checkpoints.length;
+      final collectedCps = _checkpoints.where((c) => c.isCollected).length;
+      final cpRatio = totalCps > 0 ? (collectedCps / totalCps) : 0.0;
+
+      if (autoCheck && result.isCompleted && (totalCps == 0 || cpRatio >= 0.70) && !_showCelebration) {
         _celebrateSuccess(result);
       }
     } catch (e) {
@@ -288,15 +351,27 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       _liveStars = result.stars;
     });
 
-    if (result.isCompleted) {
+    final totalCps = _checkpoints.length;
+    final collectedCps = _checkpoints.where((c) => c.isCollected).length;
+    final cpRatio = totalCps > 0 ? (collectedCps / totalCps) : 0.0;
+
+    if (result.isCompleted && (totalCps == 0 || cpRatio >= 0.70)) {
       _celebrateSuccess(result);
     } else {
       AudioService.instance.playSfx(CurioSfx.gentleWobble);
       final isHindi = ref.read(appLanguageProvider) == AppLanguage.hindi;
+      final String feedback;
+      if (!result.isCompleted) {
+        feedback = isHindi ? result.feedbackHi : result.feedbackEn;
+      } else {
+        feedback = isHindi
+            ? 'अक्षर के सभी मोतियों को छुएं! ($collectedCps/$totalCps) ✍️'
+            : 'Trace through all the beads on the letter! ($collectedCps/$totalCps) ✍️';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isHindi ? result.feedbackHi : result.feedbackEn,
+            feedback,
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFEA580C),
@@ -368,10 +443,12 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
                       onTap: () {
                         AudioService.instance.playSfx(CurioSfx.click);
                         Navigator.pop(ctx);
+                        TracingEvaluator.clearCache();
                         setState(() {
                           _currentIndex = idx;
                           _clearCanvas();
                         });
+                        _loadCheckpoints();
                         _speakCurrentCharacter();
                       },
                       child: Container(
@@ -690,7 +767,13 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   Widget _buildTracingCanvasArea(bool isHindi) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        _canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+        final newSize = Size(constraints.maxWidth, constraints.maxHeight);
+        if (_canvasSize != newSize) {
+          _canvasSize = newSize;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _loadCheckpoints();
+          });
+        }
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -725,6 +808,12 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
                       fontFamily: 'Roboto',
                     ),
                   ),
+                ),
+
+                // Interactive Pixel Checkpoint Beads (Under finger, over letter outline)
+                CustomPaint(
+                  size: Size.infinite,
+                  painter: _CheckpointBeadsPainter(checkpoints: _checkpoints),
                 ),
 
                 // Guided Start Hint Star ⭐
@@ -779,6 +868,8 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
 
   Widget _buildTrackingAccuracyBadge(bool isHindi) {
     final percent = (_liveAccuracy * 100).toInt();
+    final totalCps = _checkpoints.length;
+    final collectedCps = _checkpoints.where((c) => c.isCollected).length;
 
     Color bgColor = const Color(0xFFF1F5F9);
     Color borderColor = const Color(0xFFCBD5E1);
@@ -803,6 +894,10 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
       starsDisplay = '⭐☆☆';
     }
 
+    final displayText = totalCps > 0
+        ? (isHindi ? 'मोती: $collectedCps/$totalCps' : 'Dots: $collectedCps/$totalCps')
+        : (isHindi ? 'सटीकता: $percent%' : 'Accuracy: $percent%');
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -823,7 +918,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
           const Text('🎯', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 5),
           Text(
-            isHindi ? 'सटीकता: $percent%' : 'Accuracy: $percent%',
+            displayText,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w900,
@@ -1172,4 +1267,66 @@ class _TracingStrokesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TracingStrokesPainter oldDelegate) => true;
+}
+
+// Painter for interactive pixel checkpoint beads along letter strokes
+class _CheckpointBeadsPainter extends CustomPainter {
+  final List<TracingCheckpoint> checkpoints;
+
+  _CheckpointBeadsPainter({required this.checkpoints});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (checkpoints.isEmpty) return;
+
+    final uncollectedBorder = Paint()
+      ..color = const Color(0xFF94A3B8).withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+
+    final uncollectedFill = Paint()
+      ..color = Colors.white.withValues(alpha: 0.95)
+      ..style = PaintingStyle.fill;
+
+    final uncollectedCenter = Paint()
+      ..color = const Color(0xFF64748B)
+      ..style = PaintingStyle.fill;
+
+    final collectedGlow = Paint()
+      ..color = const Color(0xFFFFB703).withValues(alpha: 0.5)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
+
+    final collectedFill = Paint()
+      ..color = const Color(0xFFFFC107)
+      ..style = PaintingStyle.fill;
+
+    final collectedBorder = Paint()
+      ..color = const Color(0xFFD97706)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+
+    final highlight = Paint()
+      ..color = Colors.white.withValues(alpha: 0.95)
+      ..style = PaintingStyle.fill;
+
+    for (final cp in checkpoints) {
+      final center = cp.position;
+      if (cp.isCollected) {
+        // Glowing star / golden gem bead
+        canvas.drawCircle(center, 9.5, collectedGlow);
+        canvas.drawCircle(center, 7.5, collectedFill);
+        canvas.drawCircle(center, 7.5, collectedBorder);
+        canvas.drawCircle(center - const Offset(2.2, 2.2), 2.4, highlight);
+      } else {
+        // Soft guide pearl
+        canvas.drawCircle(center, 6.0, uncollectedFill);
+        canvas.drawCircle(center, 6.0, uncollectedBorder);
+        canvas.drawCircle(center, 2.0, uncollectedCenter);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CheckpointBeadsPainter oldDelegate) => true;
 }

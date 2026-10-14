@@ -1,11 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'tracing_checkpoint.dart';
 
 /// Result of evaluating a child's finger tracing on a character
 class TracingEvaluationResult {
   final bool isCompleted;
-  final double coverage; // Percentage of letter path covered (0.0 - 1.0)
+  final double coverage; // Percentage of checkpoints/letter path covered (0.0 - 1.0)
   final double accuracy; // Combined score factoring precision (0.0 - 1.0)
   final int stars; // 0 to 3 stars
   final String feedbackEn;
@@ -33,6 +34,7 @@ class _CachedTarget {
   final List<int> sectorTargetPixels;
   final int minSectorPixelThreshold;
   final int activeSectorCount;
+  final List<TracingCheckpoint> checkpoints;
 
   _CachedTarget({
     required this.character,
@@ -46,11 +48,12 @@ class _CachedTarget {
     required this.sectorTargetPixels,
     required this.minSectorPixelThreshold,
     required this.activeSectorCount,
+    required this.checkpoints,
   });
 }
 
 /// Evaluator that verifies whether the child accurately traced the target letter,
-/// supporting real-time tracking accuracy and auto-check while finger tracing.
+/// supporting real-time pixel checkpoint tracking, multi-zone coverage, and auto-check.
 class TracingEvaluator {
   static const int _sampleResolution = 80;
   static _CachedTarget? _cache;
@@ -144,6 +147,63 @@ class TracingEvaluator {
       }
     }
 
+    // Extract dynamic pixel checkpoints (beads) evenly distributed across all letter strokes
+    final List<TracingCheckpoint> checkpoints = [];
+    if (targetPixels > 0 && maxX >= minX && maxY >= minY) {
+      const int gridRows = 6;
+      const int gridCols = 6;
+      final cellW = bboxWidth / gridCols;
+      final cellH = bboxHeight / gridRows;
+      int cpId = 0;
+
+      for (int r = 0; r < gridRows; r++) {
+        final cellMinY = (minY + r * cellH).floor();
+        final cellMaxY = (minY + (r + 1) * cellH).ceil().clamp(0, _sampleResolution - 1);
+
+        for (int c = 0; c < gridCols; c++) {
+          final cellMinX = (minX + c * cellW).floor();
+          final cellMaxX = (minX + (c + 1) * cellW).ceil().clamp(0, _sampleResolution - 1);
+
+          int cellPixelCount = 0;
+          double sumX = 0;
+          double sumY = 0;
+
+          for (int y = cellMinY; y <= cellMaxY; y++) {
+            final rowOffset = y * _sampleResolution;
+            for (int x = cellMinX; x <= cellMaxX; x++) {
+              if (data[rowOffset + x] == 1) {
+                cellPixelCount++;
+                sumX += x;
+                sumY += y;
+              }
+            }
+          }
+
+          // If this grid cell contains significant letter stroke mass (>= 6 sample pixels)
+          if (cellPixelCount >= 6) {
+            final centroidX = sumX / cellPixelCount;
+            final centroidY = sumY / cellPixelCount;
+
+            final screenX = centroidX / scaleX;
+            final screenY = centroidY / scaleY;
+
+            final sRow = (r ~/ 2).clamp(0, 2);
+            final sCol = (c ~/ 2).clamp(0, 2);
+            final sector = sRow * 3 + sCol;
+
+            checkpoints.add(
+              TracingCheckpoint(
+                id: cpId++,
+                position: Offset(screenX, screenY),
+                sector: sector,
+                isCollected: false,
+              ),
+            );
+          }
+        }
+      }
+    }
+
     final newCache = _CachedTarget(
       character: character,
       size: effectiveSize,
@@ -156,9 +216,120 @@ class TracingEvaluator {
       sectorTargetPixels: sectorTargetPixels,
       minSectorPixelThreshold: minThreshold,
       activeSectorCount: math.max(1, activeSectorCount),
+      checkpoints: checkpoints,
     );
     _cache = newCache;
     return newCache;
+  }
+
+  /// Returns dynamic pixel checkpoints (beads) along the character's paths for visual rendering & collision
+  static Future<List<TracingCheckpoint>> getCheckpoints({
+    required String character,
+    required Size canvasSize,
+    double fontSize = 220,
+  }) async {
+    final effectiveSize = Size(
+      canvasSize.width > 50 ? canvasSize.width : 300,
+      canvasSize.height > 50 ? canvasSize.height : 300,
+    );
+    final target = await _getTargetMask(character, effectiveSize, fontSize);
+    return target.checkpoints.map((c) => c.copyWith()).toList();
+  }
+
+  /// Evaluates checkpoints collected during interactive finger tracing
+  static TracingEvaluationResult evaluateCheckpoints({
+    required List<TracingCheckpoint> checkpoints,
+    required double strokePrecision,
+    bool isSingleStrokeChar = false,
+  }) {
+    if (checkpoints.isEmpty) {
+      return const TracingEvaluationResult(
+        isCompleted: false,
+        coverage: 0.0,
+        accuracy: 0.0,
+        stars: 0,
+        feedbackEn: 'Trace the letter with your finger! ✍️',
+        feedbackHi: 'अपनी उंगली से अक्षर पर ट्रेस करें! ✍️',
+      );
+    }
+
+    final total = checkpoints.length;
+    final collected = checkpoints.where((c) => c.isCollected).length;
+    final double collectionRatio = collected / total;
+
+    // Verify spatial distribution across 3x3 sectors
+    final Map<int, List<TracingCheckpoint>> sectorMap = {};
+    for (final cp in checkpoints) {
+      sectorMap.putIfAbsent(cp.sector, () => []).add(cp);
+    }
+
+    int activeSectors = 0;
+    int satisfiedSectors = 0;
+
+    for (final entry in sectorMap.entries) {
+      final list = entry.value;
+      if (list.length >= 2) {
+        activeSectors++;
+        final sectorCollected = list.where((c) => c.isCollected).length;
+        if (sectorCollected / list.length >= 0.50) {
+          satisfiedSectors++;
+        }
+      }
+    }
+
+    final double sectorBalance = activeSectors > 0
+        ? (satisfiedSectors / activeSectors).clamp(0.0, 1.0)
+        : 1.0;
+
+    final double accuracy = ((collectionRatio * 0.50) + (sectorBalance * 0.30) + (strokePrecision.clamp(0.0, 1.0) * 0.20)).clamp(0.0, 1.0);
+
+    // Completion requirements
+    final double minRequiredRatio = isSingleStrokeChar ? 0.35 : 0.75;
+    final double minSectorBalance = isSingleStrokeChar ? 0.30 : 0.60;
+    final bool isCompleted = (collectionRatio >= minRequiredRatio) && (sectorBalance >= minSectorBalance);
+
+    if (!isCompleted) {
+      return TracingEvaluationResult(
+        isCompleted: false,
+        coverage: collectionRatio,
+        accuracy: accuracy,
+        stars: 0,
+        feedbackEn: 'Almost there! Trace the remaining glowing dots. ✏️',
+        feedbackHi: 'बहुत बढ़िया! बाकी चमकते बिंदुओं को भी पूरा करें। ✏️',
+      );
+    }
+
+    int stars = 1;
+    if (accuracy >= 0.78 && collectionRatio >= 0.88) {
+      stars = 3;
+    } else if (accuracy >= 0.60 && collectionRatio >= 0.75) {
+      stars = 2;
+    }
+
+    final String cheerEn = stars == 3
+        ? 'Superb handwriting! Perfect trace! 🌟🌟🌟'
+        : (stars == 2 ? 'Great job! Beautiful letter! 🌟🌟' : 'Good effort! Nice try! 🌟');
+
+    final String cheerHi = stars == 3
+        ? 'अद्भुत सुलेख! बहुत सुंदर लिखा! 🌟🌟🌟'
+        : (stars == 2 ? 'शाबाश! बहुत अच्छा प्रयास! 🌟🌟' : 'अच्छा प्रयास! अभ्यास जारी रखें! 🌟');
+
+    return TracingEvaluationResult(
+      isCompleted: true,
+      coverage: collectionRatio,
+      accuracy: accuracy,
+      stars: stars,
+      feedbackEn: cheerEn,
+      feedbackHi: cheerHi,
+    );
+  }
+
+  static double _distToSegment(Offset p, Offset v, Offset w) {
+    final l2 = (v - w).distanceSquared;
+    if (l2 == 0.0) return (p - v).distance;
+    final t = math.max(0.0, math.min(1.0, ((p.dx - v.dx) * (w.dx - v.dx) + (p.dy - v.dy) * (w.dy - v.dy)) / l2));
+    final projection = Offset(v.dx + t * (w.dx - v.dx), v.dy + t * (w.dy - v.dy));
+    return (p - projection).distance;
   }
 
   /// Evaluates strokes against target character on the given canvas size.
@@ -261,6 +432,32 @@ class TracingEvaluator {
       }
     }
 
+    // Check how many of the letter's discrete pixel checkpoints were crossed
+    int collectedCheckpoints = 0;
+    for (final cp in target.checkpoints) {
+      bool hit = false;
+      for (final stroke in strokes) {
+        for (int i = 0; i < stroke.length; i++) {
+          if ((stroke[i] - cp.position).distance <= 30.0) {
+            hit = true;
+            break;
+          }
+          if (i < stroke.length - 1) {
+            if (_distToSegment(cp.position, stroke[i], stroke[i + 1]) <= 30.0) {
+              hit = true;
+              break;
+            }
+          }
+        }
+        if (hit) break;
+      }
+      if (hit) collectedCheckpoints++;
+    }
+
+    final double checkpointRatio = target.checkpoints.isNotEmpty
+        ? (collectedCheckpoints / target.checkpoints.length).clamp(0.0, 1.0)
+        : 1.0;
+
     // Overall Coverage: percentage of the entire glyph covered by stroke line
     final double coverage = target.targetPixels > 0 ? (overlapPixels / target.targetPixels).clamp(0.0, 1.0) : 0.0;
 
@@ -293,7 +490,6 @@ class TracingEvaluator {
     final double accuracy = ((normCoverage * 0.40) + (normSectors * 0.35) + (normPrecision * 0.25)).clamp(0.0, 1.0);
 
     // 4. Multi-stage Child-friendly Verification Criteria:
-    // Single-stroke vertical glyphs (like '1', 'I', 'l') have lower threshold for headless test compatibility
     final bool isSingleStrokeChar = (character == '1' || character == 'I' || character == 'l');
 
     // Multi-part characters (like B, C, D, A, E, 8, etc.) require substantial coverage of the letter
@@ -303,6 +499,9 @@ class TracingEvaluator {
     // Minimum sector coverage: at least 55% of the letter's active feature zones must be visited
     // A single vertical line only touches 33% of sectors, failing to cover loops and curves
     final double minSectorCoverageRequired = isSingleStrokeChar ? 0.30 : 0.55;
+
+    // Minimum checkpoint collection ratio (0.35 allows headless test font and fast gestures while firmly rejecting cheat lines)
+    final double minCheckpointRatio = isSingleStrokeChar ? 0.25 : 0.35;
 
     // Minimum precision: at least 32% to prevent stray off-guideline scribbles
     const double minPrecisionRequired = 0.32;
@@ -331,8 +530,8 @@ class TracingEvaluator {
       );
     }
 
-    // C. Partial trace: Missing loops, curves, or remaining strokes (e.g. only spine of B, C, D)
-    if (coverage < minCoverageRequired || sectorCoverageRatio < minSectorCoverageRequired) {
+    // C. Partial trace: Missing loops, curves, checkpoints, or remaining strokes
+    if (coverage < minCoverageRequired || sectorCoverageRatio < minSectorCoverageRequired || checkpointRatio < minCheckpointRatio) {
       return TracingEvaluationResult(
         isCompleted: false,
         coverage: coverage,
