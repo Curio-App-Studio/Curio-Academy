@@ -188,6 +188,7 @@ class _FirstTimeOnboardingScreenState
     if (passedGate != true || !mounted) return;
 
     AudioService.instance.playSfx(CurioSfx.click);
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(

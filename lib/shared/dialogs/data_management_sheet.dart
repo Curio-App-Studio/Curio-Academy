@@ -32,6 +32,7 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
   late int _num2;
   final TextEditingController _gateController = TextEditingController();
   String? _gateError;
+  bool _isTogglingSync = false;
 
   @override
   void initState() {
@@ -375,52 +376,61 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
                 activeThumbColor: const Color(0xFF16A34A),
                 activeTrackColor: const Color(0xFF86EFAC),
                 onChanged: (bool value) async {
-                  if (value) {
-                    if (!isVip) {
-                      AudioService.instance.playSfx(CurioSfx.gentleWobble);
+                  if (_isTogglingSync) return;
+                  _isTogglingSync = true;
+                  try {
+                    if (value) {
+                      if (!isVip) {
+                        AudioService.instance.playSfx(CurioSfx.gentleWobble);
+                        appScaffoldMessengerKey.currentState?.clearSnackBars();
+                        appScaffoldMessengerKey.currentState?.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isHindi
+                                  ? 'क्लाउड सिंक के लिए VIP सदस्यता आवश्यक है।'
+                                  : 'VIP Membership required for Cloud Auto-Sync.',
+                            ),
+                            backgroundColor: const Color(0xFFD97706),
+                          ),
+                        );
+                        return;
+                      }
+                      AudioService.instance.playSfx(CurioSfx.correctCheer);
+                      await LocalStorageService.instance.setCloudSyncEnabled(true);
+                      final syncSuccess = await CloudProgressService().syncProgressToCloud(force: true);
+                      appScaffoldMessengerKey.currentState?.clearSnackBars();
+                      appScaffoldMessengerKey.currentState?.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            syncSuccess
+                                ? (isHindi
+                                    ? 'क्लाउड ऑटो-सिंक सक्रिय किया गया और बैकअप पूरा हुआ!'
+                                    : 'Cloud Auto-Sync enabled and progress backed up!')
+                                : (isHindi
+                                    ? 'क्लाउड ऑटो-सिंक सक्रिय किया गया।'
+                                    : 'Cloud Auto-Sync enabled.'),
+                          ),
+                          backgroundColor: const Color(0xFF16A34A),
+                        ),
+                      );
+                    } else {
+                      AudioService.instance.playSfx(CurioSfx.click);
+                      await LocalStorageService.instance.setCloudSyncEnabled(false);
+                      await CloudProgressService().deleteCloudData();
+                      appScaffoldMessengerKey.currentState?.clearSnackBars();
                       appScaffoldMessengerKey.currentState?.showSnackBar(
                         SnackBar(
                           content: Text(
                             isHindi
-                                ? 'क्लाउड सिंक के लिए VIP सदस्यता आवश्यक है।'
-                                : 'VIP Membership required for Cloud Auto-Sync.',
+                                ? 'क्लाउड ऑटो-सिंक बंद किया गया और क्लाउड बैकअप हटा दिया गया।'
+                                : 'Cloud Auto-Sync disabled & cloud backup deleted from Firebase.',
                           ),
-                          backgroundColor: const Color(0xFFD97706),
+                          backgroundColor: Colors.grey.shade800,
                         ),
                       );
-                      return;
                     }
-                    AudioService.instance.playSfx(CurioSfx.correctCheer);
-                    await LocalStorageService.instance.setCloudSyncEnabled(true);
-                    final syncSuccess = await CloudProgressService().syncProgressToCloud(force: true);
-                    appScaffoldMessengerKey.currentState?.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          syncSuccess
-                              ? (isHindi
-                                  ? 'क्लाउड ऑटो-सिंक सक्रिय किया गया और बैकअप पूरा हुआ!'
-                                  : 'Cloud Auto-Sync enabled and progress backed up!')
-                              : (isHindi
-                                  ? 'क्लाउड ऑटो-सिंक सक्रिय किया गया।'
-                                  : 'Cloud Auto-Sync enabled.'),
-                        ),
-                        backgroundColor: const Color(0xFF16A34A),
-                      ),
-                    );
-                  } else {
-                    AudioService.instance.playSfx(CurioSfx.click);
-                    await LocalStorageService.instance.setCloudSyncEnabled(false);
-                    await CloudProgressService().deleteCloudData();
-                    appScaffoldMessengerKey.currentState?.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isHindi
-                              ? 'क्लाउड ऑटो-सिंक बंद किया गया और क्लाउड बैकअप हटा दिया गया।'
-                              : 'Cloud Auto-Sync disabled & cloud backup deleted from Firebase.',
-                        ),
-                        backgroundColor: Colors.grey.shade800,
-                      ),
-                    );
+                  } finally {
+                    _isTogglingSync = false;
                   }
                 },
               ),
@@ -513,6 +523,7 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
               await LocalStorageService.instance.resetProgressOnly();
+              appScaffoldMessengerKey.currentState?.clearSnackBars();
               appScaffoldMessengerKey.currentState?.showSnackBar(
                 SnackBar(
                   content: Text(
@@ -603,6 +614,7 @@ class _DataManagementSheetState extends ConsumerState<DataManagementSheet> {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
               final success = await CloudProgressService().deleteCloudData();
+              appScaffoldMessengerKey.currentState?.clearSnackBars();
               appScaffoldMessengerKey.currentState?.showSnackBar(
                 SnackBar(
                   content: Text(

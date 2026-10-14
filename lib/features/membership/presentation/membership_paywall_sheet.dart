@@ -35,6 +35,8 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
   late int _gateAnswer;
   final TextEditingController _gateController = TextEditingController();
   String? _gateError;
+  bool _isRestoringPurchases = false;
+  bool _isSyncingProgress = false;
 
   static const _monthsEn = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -295,36 +297,44 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
   }
 
   Future<void> _handleRestorePurchases(bool isHindi, {bool showInitialSnackbar = true}) async {
-    if (showInitialSnackbar) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isHindi ? 'Google Play से खरीद पुनर्स्थापित की जा रही है...' : 'Restoring previous purchases from Google Play...'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-    await InAppPurchaseService.instance.restorePurchases();
-    final progressResult = await CloudProgressService().restoreVipProgress();
-    if (mounted) {
-      setState(() {});
-      final isRestored = LocalStorageService.instance.isPremiumUser;
-      String message = isRestored
-          ? (isHindi ? 'VIP खरीद सफलतापूर्वक पुनर्स्थापित!' : 'VIP Purchases successfully restored!')
-          : (isHindi ? 'कोई पूर्व खरीद नहीं मिली।' : 'No previous purchases found.');
-
-      if (progressResult.status == CloudRestoreStatus.success) {
-        message += isHindi
-            ? ' (${progressResult.restoredStars ?? 0} सितारे और प्रोग्रेस वापस आ गए!)'
-            : ' (${progressResult.restoredStars ?? 0} stars & progress restored!)';
+    if (_isRestoringPurchases) return;
+    _isRestoringPurchases = true;
+    try {
+      if (showInitialSnackbar && mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isHindi ? 'Google Play से खरीद पुनर्स्थापित की जा रही है...' : 'Restoring previous purchases from Google Play...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
+      await InAppPurchaseService.instance.restorePurchases();
+      final progressResult = await CloudProgressService().restoreVipProgress();
+      if (mounted) {
+        setState(() {});
+        final isRestored = LocalStorageService.instance.isPremiumUser;
+        String message = isRestored
+            ? (isHindi ? 'VIP खरीद सफलतापूर्वक पुनर्स्थापित!' : 'VIP Purchases successfully restored!')
+            : (isHindi ? 'कोई पूर्व खरीद नहीं मिली।' : 'No previous purchases found.');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: isRestored ? const Color(0xFF059669) : null,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+        if (progressResult.status == CloudRestoreStatus.success) {
+          message += isHindi
+              ? ' (${progressResult.restoredStars ?? 0} सितारे और प्रोग्रेस वापस आ गए!)'
+              : ' (${progressResult.restoredStars ?? 0} stars & progress restored!)';
+        }
+
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: isRestored ? const Color(0xFF059669) : null,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      _isRestoringPurchases = false;
     }
   }
 
@@ -961,16 +971,23 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                                   }
                                 }
                               } else {
-                                await CloudProgressService().syncProgressToCloud(force: true);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(isHindi
-                                          ? 'क्लाउड सिंक चालू हुआ और प्रोग्रेस बैकअप हो गई!'
-                                          : 'Cloud Sync enabled and progress backed up!'),
-                                      backgroundColor: const Color(0xFF059669),
-                                    ),
-                                  );
+                                if (_isSyncingProgress) return;
+                                _isSyncingProgress = true;
+                                try {
+                                  await CloudProgressService().syncProgressToCloud(force: true);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(isHindi
+                                            ? 'क्लाउड सिंक चालू हुआ और प्रोग्रेस बैकअप हो गई!'
+                                            : 'Cloud Sync enabled and progress backed up!'),
+                                        backgroundColor: const Color(0xFF059669),
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  _isSyncingProgress = false;
                                 }
                               }
                             } else {
@@ -981,6 +998,7 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                                   if (cred != null) {
                                     await CloudProgressService().syncProgressToCloud(force: true);
                                     if (context.mounted) {
+                                      ScaffoldMessenger.of(context).clearSnackBars();
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(isHindi
@@ -998,6 +1016,7 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                                             ? 'क्लाउड सिंक केवल उसी Google खाते से काम करेगा जिस पर सदस्यता सक्रिय है (${e.boundEmail})।'
                                             : e.message)
                                         : 'Sync note: $e';
+                                    ScaffoldMessenger.of(context).clearSnackBars();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(msg),
@@ -1008,16 +1027,23 @@ class _MembershipPaywallSheetState extends State<MembershipPaywallSheet> {
                                   }
                                 }
                               } else {
-                                await CloudProgressService().syncProgressToCloud(force: true);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(isHindi
-                                          ? 'प्रोग्रेस क्लाउड पर सिंक हो गई है।'
-                                          : 'Progress synced to Cloud Firestore!'),
-                                      backgroundColor: const Color(0xFF059669),
-                                    ),
-                                  );
+                                if (_isSyncingProgress) return;
+                                _isSyncingProgress = true;
+                                try {
+                                  await CloudProgressService().syncProgressToCloud(force: true);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(isHindi
+                                            ? 'प्रोग्रेस क्लाउड पर सिंक हो गई है।'
+                                            : 'Progress synced to Cloud Firestore!'),
+                                        backgroundColor: const Color(0xFF059669),
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  _isSyncingProgress = false;
                                 }
                               }
                             }
