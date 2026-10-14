@@ -56,3 +56,9 @@ key.properties
 # Release artifacts & scratch
 *.aab
 scratch/
+
+# Firebase Service Account Credentials
+*serviceAccountKey*.json
+*firebase-adminsdk*.json
+AdminPanel/*.json
+AdminPanel/serviceAccountKey.json

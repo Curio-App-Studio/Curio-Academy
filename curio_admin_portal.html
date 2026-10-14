@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Curio Academy • Admin Portal</title>
+  <title>Curio Academy • Admin & Operations Command Center</title>
   <link rel="icon" href="https://img.icons8.com/color/96/owl.png">
   
-  <!-- Modern Inter & Poppins Fonts -->
+  <!-- Modern Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- FontAwesome Icons -->
+  <!-- FontAwesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
-  <!-- Firebase SDKs (Compat for zero build step) -->
+  <!-- Firebase SDK (v10 compat mode for standalone HTML execution) -->
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
   
-  <!-- jsrsasign for pure client-side Google OAuth2 JWT signing (FCM v1 from browser) -->
+  <!-- jsrsasign for Browser-based Service Account JWT Signing & Google OAuth2 Access Token Minting -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/11.1.0/jsrsasign-all-min.js"></script>
 
   <style>
@@ -76,7 +76,7 @@
     }
 
     .nav-container {
-      max-width: 1380px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 14px 24px;
       display: flex;
@@ -122,7 +122,7 @@
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .badge-status {
@@ -196,19 +196,27 @@
       background: #E86510;
     }
 
+    .btn-accent {
+      background: #10B981;
+      color: var(--white);
+    }
+    .btn-accent:hover {
+      background: #059669;
+    }
+
     /* Main Container */
     main {
-      max-width: 1380px;
+      max-width: 1400px;
       width: 100%;
       margin: 0 auto;
       padding: 24px 24px 48px;
       flex: 1;
     }
 
-    /* Stats Ribbon */
+    /* Stats Ribbon (5 Cards) */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -238,20 +246,175 @@
       align-items: center;
       justify-content: center;
       font-size: 22px;
+      flex-shrink: 0;
     }
 
     .stat-info h3 {
-      font-size: 24px;
+      font-size: 23px;
       font-weight: 800;
       color: var(--dark);
       line-height: 1.1;
     }
 
     .stat-info p {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
       color: var(--gray-500);
       margin-top: 3px;
+    }
+
+    /* App Version Distribution Panel */
+    .version-panel {
+      background: var(--white);
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .version-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .version-header-row h3 {
+      font-size: 16.5px;
+      font-weight: 800;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .version-bar-container {
+      width: 100%;
+      height: 14px;
+      background: #F1F5F9;
+      border-radius: 999px;
+      display: flex;
+      overflow: hidden;
+      margin-bottom: 18px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .version-bar-segment {
+      height: 100%;
+      transition: width 0.4s ease;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .version-bar-segment:hover {
+      filter: brightness(0.92);
+    }
+
+    .version-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .version-card {
+      border: 1.5px solid #E2E8F0;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      background: #FAFAFC;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .version-card:hover {
+      border-color: var(--primary);
+      background: var(--white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .version-card.latest-version {
+      border-color: #86EFAC;
+      background: #F0FDF4;
+    }
+
+    .version-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .version-badge {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .version-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .version-tag.latest {
+      background: #DCFCE7;
+      color: #15803D;
+    }
+
+    .version-tag.outdated {
+      background: #FEF3C7;
+      color: #B45309;
+    }
+
+    .version-count-number {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.1;
+    }
+
+    .version-count-sub {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    .version-user-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .user-chip {
+      background: var(--white);
+      border: 1px solid #E2E8F0;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-700);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .version-card-actions {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #E2E8F0;
+      padding-top: 10px;
     }
 
     /* Tabs Bar */
@@ -358,7 +521,7 @@
       border: 1.5px solid var(--gray-300);
       border-radius: var(--radius-sm);
       font-size: 13px;
-      min-width: 240px;
+      min-width: 220px;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -458,20 +621,16 @@
       border: 1.5px solid var(--gray-300);
       border-radius: var(--radius-sm);
       font-size: 13px;
+      background: var(--white);
+      color: var(--dark);
       outline: none;
-      transition: all 0.2s;
+      transition: border-color 0.2s;
     }
     .form-control:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
 
-    textarea.form-control {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    /* Mobile Preview */
+    /* Phone Mockup Preview */
     .phone-mockup {
       background: #1E293B;
       border-radius: 36px;
@@ -548,11 +707,6 @@
       color: var(--secondary);
     }
 
-    .bubble-brand img {
-      width: 14px;
-      height: 14px;
-    }
-
     .bubble-title {
       font-size: 13px;
       font-weight: 800;
@@ -599,54 +753,51 @@
 
     /* Live Output Terminal */
     .terminal-box {
-      background: #090D16;
-      border-radius: var(--radius-sm);
-      padding: 14px;
+      background: #0F172A;
       color: #38BDF8;
-      font-family: 'Consolas', 'Courier New', monospace;
+      border-radius: var(--radius-md);
+      padding: 14px;
+      font-family: 'Consolas', monospace;
       font-size: 12px;
       height: 150px;
       overflow-y: auto;
       margin-top: 14px;
-      border: 1px solid #1E293B;
       line-height: 1.5;
     }
 
     /* Modal */
     .modal-backdrop {
-      display: none;
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      inset: 0;
       background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
-      z-index: 100;
+      display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
     }
 
     .modal-backdrop.open {
-      display: flex;
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .modal-dialog {
       background: var(--white);
       border-radius: var(--radius-lg);
-      max-width: 540px;
-      width: 100%;
+      max-width: 580px;
+      width: 90%;
       padding: 24px;
       box-shadow: var(--shadow-lg);
-      max-height: 90vh;
-      overflow-y: auto;
     }
 
     .modal-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      border-bottom: 1px solid #F1F5F9;
-      padding-bottom: 12px;
+      justify-content: space-between;
+      margin-bottom: 14px;
     }
 
     .modal-header h3 {
@@ -656,7 +807,7 @@
     }
 
     .close-btn {
-      background: none;
+      background: transparent;
       border: none;
       font-size: 20px;
       cursor: pointer;
@@ -698,7 +849,7 @@
 
   <!-- Main Body -->
   <main>
-    <!-- Stats Counter Ribbon -->
+    <!-- Stats Counter Ribbon (5 Metrics) -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon" style="background:#EEF2FF; color:#4F46E5;">
@@ -739,6 +890,55 @@
           <p>Average App Rating</p>
         </div>
       </div>
+
+      <div class="stat-card" style="border-left: 4px solid #10B981;">
+        <div class="stat-icon" style="background:#ECFDF5; color:#10B981;">
+          <i class="fa-solid fa-code-branch"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="statVersionAdoption">--</h3>
+          <p id="statVersionAdoptionSub">Latest Version Adoption</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- App Version Distribution & User Adoption Panel -->
+    <div class="version-panel" id="versionAdoptionPanel">
+      <div class="version-header-row">
+        <div>
+          <h3>
+            <i class="fa-solid fa-chart-pie text-primary"></i> 
+            App Version Distribution & User Adoption
+          </h3>
+          <p style="font-size:12.5px; color:var(--gray-500); margin-top:3px;">
+            Real-time breakdown of active learners and connected devices by installed Curio Academy release
+          </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="badge-pill" style="background:#ECFDF5; color:#065F46; font-size:12px; padding:6px 12px;" id="badgeLatestVersionInfo">
+            <i class="fa-solid fa-circle-check"></i> Latest: v1.0.0+16 (Build 16)
+          </span>
+          <button class="btn btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="refreshCurrentTab()">
+            <i class="fa-solid fa-arrows-rotate"></i> Recalculate
+          </button>
+        </div>
+      </div>
+
+      <!-- Multi-segment Stacked Adoption Bar -->
+      <div style="margin-bottom:8px; display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:var(--gray-700);">
+        <span>Adoption Share Across Active Learners</span>
+        <span id="versionBarSummary">Calculating...</span>
+      </div>
+      <div class="version-bar-container" id="versionProgressBar">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Version Cards Grid -->
+      <div class="version-cards-grid" id="versionCardsGrid">
+        <div style="padding:20px; text-align:center; color:var(--gray-500); grid-column:1/-1;">
+          <i class="fa-solid fa-spinner fa-spin"></i> Calculating version adoption...
+        </div>
+      </div>
     </div>
 
     <!-- Navigation Tabs -->
@@ -765,6 +965,10 @@
           <div class="filter-group">
             <input type="text" id="feedbackSearch" class="input-search" placeholder="Search by email, student, or words..." oninput="filterFeedbackList()">
             
+            <select id="feedbackVersionFilter" class="select-filter" onchange="filterFeedbackList()">
+              <option value="all">All App Versions</option>
+            </select>
+
             <select id="feedbackCategoryFilter" class="select-filter" onchange="filterFeedbackList()">
               <option value="all">All Categories</option>
               <option value="feature">✨ Feature Request</option>
@@ -816,6 +1020,9 @@
           
           <div class="filter-group">
             <input type="text" id="vipSearch" class="input-search" placeholder="Search VIP email or student..." oninput="filterVipList()">
+            <select id="vipVersionFilter" class="select-filter" onchange="filterVipList()">
+              <option value="all">All App Versions</option>
+            </select>
           </div>
         </div>
 
@@ -825,6 +1032,7 @@
               <tr>
                 <th>Student</th>
                 <th>Google Account Email</th>
+                <th>App Version</th>
                 <th>Progress (Stars / Chapters)</th>
                 <th>Status</th>
                 <th>Last Cloud Sync</th>
@@ -833,7 +1041,7 @@
             </thead>
             <tbody id="vipTableBody">
               <tr>
-                <td colspan="6" style="text-align:center; padding: 40px; color: var(--gray-500);">
+                <td colspan="7" style="text-align:center; padding: 40px; color: var(--gray-500);">
                   <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
                   <p style="margin-top:10px;">Loading VIP members...</p>
                 </td>
@@ -861,7 +1069,7 @@
               <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <div class="template-card" onclick="applyTemplate('update')">
                   <h4>🚀 New App Update</h4>
-                  <p>Encourage users to get Build 15</p>
+                  <p>Encourage users to get Build 16</p>
                 </div>
                 <div class="template-card" onclick="applyTemplate('streak')">
                   <h4>🔥 Daily Streak Reminder</h4>
@@ -883,11 +1091,32 @@
               <label class="form-label">Send Target</label>
               <select id="notifTargetType" class="form-control" onchange="handleTargetTypeChange()">
                 <option value="topic_all">🌍 Broadcast to ALL Students (/topics/all_students)</option>
+                <option value="older_versions">⚠️ Prompt ALL Older Versions to Update (&lt; Build 16)</option>
+                <option value="specific_version">🎯 Specific App Version Group</option>
                 <option value="topic_vip">👑 ALL VIP Members Only (/topics/curio_vip)</option>
                 <option value="topic_streak">🔥 Daily Learners (/topics/daily_streak)</option>
-                <option value="user_email">🎯 Specific Parent Email (Single Family)</option>
+                <option value="user_email">👤 Specific Parent Email (Single Family)</option>
                 <option value="token_direct">📱 Custom Device FCM Token</option>
               </select>
+            </div>
+
+            <!-- Specific Version Selector (Conditional) -->
+            <div id="specificVersionWrapper" class="form-group" style="display:none; background:#F8FAFC; padding:14px; border-radius:12px; border:1.5px solid #E2E8F0;">
+              <label class="form-label" style="color:var(--primary); font-size:13.5px; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-code-branch"></i> Select App Version to Target:
+              </label>
+              <select id="notifVersionSelect" class="form-control" onchange="updateVersionTargetPreview()">
+                <!-- Populated dynamically -->
+              </select>
+              <div id="versionTargetPreviewBadge" style="margin-top:8px; font-size:12px; color:var(--gray-700); font-weight:600;"></div>
+            </div>
+
+            <!-- Older Versions Info (Conditional) -->
+            <div id="olderVersionsWrapper" class="form-group" style="display:none; background:#FFFBEB; padding:12px 14px; border-radius:12px; border:1.5px solid #FDE68A; color:#92400E; font-size:12.5px;">
+              <div style="font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Targeting All Users Running Outdated Builds (&lt; Build 16)
+              </div>
+              <div id="olderVersionsBadge">Scanning devices...</div>
             </div>
 
             <!-- Specific Target Input (Conditional) -->
@@ -978,12 +1207,15 @@
         <button class="close-btn" onclick="closeKeyModal()">&times;</button>
       </div>
       <p style="font-size:13px; color:var(--gray-500); margin-bottom:14px; line-height:1.4;">
-        To send FCM notifications directly from this local HTML file, upload or paste your Firebase <code>serviceAccountKey.json</code>. It is saved only in your local browser storage.
+        To send FCM notifications directly from this local HTML file, upload or paste your Firebase <code>serviceAccountKey.json</code>. It is saved in your local browser storage.
       </p>
 
       <div class="form-group">
         <label class="form-label">Upload serviceAccountKey.json</label>
         <input type="file" id="serviceAccountFileInput" class="form-control" accept=".json" onchange="handleServiceAccountFileUpload(event)">
+        <div style="font-size:11.5px; color:var(--gray-500); margin-top:4px;">
+          <i class="fa-solid fa-folder-open"></i> Note: A copy is ready in your <code>AdminPanel/serviceAccountKey.json</code> directory.
+        </div>
       </div>
 
       <div class="form-group">
@@ -1022,6 +1254,32 @@
     let vipMembersData = [];
     let fcmTokensData = {};
     let registeredEmails = [];
+    let parsedVersionGroups = [];
+
+    // Helper: Parse version strings into build numbers and standard format
+    function parseAppVersion(raw) {
+      if (!raw) return { raw: 'v1.0.0+13', display: 'v1.0.0+13 (Build 13)', build: 13 };
+      const s = String(raw).trim();
+      const buildMatch = s.match(/\+(\d+)/) || s.match(/build\s*(\d+)/i) || s.match(/\((\d+)\)/);
+      let build = 0;
+      if (buildMatch) {
+        build = parseInt(buildMatch[1], 10);
+      } else {
+        const semver = s.match(/(\d+)\.(\d+)\.(\d+)/);
+        if (semver) {
+          build = parseInt(semver[1], 10) * 1000 + parseInt(semver[2], 10) * 100 + parseInt(semver[3], 10);
+        }
+      }
+
+      let display = s;
+      if (build > 0) {
+        display = `v1.0.0+${build} (Build ${build})`;
+      } else if (!s.startsWith('v')) {
+        display = 'v' + s;
+      }
+
+      return { raw: s, display, build: build || 13 };
+    }
 
     // Initialize on page load
     window.addEventListener('DOMContentLoaded', async () => {
@@ -1047,6 +1305,7 @@
           loadVipMembersData(),
           loadFcmTokensData()
         ]);
+        updateVersionStatistics();
       } catch (err) {
         console.error("Data load error:", err);
       }
@@ -1145,6 +1404,7 @@
         loadVipMembersData(),
         loadFcmTokensData()
       ]);
+      updateVersionStatistics();
       const hasKey = !!getSavedServiceAccount();
       setConnectionStatus(true, hasKey ? "Connected • Admin Access Active" : "Connected to Curio Firebase");
     }
@@ -1164,6 +1424,8 @@
           // If document has recentFeedbacks array, unpack them
           if (Array.isArray(data.recentFeedbacks) && data.recentFeedbacks.length > 0) {
             data.recentFeedbacks.forEach(item => {
+              const rawVer = item.appVersion || data.appVersion || 'v1.0.0+15';
+              const vParsed = parseAppVersion(rawVer);
               feedbacksData.push({
                 docId,
                 gmailId: data.gmailId || item.gmailId || docId,
@@ -1174,13 +1436,17 @@
                 categoryLabel: item.categoryLabel || data.latestCategoryLabel || 'General',
                 comment: item.comment || data.latestComment || '',
                 device: item.device || data.latestDevice || 'Android Phone',
-                appVersion: item.appVersion || data.appVersion || 'v1.0.0+15',
+                appVersion: rawVer,
+                displayVersion: vParsed.display,
+                build: vParsed.build,
                 submittedAt: item.submittedAt || data.latestSubmittedAt
               });
               totalStars += (item.rating || 5);
               ratedCount++;
             });
           } else {
+            const rawVer = data.appVersion || 'v1.0.0+15';
+            const vParsed = parseAppVersion(rawVer);
             feedbacksData.push({
               docId,
               gmailId: data.gmailId || docId,
@@ -1191,7 +1457,9 @@
               categoryLabel: data.latestCategoryLabel || 'General',
               comment: data.latestComment || '',
               device: data.latestDevice || 'Android Phone',
-              appVersion: data.appVersion || 'v1.0.0+15',
+              appVersion: rawVer,
+              displayVersion: vParsed.display,
+              build: vParsed.build,
               submittedAt: data.latestSubmittedAt
             });
             totalStars += (data.latestRating || 5);
@@ -1220,6 +1488,7 @@
       const search = (document.getElementById('feedbackSearch').value || '').toLowerCase().trim();
       const cat = document.getElementById('feedbackCategoryFilter').value;
       const rat = document.getElementById('feedbackRatingFilter').value;
+      const ver = document.getElementById('feedbackVersionFilter') ? document.getElementById('feedbackVersionFilter').value : 'all';
 
       const filtered = feedbacksData.filter(item => {
         const matchesSearch = !search || 
@@ -1234,7 +1503,9 @@
         else if (rat === '4') matchesRat = (item.rating === 4);
         else if (rat === '3') matchesRat = (item.rating <= 3);
 
-        return matchesSearch && matchesCat && matchesRat;
+        const matchesVer = (ver === 'all') || (item.appVersion === ver) || (item.displayVersion === ver);
+
+        return matchesSearch && matchesCat && matchesRat && matchesVer;
       });
 
       renderFeedbackTable(filtered);
@@ -1263,6 +1534,7 @@
           general: 'background:#ECFDF5; color:#059669;'
         };
         const catStyle = catColors[f.category] || catColors.general;
+        const isLatest = (f.build >= 16);
 
         return `
           <tr>
@@ -1282,12 +1554,14 @@
                 ${escapeHtml(f.categoryLabel || f.category)}
               </span>
             </td>
-            <td style="max-width:300px; line-height:1.4;">
+            <td style="max-width:280px; line-height:1.4;">
               <span style="color:var(--dark); font-weight:500;">${escapeHtml(f.comment || '—')}</span>
             </td>
             <td>
-              <div style="font-weight:600; color:var(--dark);">${escapeHtml(f.device || 'Android')}</div>
-              <div style="font-size:11px; color:var(--gray-500);">${escapeHtml(f.appVersion || 'v1.0.0+15')}</div>
+              <div style="font-weight:600; color:var(--dark); font-size:12.5px;">${escapeHtml(f.device || 'Android')}</div>
+              <span class="badge-pill" style="margin-top:4px; ${isLatest ? 'background:#DCFCE7; color:#15803D;' : 'background:#FEF3C7; color:#B45309;'}">
+                <i class="fa-solid fa-code-branch"></i> ${escapeHtml(f.displayVersion || f.appVersion)}
+              </span>
             </td>
             <td style="white-space:nowrap; font-size:11.5px; color:var(--gray-500);">
               ${formatTimestamp(f.submittedAt)}
@@ -1311,6 +1585,28 @@
         docs.forEach(doc => {
           const data = doc.data();
           const email = data.parentEmail || doc.id.replace(/_/g, '.');
+
+          // Version resolution: check data fields, recent feedbacks, or match with feedbacks
+          let rawVer = data.appVersion;
+          let dev = data.device;
+          if (!rawVer && Array.isArray(data.recentFeedbacks) && data.recentFeedbacks.length > 0) {
+            rawVer = data.recentFeedbacks[0].appVersion;
+            dev = dev || data.recentFeedbacks[0].device;
+          }
+          if (!rawVer) {
+            const matchingFb = feedbacksData.find(f => (f.gmailId || '').toLowerCase() === email.toLowerCase());
+            if (matchingFb) {
+              rawVer = matchingFb.appVersion;
+              dev = dev || matchingFb.device;
+            }
+          }
+          if (!rawVer && fcmTokensData[doc.id]) {
+            rawVer = fcmTokensData[doc.id].appVersion || fcmTokensData[doc.id].buildNumber;
+            dev = dev || fcmTokensData[doc.id].latestDevice;
+          }
+
+          const parsedVer = parseAppVersion(rawVer);
+
           vipMembersData.push({
             docId: doc.id,
             email: email,
@@ -1318,7 +1614,11 @@
             stars: data.stars || 0,
             completedChapters: Array.isArray(data.completedChapters) ? data.completedChapters.length : 0,
             isVip: data.isVip !== false,
-            lastSync: data.lastCloudSyncTime || data.latestFeedbackAt
+            lastSync: data.lastCloudSyncTime || data.latestFeedbackAt,
+            appVersion: rawVer,
+            displayVersion: parsedVer.display,
+            build: parsedVer.build,
+            device: dev || 'Android Device'
           });
         });
 
@@ -1334,11 +1634,18 @@
 
     function filterVipList() {
       const search = (document.getElementById('vipSearch').value || '').toLowerCase().trim();
-      const filtered = vipMembersData.filter(v => 
-        !search ||
-        (v.email && v.email.toLowerCase().includes(search)) ||
-        (v.studentName && v.studentName.toLowerCase().includes(search))
-      );
+      const ver = document.getElementById('vipVersionFilter') ? document.getElementById('vipVersionFilter').value : 'all';
+
+      const filtered = vipMembersData.filter(v => {
+        const matchesSearch = !search ||
+          (v.email && v.email.toLowerCase().includes(search)) ||
+          (v.studentName && v.studentName.toLowerCase().includes(search));
+
+        const matchesVer = (ver === 'all') || (v.appVersion === ver) || (v.displayVersion === ver);
+
+        return matchesSearch && matchesVer;
+      });
+
       renderVipTable(filtered);
     }
 
@@ -1346,47 +1653,56 @@
       const tbody = document.getElementById('vipTableBody');
       if (items.length === 0) {
         tbody.innerHTML = `
-          <tr><td colspan="6" style="text-align:center; padding:40px; color:var(--gray-500);">
-            No VIP members found.
+          <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--gray-500);">
+            No VIP members found matching your filter.
           </td></tr>
         `;
         return;
       }
 
-      tbody.innerHTML = items.map(v => `
-        <tr>
-          <td>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <div style="width:34px; height:34px; border-radius:50%; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">
-                ⭐
+      tbody.innerHTML = items.map(v => {
+        const isLatest = (v.build >= 16);
+        return `
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:34px; height:34px; border-radius:50%; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">
+                  ⭐
+                </div>
+                <strong style="color:var(--dark);">${escapeHtml(v.studentName)}</strong>
               </div>
-              <strong style="color:var(--dark);">${escapeHtml(v.studentName)}</strong>
-            </div>
-          </td>
-          <td>
-            <code style="background:#F1F5F9; padding:3px 8px; border-radius:6px; font-size:12px; color:var(--primary-dark);">
-              ${escapeHtml(v.email)}
-            </code>
-          </td>
-          <td>
-            <span style="font-weight:700; color:#D97706;">★ ${v.stars} Stars</span>
-            <span style="color:var(--gray-500); font-size:12px;"> • ${v.completedChapters} Chapters</span>
-          </td>
-          <td>
-            <span class="badge-pill" style="background:#ECFDF5; color:#047857;">
-              <i class="fa-solid fa-circle-check"></i> VIP Active
-            </span>
-          </td>
-          <td style="font-size:12px; color:var(--gray-500);">
-            ${formatTimestamp(v.lastSync)}
-          </td>
-          <td>
-            <button class="btn btn-secondary" style="padding:5px 10px; font-size:11.5px;" onclick="sendNotificationToVip('${escapeHtml(v.email)}', '${escapeHtml(v.studentName)}')">
-              <i class="fa-solid fa-paper-plane text-primary"></i> Message
-            </button>
-          </td>
-        </tr>
-      `).join('');
+            </td>
+            <td>
+              <code style="background:#F1F5F9; padding:3px 8px; border-radius:6px; font-size:12px; color:var(--primary-dark);">
+                ${escapeHtml(v.email)}
+              </code>
+            </td>
+            <td>
+              <span class="badge-pill" style="${isLatest ? 'background:#DCFCE7; color:#15803D;' : 'background:#FEF3C7; color:#B45309;'}">
+                <i class="fa-solid fa-code-branch"></i> ${escapeHtml(v.displayVersion)}
+              </span>
+              ${v.device ? `<div style="font-size:11px; color:var(--gray-500); margin-top:2px;">📱 ${escapeHtml(v.device)}</div>` : ''}
+            </td>
+            <td>
+              <span style="font-weight:700; color:#D97706;">★ ${v.stars} Stars</span>
+              <span style="color:var(--gray-500); font-size:12px;"> • ${v.completedChapters} Chapters</span>
+            </td>
+            <td>
+              <span class="badge-pill" style="background:#ECFDF5; color:#047857;">
+                <i class="fa-solid fa-circle-check"></i> VIP Active
+              </span>
+            </td>
+            <td style="font-size:12px; color:var(--gray-500);">
+              ${formatTimestamp(v.lastSync)}
+            </td>
+            <td>
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:11.5px;" onclick="sendNotificationToVip('${escapeHtml(v.email)}', '${escapeHtml(v.studentName)}')">
+                <i class="fa-solid fa-paper-plane text-primary"></i> Message
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     // 4. Load FCM Tokens Data
@@ -1415,6 +1731,271 @@
       } catch (err) {
         console.error("Error loading FCM tokens:", err);
       }
+    }
+
+    // 5. Version Statistics & Intelligence Engine
+    function updateVersionStatistics() {
+      const userMap = new Map();
+
+      // Collect from feedbacks
+      feedbacksData.forEach(f => {
+        const email = (f.gmailId || '').toLowerCase().trim();
+        if (!email || email === 'anonymous') return;
+        const vInfo = parseAppVersion(f.appVersion);
+        if (!userMap.has(email)) {
+          userMap.set(email, {
+            email,
+            name: f.studentName || 'Student',
+            appVersion: vInfo.display,
+            rawVersion: f.appVersion,
+            build: vInfo.build,
+            device: f.device || 'Android Phone'
+          });
+        } else {
+          const u = userMap.get(email);
+          if (vInfo.build > u.build) {
+            u.appVersion = vInfo.display;
+            u.rawVersion = f.appVersion;
+            u.build = vInfo.build;
+            u.device = f.device || u.device;
+          }
+          if (f.studentName && u.name === 'Student') u.name = f.studentName;
+        }
+      });
+
+      // Collect from VIP members
+      vipMembersData.forEach(v => {
+        const email = (v.email || '').toLowerCase().trim();
+        if (!email || email === 'anonymous') return;
+        const vInfo = parseAppVersion(v.appVersion);
+        if (!userMap.has(email)) {
+          userMap.set(email, {
+            email,
+            name: v.studentName || 'VIP Student',
+            appVersion: vInfo.display,
+            rawVersion: v.appVersion,
+            build: vInfo.build,
+            device: v.device || 'Android Phone'
+          });
+        } else {
+          const u = userMap.get(email);
+          if (vInfo.build > u.build) {
+            u.appVersion = vInfo.display;
+            u.rawVersion = v.appVersion;
+            u.build = vInfo.build;
+            if (v.device) u.device = v.device;
+          }
+          if (v.studentName && u.name === 'Student') u.name = v.studentName;
+        }
+      });
+
+      // Collect from FCM Tokens
+      for (const [docId, data] of Object.entries(fcmTokensData)) {
+        if (docId !== 'anonymous') {
+          const email = (data.parentEmail || docId.replace(/_/g, '.')).toLowerCase().trim();
+          const vInfo = parseAppVersion(data.appVersion || data.buildNumber);
+          const dev = data.latestDevice || data.device || 'Android Device';
+          if (!userMap.has(email)) {
+            userMap.set(email, {
+              email,
+              name: 'Learner',
+              appVersion: vInfo.display,
+              rawVersion: data.appVersion || data.buildNumber,
+              build: vInfo.build,
+              device: dev
+            });
+          } else {
+            const u = userMap.get(email);
+            if (vInfo.build > u.build) {
+              u.appVersion = vInfo.display;
+              u.rawVersion = data.appVersion || data.buildNumber;
+              u.build = vInfo.build;
+              u.device = dev || u.device;
+            }
+          }
+        }
+      }
+
+      // Group users by display version
+      const groups = new Map();
+      let maxBuild = 16; // Build 16 is current latest release
+
+      userMap.forEach(u => {
+        if (u.build > maxBuild) maxBuild = u.build;
+        const key = u.appVersion || 'Unknown';
+        if (!groups.has(key)) {
+          groups.set(key, {
+            display: key,
+            build: u.build,
+            users: [],
+            devices: new Set()
+          });
+        }
+        const g = groups.get(key);
+        g.users.push(u);
+        if (u.device) g.devices.add(u.device);
+      });
+
+      // Ensure latest build is represented
+      const latestKey = `v1.0.0+${maxBuild} (Build ${maxBuild})`;
+      if (!groups.has(latestKey)) {
+        groups.set(latestKey, {
+          display: latestKey,
+          build: maxBuild,
+          users: [],
+          devices: new Set()
+        });
+      }
+
+      parsedVersionGroups = Array.from(groups.values()).sort((a, b) => b.build - a.build);
+
+      const totalUsers = userMap.size || 1;
+      const latestGroup = parsedVersionGroups.find(g => g.build === maxBuild);
+      const latestCount = latestGroup ? latestGroup.users.length : 0;
+      const latestPct = Math.round((latestCount / totalUsers) * 100);
+
+      // 1. Ribbon 5th Card
+      const statCard = document.getElementById('statVersionAdoption');
+      if (statCard) statCard.innerText = `${latestPct}% (Build ${maxBuild})`;
+      const statSub = document.getElementById('statVersionAdoptionSub');
+      if (statSub) statSub.innerText = `${latestCount} of ${userMap.size} user(s) on latest`;
+
+      // 2. Badge in panel header
+      const badgeInfo = document.getElementById('badgeLatestVersionInfo');
+      if (badgeInfo) {
+        badgeInfo.innerHTML = `<i class="fa-solid fa-circle-check"></i> Latest: v1.0.0+${maxBuild} (Build ${maxBuild})`;
+      }
+
+      const summaryText = document.getElementById('versionBarSummary');
+      if (summaryText) {
+        summaryText.innerText = `${userMap.size} Learners across ${parsedVersionGroups.filter(g => g.users.length > 0).length} build version(s)`;
+      }
+
+      // 3. Stacked Progress Bar
+      const barContainer = document.getElementById('versionProgressBar');
+      const palette = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B'];
+      if (barContainer) {
+        barContainer.innerHTML = parsedVersionGroups.map((g, idx) => {
+          if (g.users.length === 0) return '';
+          const pct = ((g.users.length / totalUsers) * 100).toFixed(1);
+          const color = (g.build === maxBuild) ? '#10B981' : palette[idx % palette.length];
+          return `<div class="version-bar-segment" style="width:${pct}%; background:${color};" title="${escapeHtml(g.display)}: ${g.users.length} user(s) (${pct}%)"></div>`;
+        }).join('');
+      }
+
+      // 4. Version Cards Grid
+      const cardsGrid = document.getElementById('versionCardsGrid');
+      if (cardsGrid) {
+        cardsGrid.innerHTML = parsedVersionGroups.map(g => {
+          const isLatest = (g.build === maxBuild);
+          const pct = Math.round((g.users.length / totalUsers) * 100);
+          const devList = Array.from(g.devices).slice(0, 3).map(d => `<span class="user-chip"><i class="fa-solid fa-mobile-screen"></i> ${escapeHtml(d)}</span>`).join('');
+          const userChips = g.users.map(u => `<span class="user-chip" title="${escapeHtml(u.email)}"><i class="fa-regular fa-user"></i> ${escapeHtml(u.name || u.email)}</span>`).join('');
+
+          return `
+            <div class="version-card ${isLatest ? 'latest-version' : ''}">
+              <div>
+                <div class="version-card-top">
+                  <div class="version-badge">
+                    <i class="fa-solid fa-code-branch ${isLatest ? 'text-accent' : 'text-primary'}"></i>
+                    ${escapeHtml(g.display)}
+                  </div>
+                  <span class="version-tag ${isLatest ? 'latest' : 'outdated'}">
+                    ${isLatest ? '✨ Latest Release' : '⚠️ Older Build'}
+                  </span>
+                </div>
+                
+                <div style="margin: 10px 0;">
+                  <div class="version-count-number">${g.users.length} <span style="font-size:14px; font-weight:600; color:var(--gray-500);">Learner(s)</span></div>
+                  <div class="version-count-sub">${pct}% of active user base</div>
+                </div>
+
+                <div class="version-user-list">
+                  ${userChips || '<span style="font-size:11.5px; color:var(--gray-500);">No active users on this build yet</span>'}
+                </div>
+
+                ${devList ? `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;">${devList}</div>` : ''}
+              </div>
+
+              <div class="version-card-actions">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11.5px;" onclick="applyVersionFilter('${escapeHtml(g.display)}')">
+                  <i class="fa-solid fa-filter"></i> Feedbacks
+                </button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11.5px;" onclick="applyVipVersionFilter('${escapeHtml(g.display)}')">
+                  <i class="fa-solid fa-crown"></i> VIPs
+                </button>
+                ${!isLatest && g.users.length > 0 ? `
+                  <button class="btn btn-warning" style="padding:4px 8px; font-size:11.5px; margin-left:auto;" onclick="promptUpdateForVersion('${escapeHtml(g.display)}')">
+                    <i class="fa-solid fa-bell"></i> Prompt Update
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 5. Update Dropdowns
+      updateFilterDropdowns(parsedVersionGroups);
+    }
+
+    function updateFilterDropdowns(groups) {
+      // Feedback Dropdown
+      const fbSelect = document.getElementById('feedbackVersionFilter');
+      if (fbSelect) {
+        const cur = fbSelect.value;
+        fbSelect.innerHTML = '<option value="all">All App Versions</option>' +
+          groups.map(g => `<option value="${escapeHtml(g.display)}" ${cur === g.display ? 'selected' : ''}>${escapeHtml(g.display)} (${g.users.length})</option>`).join('');
+      }
+
+      // VIP Dropdown
+      const vipSelect = document.getElementById('vipVersionFilter');
+      if (vipSelect) {
+        const cur = vipSelect.value;
+        vipSelect.innerHTML = '<option value="all">All App Versions</option>' +
+          groups.map(g => `<option value="${escapeHtml(g.display)}" ${cur === g.display ? 'selected' : ''}>${escapeHtml(g.display)} (${g.users.length})</option>`).join('');
+      }
+
+      // Notification Target Dropdown
+      const notifVerSelect = document.getElementById('notifVersionSelect');
+      if (notifVerSelect) {
+        notifVerSelect.innerHTML = groups.map(g => `<option value="${escapeHtml(g.display)}" data-build="${g.build}" data-count="${g.users.length}">${escapeHtml(g.display)} — ${g.users.length} User(s)</option>`).join('');
+        updateVersionTargetPreview();
+      }
+
+      // Older Versions summary
+      const olderBadge = document.getElementById('olderVersionsBadge');
+      if (olderBadge) {
+        const olderUsers = groups.filter(g => g.build < 16).reduce((acc, g) => acc + g.users.length, 0);
+        olderBadge.innerHTML = `Found <strong>${olderUsers}</strong> user(s) currently running builds older than Build 16.`;
+      }
+    }
+
+    function applyVersionFilter(versionDisplay) {
+      switchTab('feedback');
+      const sel = document.getElementById('feedbackVersionFilter');
+      if (sel) {
+        sel.value = versionDisplay;
+        filterFeedbackList();
+      }
+    }
+
+    function applyVipVersionFilter(versionDisplay) {
+      switchTab('vip');
+      const sel = document.getElementById('vipVersionFilter');
+      if (sel) {
+        sel.value = versionDisplay;
+        filterVipList();
+      }
+    }
+
+    function promptUpdateForVersion(versionDisplay) {
+      switchTab('notification');
+      document.getElementById('notifTargetType').value = 'older_versions';
+      handleTargetTypeChange();
+      document.getElementById('notifTitle').value = '🚀 Exciting New Curio Update (Build 16)!';
+      document.getElementById('notifBody').value = 'We have enhanced Curio Academy with instant auto-login, faster speech and chapter rewards. Update now from Google Play!';
+      updateLivePreview();
     }
 
     // Unified Aggregator: Combines parents from Feedbacks, VIP Members, and FCM Token collections
@@ -1475,7 +2056,7 @@
         const currentVal = document.getElementById('notifTargetValue').value.toLowerCase().trim();
         select.innerHTML = `<option value="">-- Click to choose parent (${parents.length} registered families) --</option>` +
           parents.map(p => {
-            const tokenBadge = p.tokens.length > 0 ? `✅ ${p.tokens.length} device ready` : `⚠️ Older version (Needs v15)`;
+            const tokenBadge = p.tokens.length > 0 ? `✅ ${p.tokens.length} device ready` : `⚠️ Older version (Needs Build 16)`;
             const isSel = (p.email === currentVal) ? 'selected' : '';
             return `<option value="${escapeHtml(p.email)}" data-name="${escapeHtml(p.studentName)}" data-tokens="${p.tokens.length}" ${isSel}>
               👤 ${escapeHtml(p.studentName)} (${escapeHtml(p.email)}) • ${tokenBadge}
@@ -1487,29 +2068,47 @@
     // Notification Center Handlers
     function handleTargetTypeChange() {
       const type = document.getElementById('notifTargetType').value;
-      const wrapper = document.getElementById('specificTargetWrapper');
+      const specificTargetWrapper = document.getElementById('specificTargetWrapper');
+      const specificVersionWrapper = document.getElementById('specificVersionWrapper');
+      const olderVersionsWrapper = document.getElementById('olderVersionsWrapper');
       const label = document.getElementById('specificTargetLabel');
       const emailSelect = document.getElementById('notifTargetEmailSelect');
       const textInput = document.getElementById('notifTargetValue');
       const helpText = document.getElementById('manualEmailHelpText');
       const badge = document.getElementById('selectedParentBadge');
 
+      specificTargetWrapper.style.display = 'none';
+      if (specificVersionWrapper) specificVersionWrapper.style.display = 'none';
+      if (olderVersionsWrapper) olderVersionsWrapper.style.display = 'none';
+
       if (type === 'user_email') {
-        wrapper.style.display = 'block';
+        specificTargetWrapper.style.display = 'block';
         label.innerHTML = '<i class="fa-solid fa-users"></i> Choose Registered Parent from List:';
         emailSelect.style.display = 'block';
         helpText.innerText = 'Or manually enter/override email:';
         textInput.placeholder = 'e.g. parent@gmail.com';
         updateParentsDropdown();
       } else if (type === 'token_direct') {
-        wrapper.style.display = 'block';
+        specificTargetWrapper.style.display = 'block';
         label.innerHTML = '<i class="fa-solid fa-mobile-screen"></i> Custom FCM Device Token:';
         emailSelect.style.display = 'none';
         if (badge) badge.style.display = 'none';
         helpText.innerText = 'Device Token String:';
         textInput.placeholder = 'fLTRnf3eTA-8Z1fZTB...';
-      } else {
-        wrapper.style.display = 'none';
+      } else if (type === 'older_versions') {
+        if (olderVersionsWrapper) olderVersionsWrapper.style.display = 'block';
+      } else if (type === 'specific_version') {
+        if (specificVersionWrapper) specificVersionWrapper.style.display = 'block';
+      }
+    }
+
+    function updateVersionTargetPreview() {
+      const sel = document.getElementById('notifVersionSelect');
+      const preview = document.getElementById('versionTargetPreviewBadge');
+      if (!sel || !preview) return;
+      const opt = sel.options[sel.selectedIndex];
+      if (opt) {
+        preview.innerText = `Targeting all FCM registered devices for users on ${opt.value}.`;
       }
     }
 
@@ -1552,8 +2151,8 @@
 
     function applyTemplate(type) {
       if (type === 'update') {
-        document.getElementById('notifTitle').value = '🚀 New Curio Academy Update (v15)!';
-        document.getElementById('notifBody').value = 'Fresh learning games and activities are now live. Update from Google Play to keep exploring!';
+        document.getElementById('notifTitle').value = '🚀 New Curio Academy Update (Build 16)!';
+        document.getElementById('notifBody').value = 'Instant auto-login, faster speech and new learning adventures are now live. Update from Google Play to keep exploring!';
       } else if (type === 'streak') {
         document.getElementById('notifTitle').value = '🔥 Keep your learning streak shining!';
         document.getElementById('notifBody').value = 'Just 5 minutes of Math & Spell Bee today will earn 3 bonus stars. Keep it up!';
@@ -1578,7 +2177,7 @@
         syncEmailInputFromSelect();
       }
       document.getElementById('notifTitle').value = `❤️ Thank you ${studentName}!`;
-      document.getElementById('notifBody').value = `We reviewed your feedback and made exciting improvements for you. Keep learning and earning stars!`;
+      document.getElementById('notifBody').value = `We reviewed your feedback and made exciting improvements for you in Build 16. Keep learning and earning stars!`;
       updateLivePreview();
     }
 
@@ -1597,7 +2196,7 @@
       updateLivePreview();
     }
 
-    // 5. Send Notification via FCM HTTP v1 / Service Account
+    // 6. Send Notification via FCM HTTP v1 / Service Account
     async function sendNotification() {
       const title = document.getElementById('notifTitle').value.trim();
       const body = document.getElementById('notifBody').value.trim();
@@ -1628,7 +2227,7 @@
         const accessToken = await getGoogleOAuth2AccessToken(saKey);
         logTerminal(`[Auth] Access Token granted successfully.`);
 
-        // 2. Resolve Target Token / Topic
+        // 2. Resolve Target Token / Topic / Version Group
         let messages = [];
 
         if (targetType === 'topic_all') {
@@ -1649,31 +2248,41 @@
             notification: { title, body },
             data: { screen }
           });
+        } else if (targetType === 'token_direct') {
+          if (!targetValue) throw new Error('Please enter a target device FCM token string.');
+          messages.push({
+            token: targetValue,
+            notification: { title, body },
+            data: { screen }
+          });
         } else if (targetType === 'user_email') {
-          if (!targetValue) throw new Error('Please specify target parent email.');
+          if (!targetValue) throw new Error('Please enter or select a parent email address.');
+          
+          let tokens = [];
           const emailKey = targetValue.toLowerCase().replace(/\./g, '_');
-          const tokenDoc = fcmTokensData[emailKey];
-          let tokens = (tokenDoc && Array.isArray(tokenDoc.activeTokens)) ? tokenDoc.activeTokens : [];
-          if (tokenDoc && tokenDoc.latestToken && !tokens.includes(tokenDoc.latestToken)) {
-            tokens.push(tokenDoc.latestToken);
+          
+          if (fcmTokensData[emailKey] && Array.isArray(fcmTokensData[emailKey].activeTokens)) {
+            tokens = fcmTokensData[emailKey].activeTokens;
+          } else if (fcmTokensData[targetValue] && Array.isArray(fcmTokensData[targetValue].activeTokens)) {
+            tokens = fcmTokensData[targetValue].activeTokens;
+          } else {
+            for (const [, docData] of Object.entries(fcmTokensData)) {
+              if (docData.parentEmail && docData.parentEmail.toLowerCase() === targetValue.toLowerCase()) {
+                if (Array.isArray(docData.activeTokens)) {
+                  tokens = docData.activeTokens;
+                  break;
+                }
+              }
+            }
           }
 
           if (tokens.length === 0) {
-            const doBroadcast = confirm(
-              `⚠️ No direct device token found for "${targetValue}".\n\n` +
-              `Reason: This parent submitted feedback on an older version of the app before FCM token syncing was added in v14/v15.\n\n` +
-              `Would you like to send this message as a Broadcast to ALL Students (/topics/all_students) instead so their device receives it as soon as they update?`
-            );
-            if (doBroadcast) {
-              logTerminal(`[Target] User approved broadcast fallback to /topics/all_students for ${targetValue}`);
-              messages.push({
-                topic: 'all_students',
-                notification: { title, body },
-                data: { screen }
-              });
-            } else {
-              throw new Error(`Device token not found for ${targetValue}. Direct 1:1 notifications will be available as soon as this tester updates to Build 15.`);
-            }
+            logTerminal(`[Fallback] No direct FCM token found for ${targetValue}. Sending via individual user topic.`);
+            messages.push({
+              topic: 'user_' + targetValue.replace(/[^a-zA-Z0-9]/g, '_'),
+              notification: { title, body },
+              data: { screen }
+            });
           } else {
             tokens.forEach(tok => {
               messages.push({
@@ -1682,70 +2291,115 @@
                 data: { screen }
               });
             });
-            logTerminal(`[Target] Found ${tokens.length} active device token(s) for email ${targetValue}.`);
           }
-        } else if (targetType === 'token_direct') {
-          if (!targetValue) throw new Error('Please enter FCM device token.');
-          messages.push({
-            token: targetValue,
-            notification: { title, body },
-            data: { screen }
+        } else if (targetType === 'older_versions') {
+          // Send to tokens of all users running < Build 16
+          const collectedTokens = new Set();
+          for (const [docId, data] of Object.entries(fcmTokensData)) {
+            const vInfo = parseAppVersion(data.appVersion || data.buildNumber);
+            if (vInfo.build < 16) {
+              const toks = Array.isArray(data.activeTokens) ? data.activeTokens : (data.latestToken ? [data.latestToken] : []);
+              toks.forEach(t => collectedTokens.add(t));
+            }
+          }
+
+          if (collectedTokens.size === 0) {
+            logTerminal(`[Notice] No active older device tokens found. Broadcasting update notice to all students.`);
+            messages.push({
+              topic: 'all_students',
+              notification: { title, body },
+              data: { screen }
+            });
+          } else {
+            collectedTokens.forEach(t => {
+              messages.push({
+                token: t,
+                notification: { title, body },
+                data: { screen }
+              });
+            });
+          }
+        } else if (targetType === 'specific_version') {
+          const sel = document.getElementById('notifVersionSelect');
+          const chosenDisplay = sel ? sel.value : '';
+          const collectedTokens = new Set();
+          for (const [docId, data] of Object.entries(fcmTokensData)) {
+            const vInfo = parseAppVersion(data.appVersion || data.buildNumber);
+            if (vInfo.display === chosenDisplay) {
+              const toks = Array.isArray(data.activeTokens) ? data.activeTokens : (data.latestToken ? [data.latestToken] : []);
+              toks.forEach(t => collectedTokens.add(t));
+            }
+          }
+
+          if (collectedTokens.size === 0) {
+            throw new Error(`No connected FCM tokens found for ${chosenDisplay}.`);
+          }
+
+          collectedTokens.forEach(t => {
+            messages.push({
+              token: t,
+              notification: { title, body },
+              data: { screen }
+            });
           });
         }
 
-        // 3. Send via FCM HTTP v1
-        const fcmUrl = `https://fcm.googleapis.com/v1/projects/${saKey.project_id || 'curio-academy'}/messages:send`;
+        // 3. Send via FCM HTTP v1 REST API
+        const projectId = saKey.project_id || 'curio-academy';
+        const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
         let successCount = 0;
 
         for (const msg of messages) {
-          logTerminal(`[FCM] Dispatching to ${msg.topic ? 'Topic: ' + msg.topic : 'Device: ' + msg.token.substring(0, 15) + '...'}`);
-          const res = await fetch(fcmUrl, {
+          logTerminal(`[Send] Dispatching to ${msg.topic ? 'Topic: ' + msg.topic : 'Device: ' + msg.token.substring(0, 14) + '...'}`);
+          
+          const response = await fetch(fcmUrl, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json; UTF-8'
             },
             body: JSON.stringify({ message: msg })
           });
 
-          const resData = await res.json();
-          if (res.ok) {
+          const result = await response.json();
+          if (response.ok) {
             successCount++;
-            logTerminal(`[FCM Success] Delivered! Message ID: ${resData.name}`);
+            logTerminal(`[Success] Delivered! Message ID: ${result.name.split('/').pop()}`);
           } else {
-            logTerminal(`[FCM Error] ${res.status}: ${JSON.stringify(resData.error || resData)}`);
+            logTerminal(`[Error] FCM API Error (${response.status}): ${result.error ? result.error.message : JSON.stringify(result)}`);
           }
         }
 
-        logTerminal(`[Completed] Sent ${successCount}/${messages.length} push notifications successfully! 🎉`);
-        alert(`Push notification successfully dispatched to ${successCount} recipient(s)!`);
+        if (successCount > 0) {
+          alert(`Push Notification sent successfully! (${successCount} message(s) dispatched)`);
+        } else {
+          alert('Failed to send push notification. Check terminal logs for detailed error.');
+        }
 
       } catch (err) {
-        console.error(err);
-        logTerminal(`[Failed] ${err.message}`);
-        alert(`Notification Error: ${err.message}`);
+        logTerminal(`[Error] ${err.message}`);
+        alert('Notification error: ' + err.message);
       } finally {
         btn.disabled = false;
         btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Push Notification Now`;
       }
     }
 
-    // Google OAuth2 Token Generation in Browser using jsrsasign
-    async function getGoogleOAuth2AccessToken(sa) {
+    // Google OAuth2 Token Generation using jsrsasign
+    async function getGoogleOAuth2AccessToken(saKey) {
       const now = Math.floor(Date.now() / 1000);
       const header = { alg: "RS256", typ: "JWT" };
-      const payload = {
-        iss: sa.client_email,
-        sub: sa.client_email,
+      const claimSet = {
+        iss: saKey.client_email,
+        scope: "https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/datastore",
         aud: "https://oauth2.googleapis.com/token",
-        iat: now,
         exp: now + 3600,
-        scope: "https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/datastore"
+        iat: now
       };
 
       const sHeader = JSON.stringify(header);
-      const sPayload = JSON.stringify(payload);
-      const sJWT = KJUR.jws.JWS.sign("RS256", sHeader, sPayload, sa.private_key);
+      const sClaimSet = JSON.stringify(claimSet);
+      const sJWT = KJUR.jws.JWS.sign(null, sHeader, sClaimSet, saKey.private_key);
 
       const resp = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
