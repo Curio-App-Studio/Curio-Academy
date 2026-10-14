@@ -78,9 +78,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     bool hasCloudBackup = false;
 
-    // 2. Check and restore cloud backup for VIP / subscribed user or bound account (e.g. gpt.vivek@gmail.com)
-    // Runs on fresh install so existing profiles and progress open the Dashboard directly!
-    if (isVip || LocalStorageService.instance.boundMembershipEmail != null) {
+    // 2. Check and restore cloud backup only for verified VIP / subscribed users
+    if (isVip) {
       try {
         hasCloudBackup = await CloudProgressService().autoSyncAndRestore(force: true).timeout(
           const Duration(milliseconds: 5500),

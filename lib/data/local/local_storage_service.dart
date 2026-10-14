@@ -616,11 +616,36 @@ class LocalStorageService implements ILocalStorageService {
         } catch (_) {}
       }
 
-      // Load bound Google Account for VIP membership (Official: gpt.vivek@gmail.com)
+      // Load bound Google Account for VIP membership
       _boundMembershipEmail = _prefs?.getString(_keyBoundMembershipEmail);
-      if (_boundMembershipEmail == 'storeaahan@gmail.com' || _boundMembershipEmail == null) {
-        _boundMembershipEmail = 'gpt.vivek@gmail.com';
-        await _prefs?.setString(_keyBoundMembershipEmail, 'gpt.vivek@gmail.com');
+      if (_boundMembershipEmail == 'storeaahan@gmail.com') {
+        _boundMembershipEmail = null;
+        await _prefs?.remove(_keyBoundMembershipEmail);
+      }
+
+      // One-time cleanup for v14: Remove unintended 'gpt.vivek@gmail.com' binding & Aahan profile from non-purchasing devices
+      final isCleanedV14 = _prefs?.getBool('curio_cleanup_vivek_leak_v14') ?? false;
+      if (!isCleanedV14) {
+        await _prefs?.setBool('curio_cleanup_vivek_leak_v14', true);
+        if (_boundMembershipEmail == 'gpt.vivek@gmail.com' && !_isPremiumUser) {
+          _boundMembershipEmail = null;
+          await _prefs?.remove(_keyBoundMembershipEmail);
+          _isCloudSyncEnabled = false;
+          await _prefs?.setBool(_keyCloudSyncEnabled, false);
+          cloudSyncEnabledNotifier.value = false;
+          if (_prefs?.getString(_keyName) == 'Aahan') {
+            await _prefs?.remove(_keyName);
+            await _prefs?.remove(_keyAvatar);
+            await _prefs?.setBool(_keyOnboarded, false);
+            await _prefs?.remove(_keyStars);
+            await _prefs?.remove(_keyPoints);
+            _totalStars = 0;
+            totalStarsNotifier.value = 0;
+            _totalPoints = 0;
+            totalPointsNotifier.value = 0;
+            _cachedProfile = null;
+          }
+        }
       }
 
       // Compute total stars directly from all attempted questions so it NEVER resets or drifts

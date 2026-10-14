@@ -79,24 +79,26 @@ class FeedbackService {
       debugPrint('[FeedbackService] user_feedback direct write failed ($e).');
     }
 
-    // 3. Mirror to vip_students (which is already allowed in Firestore security rules)
+    // 3. Mirror to vip_students (if valid email is present)
     try {
       final boundEmail = feedback.gmailId.trim().isNotEmpty && feedback.gmailId != 'anonymous'
           ? feedback.gmailId.trim().toLowerCase()
-          : (LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com');
-      final emailKey = boundEmail.replaceAll('.', '_');
+          : LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+      if (boundEmail != null && boundEmail.isNotEmpty && boundEmail != 'anonymous') {
+        final emailKey = boundEmail.replaceAll('.', '_');
 
-      final vipDocRef = FirebaseFirestore.instance.collection(_vipCollectionName).doc(emailKey);
-      await vipDocRef.collection('feedbacks').add(feedback.toMap()).timeout(const Duration(seconds: 6));
-      await vipDocRef.set({
-        'hasFeedback': true,
-        'latestFeedbackRating': feedback.rating,
-        'latestFeedbackComment': feedback.comment.trim(),
-        'latestFeedbackCategory': feedback.category.name,
-        'latestFeedbackAt': FieldValue.serverTimestamp(),
-        'recentFeedbacks': FieldValue.arrayUnion([feedback.toSummaryMap()]),
-      }, SetOptions(merge: true)).timeout(const Duration(seconds: 6));
-      debugPrint('[FeedbackService] Mirrored feedback successfully to vip_students/$emailKey/feedbacks');
+        final vipDocRef = FirebaseFirestore.instance.collection(_vipCollectionName).doc(emailKey);
+        await vipDocRef.collection('feedbacks').add(feedback.toMap()).timeout(const Duration(seconds: 6));
+        await vipDocRef.set({
+          'hasFeedback': true,
+          'latestFeedbackRating': feedback.rating,
+          'latestFeedbackComment': feedback.comment.trim(),
+          'latestFeedbackCategory': feedback.category.name,
+          'latestFeedbackAt': FieldValue.serverTimestamp(),
+          'recentFeedbacks': FieldValue.arrayUnion([feedback.toSummaryMap()]),
+        }, SetOptions(merge: true)).timeout(const Duration(seconds: 6));
+        debugPrint('[FeedbackService] Mirrored feedback successfully to vip_students/$emailKey/feedbacks');
+      }
     } catch (vipErr) {
       debugPrint('[FeedbackService] Mirror to vip_students note: $vipErr');
     }
@@ -152,7 +154,7 @@ class FeedbackService {
             'latestCategory': map['category'] ?? 'feature',
             'latestComment': map['comment'] ?? '',
             'latestSubmittedAt': FieldValue.serverTimestamp(),
-            'appVersion': map['fullAppVersion'] ?? '1.0.0+13',
+            'appVersion': map['fullAppVersion'] ?? '1.0.0+14',
           }, SetOptions(merge: true));
         } catch (_) {
           remaining.add(raw);

@@ -117,12 +117,12 @@ class CloudProgressService {
       }
       _cachedEmail = prefs.getString(_keyCachedGoogleEmail);
       if (_cachedEmail == 'storeaahan@gmail.com') {
-        _cachedEmail = 'gpt.vivek@gmail.com';
-        await prefs.setString(_keyCachedGoogleEmail, 'gpt.vivek@gmail.com');
+        _cachedEmail = null;
+        await prefs.remove(_keyCachedGoogleEmail);
       }
-      final bound = LocalStorageService.instance.boundMembershipEmail ?? 'gpt.vivek@gmail.com';
-      _cachedEmail = bound;
-      userEmailNotifier.value = bound;
+      final bound = LocalStorageService.instance.boundMembershipEmail;
+      _cachedEmail = bound ?? _cachedEmail;
+      userEmailNotifier.value = _cachedEmail;
 
       if (currentUser?.email == 'storeaahan@gmail.com') {
         await FirebaseAuth.instance.signOut();
@@ -269,8 +269,13 @@ class CloudProgressService {
         } catch (_) {}
       }
 
-      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
-      final emailKey = boundEmail.replaceAll('.', '_');
+      final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase();
+      final effectiveEmail = boundEmail ?? (user?.isAnonymous == false ? user?.email?.trim().toLowerCase() : null);
+      if (effectiveEmail == null || effectiveEmail.isEmpty) {
+        developer.log('autoSyncAndRestore: No valid user email found. Skipping restore.', name: 'CloudSync');
+        return false;
+      }
+      final emailKey = effectiveEmail.replaceAll('.', '_');
 
       final List<Map<String, dynamic>> candidates = [];
 
@@ -471,7 +476,11 @@ class CloudProgressService {
         }
 
         if (isFirebaseAvailable) {
-          final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+          final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? (user?.isAnonymous == false ? user?.email?.trim().toLowerCase() : null);
+          if (boundEmail == null || boundEmail.isEmpty) {
+            developer.log('syncProgressToCloud: No bound email found. Skipping sync.', name: 'CloudSync');
+            return false;
+          }
           final emailKey = boundEmail.replaceAll('.', '_');
 
           final firestoreData = Map<String, dynamic>.from(currentSnapshot);
@@ -574,7 +583,6 @@ class CloudProgressService {
         if (boundEmail != null && boundEmail.isNotEmpty) boundEmail,
         if (userEmail != null && userEmail.isNotEmpty) userEmail,
         if (cachedEmail != null && cachedEmail.isNotEmpty) cachedEmail,
-        'gpt.vivek@gmail.com',
       };
 
       for (final email in emailCandidates) {
@@ -697,7 +705,13 @@ class CloudProgressService {
           } catch (_) {}
         }
 
-        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? 'gpt.vivek@gmail.com';
+        final boundEmail = LocalStorageService.instance.boundMembershipEmail?.trim().toLowerCase() ?? (user?.isAnonymous == false ? user?.email?.trim().toLowerCase() : null);
+        if (boundEmail == null || boundEmail.isEmpty) {
+          return const CloudRestoreResult(
+            status: CloudRestoreStatus.noBackupFound,
+            message: 'No Google account email bound to this membership.',
+          );
+        }
         final emailKey = boundEmail.replaceAll('.', '_');
 
         try {
