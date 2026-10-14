@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Represents a single continuous stroke guide for a character (e.g. left leg of 'A')
@@ -41,39 +40,39 @@ class TracingStrokeCatalog {
     return {
       // --- UPPERCASE A-Z ---
       'A': [
-        // Stroke 1: Left leg (top to bottom-left)
+        // Stroke 1: Left leg (bottom-left to apex, matching user image 1)
         const TracingStrokeGuide(
           index: 0,
           normalizedPoints: [
-            Offset(0.50, 0.15),
-            Offset(0.44, 0.28),
-            Offset(0.38, 0.42),
-            Offset(0.32, 0.56),
-            Offset(0.26, 0.70),
-            Offset(0.20, 0.85),
+            Offset(0.22, 0.77),
+            Offset(0.28, 0.65),
+            Offset(0.33, 0.53),
+            Offset(0.39, 0.41),
+            Offset(0.44, 0.29),
+            Offset(0.50, 0.16),
           ],
         ),
-        // Stroke 2: Right leg (top to bottom-right)
+        // Stroke 2: Right leg (apex to bottom-right, matching user image 2)
         const TracingStrokeGuide(
           index: 1,
           normalizedPoints: [
-            Offset(0.50, 0.15),
-            Offset(0.56, 0.28),
-            Offset(0.62, 0.42),
-            Offset(0.68, 0.56),
-            Offset(0.74, 0.70),
-            Offset(0.80, 0.85),
+            Offset(0.50, 0.16),
+            Offset(0.56, 0.29),
+            Offset(0.61, 0.41),
+            Offset(0.67, 0.53),
+            Offset(0.72, 0.65),
+            Offset(0.78, 0.77),
           ],
         ),
         // Stroke 3: Crossbar (left to right)
         const TracingStrokeGuide(
           index: 2,
           normalizedPoints: [
-            Offset(0.33, 0.62),
-            Offset(0.42, 0.62),
-            Offset(0.50, 0.62),
-            Offset(0.58, 0.62),
-            Offset(0.67, 0.62),
+            Offset(0.33, 0.58),
+            Offset(0.42, 0.58),
+            Offset(0.50, 0.58),
+            Offset(0.58, 0.58),
+            Offset(0.67, 0.58),
           ],
         ),
       ],
@@ -83,38 +82,37 @@ class TracingStrokeCatalog {
         const TracingStrokeGuide(
           index: 0,
           normalizedPoints: [
-            Offset(0.25, 0.15),
-            Offset(0.25, 0.29),
-            Offset(0.25, 0.43),
-            Offset(0.25, 0.57),
-            Offset(0.25, 0.71),
-            Offset(0.25, 0.85),
+            Offset(0.26, 0.16),
+            Offset(0.26, 0.31),
+            Offset(0.26, 0.47),
+            Offset(0.26, 0.62),
+            Offset(0.26, 0.77),
           ],
         ),
         // Stroke 2: Top loop
         const TracingStrokeGuide(
           index: 1,
           normalizedPoints: [
-            Offset(0.25, 0.15),
-            Offset(0.48, 0.14),
-            Offset(0.68, 0.20),
-            Offset(0.74, 0.32),
-            Offset(0.66, 0.46),
-            Offset(0.45, 0.50),
-            Offset(0.25, 0.50),
+            Offset(0.26, 0.16),
+            Offset(0.48, 0.15),
+            Offset(0.68, 0.21),
+            Offset(0.74, 0.31),
+            Offset(0.66, 0.43),
+            Offset(0.45, 0.47),
+            Offset(0.26, 0.47),
           ],
         ),
         // Stroke 3: Bottom loop
         const TracingStrokeGuide(
           index: 2,
           normalizedPoints: [
-            Offset(0.25, 0.50),
-            Offset(0.50, 0.50),
-            Offset(0.72, 0.55),
-            Offset(0.78, 0.68),
-            Offset(0.70, 0.80),
-            Offset(0.48, 0.85),
-            Offset(0.25, 0.85),
+            Offset(0.26, 0.47),
+            Offset(0.50, 0.47),
+            Offset(0.72, 0.52),
+            Offset(0.78, 0.64),
+            Offset(0.70, 0.74),
+            Offset(0.48, 0.77),
+            Offset(0.26, 0.77),
           ],
         ),
       ],
@@ -124,16 +122,16 @@ class TracingStrokeCatalog {
         const TracingStrokeGuide(
           index: 0,
           normalizedPoints: [
-            Offset(0.76, 0.24),
-            Offset(0.62, 0.15),
-            Offset(0.45, 0.14),
-            Offset(0.30, 0.25),
-            Offset(0.22, 0.42),
-            Offset(0.22, 0.58),
-            Offset(0.30, 0.75),
-            Offset(0.45, 0.86),
-            Offset(0.62, 0.85),
-            Offset(0.76, 0.76),
+            Offset(0.74, 0.28),
+            Offset(0.62, 0.20),
+            Offset(0.46, 0.20),
+            Offset(0.30, 0.28),
+            Offset(0.24, 0.44),
+            Offset(0.24, 0.56),
+            Offset(0.30, 0.70),
+            Offset(0.46, 0.76),
+            Offset(0.62, 0.76),
+            Offset(0.74, 0.68),
           ],
         ),
       ],
@@ -143,27 +141,26 @@ class TracingStrokeCatalog {
         const TracingStrokeGuide(
           index: 0,
           normalizedPoints: [
-            Offset(0.25, 0.15),
-            Offset(0.25, 0.29),
-            Offset(0.25, 0.43),
-            Offset(0.25, 0.57),
-            Offset(0.25, 0.71),
-            Offset(0.25, 0.85),
+            Offset(0.26, 0.18),
+            Offset(0.26, 0.32),
+            Offset(0.26, 0.47),
+            Offset(0.26, 0.62),
+            Offset(0.26, 0.76),
           ],
         ),
         // Stroke 2: Curved belly
         const TracingStrokeGuide(
           index: 1,
           normalizedPoints: [
-            Offset(0.25, 0.15),
-            Offset(0.48, 0.14),
-            Offset(0.68, 0.23),
-            Offset(0.78, 0.38),
-            Offset(0.80, 0.50),
-            Offset(0.78, 0.62),
-            Offset(0.68, 0.77),
-            Offset(0.48, 0.86),
-            Offset(0.25, 0.85),
+            Offset(0.26, 0.18),
+            Offset(0.48, 0.18),
+            Offset(0.66, 0.26),
+            Offset(0.76, 0.38),
+            Offset(0.78, 0.47),
+            Offset(0.76, 0.58),
+            Offset(0.66, 0.68),
+            Offset(0.48, 0.76),
+            Offset(0.26, 0.76),
           ],
         ),
       ],

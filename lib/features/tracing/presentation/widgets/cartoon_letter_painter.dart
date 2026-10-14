@@ -40,21 +40,6 @@ class CartoonLetterPainter extends CustomPainter {
       letterBounds.top,
     );
 
-    // --- STEP 1: PREPARE TEXT PAINTER FOR LETTER GLYPH ---
-    final textSpan = TextSpan(
-      text: character,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w900,
-        fontFamily: 'Roboto',
-      ),
-    );
-
-    final textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-    )..layout();
-
     // 1. LAYER A: OUTER BLACK CONTOUR
     final outerStrokePaint = Paint()
       ..style = PaintingStyle.stroke
@@ -101,78 +86,80 @@ class CartoonLetterPainter extends CustomPainter {
     );
 
     // --- STEP 2: CLIPPED PROGRESSIVE COLORED STROKE FILLS ---
-    // We use saveLayer + BlendMode.srcIn to ensure all drawn strokes stay strictly inside the letter track
-    final boundsWithMargin = letterBounds.inflate(40);
-    canvas.saveLayer(boundsWithMargin, Paint());
+    // Only clip and blend when there are active or completed strokes, keeping untraced track deep teal!
+    if (completedStrokes.isNotEmpty || liveCurrentStroke.isNotEmpty) {
+      final boundsWithMargin = letterBounds.inflate(40);
+      canvas.saveLayer(boundsWithMargin, Paint());
 
-    // Destination: Solid text mask
-    _paintTextWithStyle(
-      canvas,
-      centerOffset,
-      character,
-      fontSize,
-      foreground: Paint()..color = Colors.white,
-    );
+      // 1. Draw completed & active colored strokes onto the transparent layer
+      final strokePaint = Paint()
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 52.0; // Broad enough to fully fill the letter channel
 
-    // Source (BlendMode.srcIn): Completed strokes & active stroke
-    final strokePaint = Paint()
-      ..blendMode = BlendMode.srcIn
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 48.0; // Broad enough to fully fill the letter channel
+      for (int i = 0; i < completedStrokes.length; i++) {
+        final s = completedStrokes[i];
+        if (s.isEmpty) continue;
+        final color = i < strokeColors.length ? strokeColors[i] : const Color(0xFFDC2626);
+        strokePaint.color = color;
 
-    // Draw completed strokes
-    for (int i = 0; i < completedStrokes.length; i++) {
-      final s = completedStrokes[i];
-      if (s.isEmpty) continue;
-      final color = i < strokeColors.length ? strokeColors[i] : const Color(0xFFDC2626);
-      strokePaint.color = color;
-
-      if (s.length == 1) {
-        canvas.drawCircle(s.first, 24.0, strokePaint..style = PaintingStyle.fill);
-        strokePaint.style = PaintingStyle.stroke;
-      } else {
-        final path = Path()..moveTo(s.first.dx, s.first.dy);
-        for (int p = 1; p < s.length; p++) {
-          path.lineTo(s[p].dx, s[p].dy);
+        if (s.length == 1) {
+          canvas.drawCircle(s.first, 26.0, strokePaint..style = PaintingStyle.fill);
+          strokePaint.style = PaintingStyle.stroke;
+        } else {
+          final path = Path()..moveTo(s.first.dx, s.first.dy);
+          for (int p = 1; p < s.length; p++) {
+            path.lineTo(s[p].dx, s[p].dy);
+          }
+          canvas.drawPath(path, strokePaint);
         }
-        canvas.drawPath(path, strokePaint);
       }
-    }
 
-    // Draw current live dragging stroke
-    if (liveCurrentStroke.isNotEmpty) {
-      strokePaint.color = currentCrayonColor;
-      if (liveCurrentStroke.length == 1) {
-        canvas.drawCircle(liveCurrentStroke.first, 24.0, strokePaint..style = PaintingStyle.fill);
-        strokePaint.style = PaintingStyle.stroke;
-      } else {
-        final path = Path()..moveTo(liveCurrentStroke.first.dx, liveCurrentStroke.first.dy);
-        for (int p = 1; p < liveCurrentStroke.length; p++) {
-          path.lineTo(liveCurrentStroke[p].dx, liveCurrentStroke[p].dy);
+      // Draw current live dragging stroke
+      if (liveCurrentStroke.isNotEmpty) {
+        strokePaint.color = currentCrayonColor;
+        if (liveCurrentStroke.length == 1) {
+          canvas.drawCircle(liveCurrentStroke.first, 26.0, strokePaint..style = PaintingStyle.fill);
+          strokePaint.style = PaintingStyle.stroke;
+        } else {
+          final path = Path()..moveTo(liveCurrentStroke.first.dx, liveCurrentStroke.first.dy);
+          for (int p = 1; p < liveCurrentStroke.length; p++) {
+            path.lineTo(liveCurrentStroke[p].dx, liveCurrentStroke[p].dy);
+          }
+          canvas.drawPath(path, strokePaint);
         }
-        canvas.drawPath(path, strokePaint);
       }
+
+      // 2. Mask with letter glyph using BlendMode.dstIn so only the drawn parts show and untraced parts stay transparent!
+      _paintTextWithStyle(
+        canvas,
+        centerOffset,
+        character,
+        fontSize,
+        foreground: Paint()
+          ..blendMode = BlendMode.dstIn
+          ..color = Colors.black,
+      );
+
+      canvas.restore();
+
+      // 3. Re-apply inner white border lightly so the stroke edges remain super crisp
+      final borderTouchUp = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6.0
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = Colors.white;
+
+      _paintTextWithStyle(
+        canvas,
+        centerOffset,
+        character,
+        fontSize,
+        foreground: borderTouchUp,
+      );
     }
-
-    canvas.restore();
-
-    // Re-apply inner white border lightly so the stroke edges remain super crisp
-    final borderTouchUp = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..color = Colors.white;
-
-    _paintTextWithStyle(
-      canvas,
-      centerOffset,
-      character,
-      fontSize,
-      foreground: borderTouchUp,
-    );
 
     // --- STEP 3: DRAW ACTIVE STROKE GUIDE DOTS & CHEVRON ---
     if (activeStrokeIndex < allStrokes.length) {
@@ -180,10 +167,7 @@ class CartoonLetterPainter extends CustomPainter {
       final screenPoints = activeStroke.toScreenCoordinates(letterBounds);
 
       if (screenPoints.isNotEmpty) {
-        // Draw Start Directional Chevron at the first dot
-        _drawStartChevron(canvas, screenPoints);
-
-        // Draw Pearl Dots along the active stroke
+        // Draw Pearl Dots & Start Chevron Indicator along active stroke
         for (int i = 0; i < screenPoints.length; i++) {
           final pt = screenPoints[i];
           final isCollected = i < activeDotIndex;
@@ -193,40 +177,67 @@ class CartoonLetterPainter extends CustomPainter {
             // Already collected dot - faint golden glow
             canvas.drawCircle(
               pt,
-              6.5,
-              Paint()..color = const Color(0xFFFFD700).withValues(alpha: 0.8),
+              7.0,
+              Paint()..color = const Color(0xFFFFD700).withValues(alpha: 0.85),
             );
-          } else {
-            // Uncollected pearl dot - solid white with subtle 3D highlight
-            // Drop shadow
-            canvas.drawCircle(
-              pt + const Offset(0, 1.5),
-              11.0,
-              Paint()..color = Colors.black.withValues(alpha: 0.35),
-            );
-            // Outer white pearl
+          } else if (i == 0) {
+            // Start Indicator at the beginning of the stroke (Circle with white chevron inside)
+            // Outer white ring
             canvas.drawCircle(
               pt,
-              10.5,
-              Paint()..color = Colors.white,
+              13.5,
+              Paint()
+                ..color = Colors.white
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 3.2,
             );
-            // Soft center highlight
-            canvas.drawCircle(
-              pt - const Offset(2.0, 2.0),
-              3.5,
-              Paint()..color = const Color(0xFFF1F5F9),
+            // Draw Chevron inside the start ring
+            _drawStartChevron(
+              canvas,
+              pt,
+              screenPoints.length > 1 ? screenPoints[1] : pt + const Offset(0, 10),
             );
 
-            // If this is the active dot, draw an inviting golden beacon ring
+            // If start dot is active, beacon glow ring
             if (isCurrent) {
-              final pulseRadius = 14.0 + (handBounceOffset.abs() * 3.5);
+              final pulseRadius = 17.0 + (handBounceOffset.abs() * 3.5);
               canvas.drawCircle(
                 pt,
                 pulseRadius,
                 Paint()
                   ..style = PaintingStyle.stroke
                   ..strokeWidth = 2.5
-                  ..color = const Color(0xFFFFEB3B).withValues(alpha: 0.85),
+                  ..color = const Color(0xFFFFEB3B).withValues(alpha: 0.9),
+              );
+            }
+          } else {
+            // Regular pearl dot - solid white with subtle drop shadow
+            canvas.drawCircle(
+              pt + const Offset(0, 1.5),
+              11.0,
+              Paint()..color = Colors.black.withValues(alpha: 0.35),
+            );
+            canvas.drawCircle(
+              pt,
+              10.5,
+              Paint()..color = Colors.white,
+            );
+            canvas.drawCircle(
+              pt - const Offset(2.0, 2.0),
+              3.5,
+              Paint()..color = const Color(0xFFF8FAFC),
+            );
+
+            // If this is the active dot, draw inviting golden beacon ring
+            if (isCurrent) {
+              final pulseRadius = 15.0 + (handBounceOffset.abs() * 3.5);
+              canvas.drawCircle(
+                pt,
+                pulseRadius,
+                Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 2.5
+                  ..color = const Color(0xFFFFEB3B).withValues(alpha: 0.9),
               );
             }
           }
@@ -263,11 +274,7 @@ class CartoonLetterPainter extends CustomPainter {
     tp.paint(canvas, offset);
   }
 
-  void _drawStartChevron(Canvas canvas, List<Offset> points) {
-    if (points.length < 2) return;
-    final p0 = points[0];
-    final p1 = points[1];
-
+  void _drawStartChevron(Canvas canvas, Offset p0, Offset p1) {
     final angle = math.atan2(p1.dy - p0.dy, p1.dx - p0.dx);
 
     canvas.save();
@@ -276,14 +283,14 @@ class CartoonLetterPainter extends CustomPainter {
 
     // White chevron mark pointing in travel direction
     final chevronPath = Path();
-    chevronPath.moveTo(-6, -8);
-    chevronPath.lineTo(4, 0);
-    chevronPath.lineTo(-6, 8);
+    chevronPath.moveTo(-5, -6);
+    chevronPath.lineTo(3.5, 0);
+    chevronPath.lineTo(-5, 6);
 
     final chevronPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
+      ..strokeWidth = 3.2
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 

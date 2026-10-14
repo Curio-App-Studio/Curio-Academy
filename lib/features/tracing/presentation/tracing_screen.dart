@@ -86,8 +86,6 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with TickerProvid
   TracingEvaluationResult? _lastResult;
   Timer? _celebrationAutoAdvanceTimer;
 
-  // Checkpoints fallback list
-  List<TracingCheckpoint> _checkpoints = [];
 
   @override
   void initState() {
@@ -1191,37 +1189,6 @@ class _SparkleParticle {
   });
 }
 
-// Painter for drawing notebook horizontal guide ruled lines
-class _NotebookLinesPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.5)
-      ..strokeWidth = 1.5;
-
-    final dashPaint = Paint()
-      ..color = const Color(0xFF94A3B8).withValues(alpha: 0.5)
-      ..strokeWidth = 1.2;
-
-    // Top Headline line (at 25% height)
-    canvas.drawLine(Offset(20, size.height * 0.22), Offset(size.width - 20, size.height * 0.22), linePaint);
-
-    // Midline dashed (at 50% height)
-    double x = 20;
-    const dashWidth = 8.0;
-    const dashSpace = 6.0;
-    while (x < size.width - 20) {
-      canvas.drawLine(Offset(x, size.height * 0.5), Offset(x + dashWidth, size.height * 0.5), dashPaint);
-      x += dashWidth + dashSpace;
-    }
-
-    // Baseline line (at 78% height)
-    canvas.drawLine(Offset(20, size.height * 0.78), Offset(size.width - 20, size.height * 0.78), linePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 // Painter for sparkling particles trailing finger and popping on dots
 class _SparklesPainter extends CustomPainter {
